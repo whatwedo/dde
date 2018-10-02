@@ -20,6 +20,12 @@ system-up: ## Initializes and starts dde system infrastructure
 	# Create network if required
 	docker network create $(NETWORK_NAME) || true
 
+	# Create default docker config.json
+	if [ ! -f ~/.docker/config.json ]; then \
+		mkdir -p ~/.docker && \
+		echo '{}' > ~/.docker/config.json; \
+	fi
+
 	# Create CA cert if required
 	mkdir -p $(CERT_DIR)
 	cd $(CERT_DIR) && \
@@ -168,7 +174,7 @@ exec: ## Opens shell on first container
 #
 
 define checkProject
-	if [ ! -f docker-compos.yml ]; then \
+	if [ ! -f docker-compose.yml ]; then \
 		echo docker-compose.yml not found && \
 		exit 1; \
 	fi
