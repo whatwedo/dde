@@ -9,7 +9,7 @@ services:
         ports:
             - "127.0.0.1:53:53/tcp"
             - "127.0.0.1:53:53/udp"
-        command: --address=/.test/127.0.0.1 --log-queries
+        command: --address=/.test/127.0.0.1 --server 8.8.8.8 --server 8.8.4.4 --log-facility=-
         hostname: dnsmasq
         domainname: test
         container_name: dde_dnsmasq
@@ -24,6 +24,7 @@ services:
             - SSL_POLICY=Mozilla-Modern
         volumes:
             - /var/run/docker.sock:/tmp/docker.sock:ro
+            - ./data/reverseproxy/etc/nginx/certs:/etc/nginx/certs
         hostname: reverseproxy
         domainname: test
         container_name: dde_reverseproxy

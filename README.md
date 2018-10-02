@@ -1,13 +1,38 @@
-# dde
+# dde (Docker based Development Environment)
 
-> Docker based Development Environment
+> Local development environment toolset on Docker supporting multiple projects.
+
+
+## Requirements
+
+* macOS, Arch Linux or Ubuntu
+* Docker 17.09.0+
+* docker-compose 1.22+
+* No other services listening localhost on:
+    * Port 53
+    * Port 80
+    * Port 443
+    * Port 3306
+    
+    
+## Setup
+
+```
+cd ~
+git clone git@dev.whatwedo.ch:wwd-internal/dde.git
+echo "alias dde='make -f ~/dde/Makefile'" >> .bashrc
+dde system-up
+```
+    
 
 
 ## TODO:
 
-* Mailhog
-* Trusted CA
-* Postgres
 * SSH-Agent
 * UID
 * Sample project docker-compose.yml
+
+
+## License
+
+This project is under the MIT license. See the complete license in the bundle: [LICENSE](LICENSE)
