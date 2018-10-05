@@ -112,7 +112,43 @@ up: ## Creates and starts project containers
 	# Start containers
 	docker-compose up -d
 
+	# Give containers some time to start
+	sleep 5
 
+	# Fix UID
+	for service in `docker-compose config --services`; do \
+		docker-compose exec $$service bash -c ' \
+			apt-get update && \
+			apt-get install -qq wget sed bash-completion && \
+			\
+			groupadd -g '`id -g`' dde && \
+			useradd -d /home/dde -u '`id -u`' -g '`id -g`' -c "dde" -s /bin/bash -N -m dde && \
+			\
+			wget -q -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/1.10/gosu-amd64" && \
+			chmod +x /usr/local/bin/gosu && \
+			\
+			if [ -x `command -v nginx` ]; then \
+				usermod -a -G www-data dde && \
+				sed -i "s/user www-data;/user dde;/" /etc/nginx/nginx.conf && \
+				nginx -s reload; \
+			fi && \
+			\
+			if [ -x `command -v php` ]; then \
+				PHP_VERSION=`php -v | cut -d " " -f 2 | cut -c 1-3 | head -n 1` && \
+				PHP_PATH=/etc/php/$$PHP_VERSION && \
+				\
+				if [ -f /usr/sbin/php-fpm$$PHP_VERSION ]; then \
+					sed -i "s/user = www-data/user = dde/" $$PHP_PATH/fpm/pool.d/www.conf  && \
+					sed -i "s/group = www-data/group = dde/" $$PHP_PATH/fpm/pool.d/www.conf  && \
+					sed -i "s/listen\.owner.*/listen.owner = dde/" $$PHP_PATH/fpm/pool.d/www.conf  && \
+					sed -i "s/listen\.group.*/listen.group = dde/" $$PHP_PATH/fpm/pool.d/www.conf  && \
+					sed -i "s/listen\.mode.*/listen.mode = 0666/" $$PHP_PATH/fpm/pool.d/www.conf; \
+				fi; \
+			fi && \
+			\
+			hostname \
+		'; \
+	done
 
 .PHONY: status
 status: ## Print project status
@@ -162,10 +198,25 @@ destroy: ## Remove central project infrastructure
 	$(call deleteVhostCert,$(VHOST))
 
 
+
 .PHONY: exec
-exec: ## Opens shell on first container
+exec: ## Opens shell with user dde on first container
 	$(call checkProject)
-	docker-compose exec `docker-compose config --services | head -n1` bash
+	docker-compose exec `docker-compose config --services | head -n1` gosu dde bash || true
+
+
+
+.PHONY: exec_root
+exec_root: ## Opens privileged shell on first container
+	$(call checkProject)
+	docker-compose exec `docker-compose config --services | head -n1` gosu root bash  || true
+
+
+
+
+.PHONY: log
+log: ## Show log output
+	docker-compose logs -f --tail=100
 
 
 
