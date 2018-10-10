@@ -17,76 +17,75 @@ help: ## Display this message
 
 .PHONY: system-up
 system-up: ## Initializes and starts dde system infrastructure
-	# Create network if required
-	docker network create $(NETWORK_NAME) || true
+	$(call log,"Create network if required")
+	@docker network create $(NETWORK_NAME) || true
 
-	# Create default docker config.json
-	if [ ! -f ~/.docker/config.json ]; then \
+	$(call log,"Create default docker config.json")
+	@if [ ! -f ~/.docker/config.json ]; then \
 		mkdir -p ~/.docker && \
 		echo '{}' > ~/.docker/config.json; \
 	fi
 
-	# Create CA cert if required
-	mkdir -p $(CERT_DIR)
-	cd $(CERT_DIR) && \
+	$(call log,"Create CA cert if required")
+	@mkdir -p $(CERT_DIR)
+	@cd $(CERT_DIR) && \
 		if [ ! -f ca.pem ]; then \
 			openssl genrsa -out ca.key 2048 && \
 			openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 -subj "/C=CH/ST=Bern/L=Bern/O=dde/CN=dde" -out ca.pem; \
 		fi
 
-	# Create certs used by system services
+	$(call log,"Create certs used by system services")
 	$(call generateVhostCert,portainer.test)
 	$(call generateVhostCert,mailhog.test)
 
-
-	# Start containers
-	cd $(ROOT_DIR) && docker-compose up -d
+	$(call log,"Start containers")
+	@cd $(ROOT_DIR) && docker-compose up -d
 
 
 
 .PHONY: system-status
 system-status: ## Print dde system status
-	cd $(ROOT_DIR) && \
-		docker-compose ps
+	@cd $(ROOT_DIR) && \
+		@docker-compose ps
 
 
 
 .PHONY: system-start
 system-start: ## Start already created system dde environment
-	cd $(ROOT_DIR) && \
-		docker-compose start
+	@cd $(ROOT_DIR) && \
+		@docker-compose start
 
 
 
 .PHONY: system-stop
 system-stop: ## Stop system dde environment
-	cd $(ROOT_DIR) && \
-		docker-compose stop
+	@cd $(ROOT_DIR) && \
+		@docker-compose stop
 
 
 
 .PHONY: system-update
 system-update: ## Update dde system
 
-		# Remove dde
-		make -f $(MAKEFILE) system-destroy
+		$(call log,"Remove dde (system)")
+		@make -f $(MAKEFILE) system-destroy
 
-		# Update dde repository
-		cd $(ROOT_DIR) && git pull
+		$(call log,"Update dde repository")
+		@cd $(ROOT_DIR) && git pull
 
-		# Start dde
-		make -f $(MAKEFILE) system-up
+		$(call log,"Start dde (system)")
+		@make -f $(MAKEFILE) system-up
 
 
 
 .PHONY: system-destroy
 system-destroy: ## Remove system dde infrastructure
 
-	# Remove containers
-	cd $(ROOT_DIR) && docker-compose down -v --remove-orphans
+	$(call log,"Remove containers")
+	@cd $(ROOT_DIR) && docker-compose down -v --remove-orphans
 
-	# Remove network if created
-	if [ "$$(docker network ls | grep $(NETWORK_NAME))" ]; then \
+	$(call log,"Remove network if created")
+	@if [ "$$(docker network ls | grep $(NETWORK_NAME))" ]; then \
 		docker network rm $(NETWORK_NAME) || true; \
 	fi
 
@@ -94,11 +93,11 @@ system-destroy: ## Remove system dde infrastructure
 .PHONY: system-nuke
 system-nuke: ## Remove system dde infrastructure and nukes data
 
-	# Remove dde
-	make -f $(MAKEFILE) system-destroy
+	$(call log,"Remove dde sytem")
+	@make -f $(MAKEFILE) system-destroy
 
-	# Remove data
-	cd $(ROOT_DIR) && sudo find ./data/* -maxdepth 1 -not -name .gitkeep -exec rm -rf {} ';'
+	$(call log,"Remove data")
+	@cd $(ROOT_DIR) && sudo find ./data/* -maxdepth 1 -not -name .gitkeep -exec rm -rf {} ';'
 
 
 
@@ -106,17 +105,17 @@ system-nuke: ## Remove system dde infrastructure and nukes data
 up: ## Creates and starts project containers
 	$(call checkProject)
 
-	# Generate SSL cert
+	$(call log,"Generate SSL cert")
 	$(call generateVhostCert,$(VHOST))
 
-	# Start containers
-	docker-compose up -d
+	$(call log,"Start containers")
+	@docker-compose up -d
 
-	# Give containers some time to start
-	sleep 5
+	$(call log,"Give containers some time to start")
+	@sleep 5
 
-	# Fix UID
-	for service in `docker-compose config --services`; do \
+	$(call log,"Running container startup tasks")
+	@for service in `docker-compose config --services`; do \
 		docker-compose exec $$service bash -c ' \
 			\
 			if [ -f /etc/dde/firstboot ]; then \
@@ -159,21 +158,21 @@ up: ## Creates and starts project containers
 .PHONY: status
 status: ## Print project status
 	$(call checkProject)
-	docker-compose ps
+	@docker-compose ps
 
 
 
 .PHONY: start
 start: ## Start already created project environment
 	$(call checkProject)
-	docker-compose start
+	@docker-compose start
 
 
 
 .PHONY: stop
 stop: ## Stop project environment
 	$(call checkProject)
-	docker-compose stop
+	@docker-compose stop
 
 
 
@@ -181,15 +180,15 @@ stop: ## Stop project environment
 update: ## Update/rebuild project
 	$(call checkProject)
 
-	# Destroy project
-	make -f $(MAKEFILE) destroy
+	$(call log,"Destroy project")
+	@make -f $(MAKEFILE) destroy
 
-	# Pull/build images
-	docker-compose build
-	docker-compose pull
+	$(call log," Pull/build images")
+	@docker-compose build
+	@docker-compose pull
 
-	# Start project
-	make -f $(MAKEFILE) up
+	$(call log,"Start project")
+	@make -f $(MAKEFILE) up
 
 
 
@@ -197,10 +196,10 @@ update: ## Update/rebuild project
 destroy: ## Remove central project infrastructure
 	$(call checkProject)
 
-	# Remove containers
-	docker-compose down -v --remove-orphans
+	$(call log,"Remove containers")
+	@docker-compose down -v --remove-orphans
 
-	# Delete SSL certs
+	$(call log,"Delete SSL certs")
 	$(call deleteVhostCert,$(VHOST))
 
 
@@ -208,21 +207,21 @@ destroy: ## Remove central project infrastructure
 .PHONY: exec
 exec: ## Opens shell with user dde on first container
 	$(call checkProject)
-	docker-compose exec `docker-compose config --services | head -n1` gosu dde bash || true
+	@docker-compose exec `docker-compose config --services | head -n1` gosu dde bash || true
 
 
 
 .PHONY: exec_root
 exec_root: ## Opens privileged shell on first container
 	$(call checkProject)
-	docker-compose exec `docker-compose config --services | head -n1` gosu root bash  || true
+	@docker-compose exec `docker-compose config --services | head -n1` gosu root bash  || true
 
 
 
 
 .PHONY: log
 log: ## Show log output
-	docker-compose logs -f --tail=100
+	@docker-compose logs -f --tail=100
 
 
 
@@ -230,16 +229,24 @@ log: ## Show log output
 # FUNCTIONS
 #
 
+define log
+	@tput -T xterm setaf 3
+	@. ./.env && shopt -s xpg_echo && echo $1
+	@tput -T xterm sgr0
+endef
+
+
 define checkProject
-	if [ ! -f docker-compose.yml ]; then \
+	@if [ ! -f docker-compose.yml ]; then \
 		echo docker-compose.yml not found && \
 		exit 1; \
 	fi
 endef
 
 
+
 define generateVhostCert
-	cd $(CERT_DIR) && \
+	@cd $(CERT_DIR) && \
 		if [ ! -f $(1).crt ]; then \
 			openssl genrsa -out $(1).key 2048 && \
 			openssl req -new -key $(1).key -out $(1).csr -subj "/C=CH/ST=Bern/L=Bern/O=dde/CN=$(1)" && \
@@ -254,6 +261,7 @@ define generateVhostCert
 endef
 
 
+
 define deleteVhostCert
-	rm -f $(CERT_DIR)/$(1).*
+	@rm -f $(CERT_DIR)/$(1).*
 endef

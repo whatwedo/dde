@@ -14,8 +14,8 @@
     * Port 443
     * Port 3306
 * Application service images based on the official [Ubuntu](https://hub.docker.com/_/ubuntu/) image with AMD64 as platform.
-    
-    
+
+
 ## Setup
 
 ```
@@ -24,14 +24,12 @@ git clone git@dev.whatwedo.ch:wwd-internal/dde.git
 echo "alias dde='make -f ~/dde/Makefile'" >> .bash_profile
 dde system-up
 ```
-    
 
 
 ## TODO:
 
 * SSH-Agent
 * Apache Config UID
-* Logging
 * Symfony ohne dotenv
 * Sample project docker-compose.yml
 
