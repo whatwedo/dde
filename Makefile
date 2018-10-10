@@ -118,6 +118,14 @@ up: ## Creates and starts project containers
 	# Fix UID
 	for service in `docker-compose config --services`; do \
 		docker-compose exec $$service bash -c ' \
+			\
+			if [ -f /etc/dde/firstboot ]; then \
+				exit; \
+			fi && \
+			\
+			mkdir -p /etc/dde && \
+			touch /etc/dde/firstboot && \
+			\
 			apt-get update && \
 			apt-get install -qq wget sed bash-completion && \
 			\
