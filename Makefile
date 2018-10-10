@@ -121,8 +121,8 @@ up: ## Creates and starts project containers
 			apt-get update && \
 			apt-get install -qq wget sed bash-completion && \
 			\
-			groupadd -g '`id -g`' dde && \
-			useradd -d /home/dde -u '`id -u`' -g '`id -g`' -c "dde" -s /bin/bash -N -m dde && \
+			groupadd -g '`id -g`' -o dde && \
+			useradd -d /home/dde -u '`id -u`' -g '`id -g`' -c "dde" -s /bin/bash -N -o -m dde && \
 			\
 			wget -q -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/1.10/gosu-amd64" && \
 			chmod +x /usr/local/bin/gosu && \
@@ -144,9 +144,7 @@ up: ## Creates and starts project containers
 					sed -i "s/listen\.group.*/listen.group = dde/" $$PHP_PATH/fpm/pool.d/www.conf  && \
 					sed -i "s/listen\.mode.*/listen.mode = 0666/" $$PHP_PATH/fpm/pool.d/www.conf; \
 				fi; \
-			fi && \
-			\
-			hostname \
+			fi \
 		'; \
 	done
 

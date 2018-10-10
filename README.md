@@ -21,7 +21,7 @@
 ```
 cd ~
 git clone git@dev.whatwedo.ch:wwd-internal/dde.git
-echo "alias dde='make -f ~/dde/Makefile'" >> .bashrc
+echo "alias dde='make -f ~/dde/Makefile'" >> .bash_profile
 dde system-up
 ```
     
