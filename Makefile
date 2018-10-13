@@ -6,6 +6,8 @@ CERT_DIR := $(ROOT_DIR)/data/reverseproxy/etc/nginx/certs
 MAKEFILE := $(ROOT_DIR)/Makefile
 VHOST := $(shell grep VIRTUAL_HOST= docker-compose.yml | head -n1 | cut -d'=' -f2 | xargs)
 NETWORK_NAME := dde
+DDE_UID := $(shell id -u)
+DDE_GID := $(shell id -g)
 
 
 
@@ -17,16 +19,16 @@ help: ## Display this message
 
 .PHONY: system-up
 system-up: ## Initializes and starts dde system infrastructure
-	$(call log,"Create network if required")
+	$(call log,"Creating network if required")
 	@docker network create $(NETWORK_NAME) || true
 
-	$(call log,"Create default docker config.json")
+	$(call log,"Creating default docker config.json")
 	@if [ ! -f ~/.docker/config.json ]; then \
 		mkdir -p ~/.docker && \
 		echo '{}' > ~/.docker/config.json; \
 	fi
 
-	$(call log,"Create CA cert if required")
+	$(call log,"Creating CA cert if required")
 	@mkdir -p $(CERT_DIR)
 	@cd $(CERT_DIR) && \
 		if [ ! -f ca.pem ]; then \
@@ -34,12 +36,17 @@ system-up: ## Initializes and starts dde system infrastructure
 			openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 -subj "/C=CH/ST=Bern/L=Bern/O=dde/CN=dde" -out ca.pem; \
 		fi
 
-	$(call log,"Create certs used by system services")
+	$(call log,"Creating certs used by system services")
 	$(call generateVhostCert,portainer.test)
 	$(call generateVhostCert,mailhog.test)
 
-	$(call log,"Start containers")
+	$(call log,"Starting containers")
 	@cd $(ROOT_DIR) && docker-compose up -d
+
+	$(call log,"Adding SSH key (maybe passphrase required)")
+	@cd $(ROOT_DIR) && docker-compose exec ssh-agent sh -c "ssh-add /home/dde/.ssh/id_rsa && ssh-add -l"
+
+	$(call log,"Finished startup successfully")
 
 
 
@@ -67,37 +74,47 @@ system-stop: ## Stop system dde environment
 .PHONY: system-update
 system-update: ## Update dde system
 
-		$(call log,"Remove dde (system)")
+		$(call log,"Removing dde (system)")
 		@make -f $(MAKEFILE) system-destroy
 
-		$(call log,"Update dde repository")
+		$(call log,"Updating dde repository")
 		@cd $(ROOT_DIR) && git pull
 
-		$(call log,"Start dde (system)")
+		$(call log,"Updating docker images")
+		@docker-compose pull
+		@docker-compose build
+
+		$(call log,"Starting dde (system)")
 		@make -f $(MAKEFILE) system-up
+
+		$(call log,"Finished update successfully")
 
 
 
 .PHONY: system-destroy
 system-destroy: ## Remove system dde infrastructure
 
-	$(call log,"Remove containers")
+	$(call log,"Removing containers")
 	@cd $(ROOT_DIR) && docker-compose down -v --remove-orphans
 
-	$(call log,"Remove network if created")
+	$(call log,"Removing network if created")
 	@if [ "$$(docker network ls | grep $(NETWORK_NAME))" ]; then \
 		docker network rm $(NETWORK_NAME) || true; \
 	fi
+
+	$(call log,"Finished destroying successfully")
 
 
 .PHONY: system-nuke
 system-nuke: ## Remove system dde infrastructure and nukes data
 
-	$(call log,"Remove dde sytem")
+	$(call log,"Removing dde sytem")
 	@make -f $(MAKEFILE) system-destroy
 
-	$(call log,"Remove data")
+	$(call log,"Removing data")
 	@cd $(ROOT_DIR) && sudo find ./data/* -maxdepth 1 -not -name .gitkeep -exec rm -rf {} ';'
+
+	$(call log,"Finished nuking successfully")
 
 
 
@@ -105,13 +122,13 @@ system-nuke: ## Remove system dde infrastructure and nukes data
 up: ## Creates and starts project containers
 	$(call checkProject)
 
-	$(call log,"Generate SSL cert")
+	$(call log,"Generating SSL cert")
 	$(call generateVhostCert,$(VHOST))
 
-	$(call log,"Start containers")
+	$(call log,"Starting containers")
 	@docker-compose up -d
 
-	$(call log,"Give containers some time to start")
+	$(call log,"Giving containers some time to start")
 	@sleep 5
 
 	$(call log,"Running container startup tasks")
@@ -119,6 +136,7 @@ up: ## Creates and starts project containers
 		docker-compose exec $$service bash -c ' \
 			\
 			if [ -f /etc/dde/firstboot ]; then \
+				echo Container already configured && \
 				exit; \
 			fi && \
 			\
@@ -128,8 +146,8 @@ up: ## Creates and starts project containers
 			apt-get update && \
 			apt-get install -qq wget sed bash-completion && \
 			\
-			groupadd -g '`id -g`' -o dde && \
-			useradd -d /home/dde -u '`id -u`' -g '`id -g`' -c "dde" -s /bin/bash -N -o -m dde && \
+			groupadd -g $(DDE_GID) -o dde && \
+			useradd -d /home/dde -u $(DDE_UID) -g $(DDE_GID) -c "dde" -s /bin/bash -N -o -m dde && \
 			\
 			wget -q -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/1.10/gosu-amd64" && \
 			chmod +x /usr/local/bin/gosu && \
@@ -154,6 +172,9 @@ up: ## Creates and starts project containers
 			fi \
 		'; \
 	done
+
+	$(call log,"Finished startup successfully")
+
 
 .PHONY: status
 status: ## Print project status
@@ -180,15 +201,17 @@ stop: ## Stop project environment
 update: ## Update/rebuild project
 	$(call checkProject)
 
-	$(call log,"Destroy project")
+	$(call log,"Destroying project")
 	@make -f $(MAKEFILE) destroy
 
-	$(call log," Pull/build images")
+	$(call log," Pulling/building images")
 	@docker-compose build
 	@docker-compose pull
 
-	$(call log,"Start project")
+	$(call log,"Starting project")
 	@make -f $(MAKEFILE) up
+
+	$(call log,"Finished update successfully")
 
 
 
@@ -196,11 +219,13 @@ update: ## Update/rebuild project
 destroy: ## Remove central project infrastructure
 	$(call checkProject)
 
-	$(call log,"Remove containers")
+	$(call log,"Removing containers")
 	@docker-compose down -v --remove-orphans
 
-	$(call log,"Delete SSL certs")
+	$(call log,"Deleting SSL certs")
 	$(call deleteVhostCert,$(VHOST))
+
+	$(call log,"Finished destroying successfully")
 
 
 
@@ -231,12 +256,16 @@ log: ## Show log output
 
 define log
 	@tput -T xterm setaf 3
-	@. ./.env && shopt -s xpg_echo && echo $1
+	@shopt -s xpg_echo && echo $1
 	@tput -T xterm sgr0
 endef
 
 
 define checkProject
+	@if [ "$(ROOT_DIR)" == "$(shell pwd)" ]; then \
+		echo dde root is not a valid project directory && \
+		exit 1; \
+	fi
 	@if [ ! -f docker-compose.yml ]; then \
 		echo docker-compose.yml not found && \
 		exit 1; \

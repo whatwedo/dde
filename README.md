@@ -28,7 +28,6 @@ dde system-up
 
 ## TODO:
 
-* SSH-Agent
 * Apache Config UID
 * Symfony ohne dotenv
 * Sample project docker-compose.yml
