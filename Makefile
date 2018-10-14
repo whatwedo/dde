@@ -117,6 +117,18 @@ system-nuke: ## Remove system dde infrastructure and nukes data
 	$(call log,"Finished nuking successfully")
 
 
+.PHONY: system-cleanup
+system-cleanup: ## Cleanup whole docker environment. USE WITH CAUTION
+
+	$(call log,"Running docker-gc")
+	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -e REMOVE_VOLUMES=1 -e MINIMUM_IMAGES_TO_SAVE=1 spotify/docker-gc sh -c "/docker-gc || true"
+
+	$(call log,"Shrinking down docker data")
+	@docker run --rm -it --privileged --pid=host walkerlee/nsenter -t 1 -m -u -i -n fstrim /var/lib/docker
+
+	$(call log,"Finished system cleanup")
+
+
 
 .PHONY: up
 up: ## Creates and starts project containers
