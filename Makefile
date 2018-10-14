@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 PHONY :=
 .DEFAULT_GOAL := help
+.EXPORT_ALL_VARIABLES:
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 CERT_DIR := $(ROOT_DIR)/data/reverseproxy/etc/nginx/certs
 MAKEFILE := $(ROOT_DIR)/Makefile
@@ -121,7 +122,7 @@ system-nuke: ## Remove system dde infrastructure and nukes data
 system-cleanup: ## Cleanup whole docker environment. USE WITH CAUTION
 
 	$(call log,"Running docker-gc")
-	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -e REMOVE_VOLUMES=1 -e MINIMUM_IMAGES_TO_SAVE=1 spotify/docker-gc sh -c "/docker-gc || true"
+	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -e REMOVE_VOLUMES=1 spotify/docker-gc sh -c "/docker-gc || true"
 
 	$(call log,"Shrinking down docker data")
 	@docker run --rm -it --privileged --pid=host walkerlee/nsenter -t 1 -m -u -i -n fstrim /var/lib/docker
@@ -137,6 +138,8 @@ up: ## Creates and starts project containers
 	$(call log,"Generating SSL cert")
 	$(call generateVhostCert,$(VHOST))
 
+	$(call startDockerSync)
+
 	$(call log,"Starting containers")
 	@docker-compose up -d
 
@@ -146,6 +149,11 @@ up: ## Creates and starts project containers
 	$(call log,"Running container startup tasks")
 	@for service in `docker-compose config --services`; do \
 		docker-compose exec $$service bash -c ' \
+			\
+			if [ ! -f /etc/lsb-release ]; then \
+				echo Platform not supported for autoconfiguration && \
+				exit; \
+			fi && \
 			\
 			if [ -f /etc/dde/firstboot ]; then \
 				echo Container already configured && \
@@ -198,6 +206,10 @@ status: ## Print project status
 .PHONY: start
 start: ## Start already created project environment
 	$(call checkProject)
+
+	$(call startDockerSync)
+
+	$(call log,"Starting docker containers")
 	@docker-compose start
 
 
@@ -205,7 +217,11 @@ start: ## Start already created project environment
 .PHONY: stop
 stop: ## Stop project environment
 	$(call checkProject)
+
+	$(call log,"Starting docker containers")
 	@docker-compose stop
+
+	$(call stopDockerSync)
 
 
 
@@ -236,6 +252,8 @@ destroy: ## Remove central project infrastructure
 
 	$(call log,"Deleting SSL certs")
 	$(call deleteVhostCert,$(VHOST))
+
+	$(call cleanDockerSync)
 
 	$(call log,"Finished destroying successfully")
 
@@ -273,6 +291,7 @@ define log
 endef
 
 
+
 define checkProject
 	@if [ "$(ROOT_DIR)" == "$(shell pwd)" ]; then \
 		echo dde root is not a valid project directory && \
@@ -305,4 +324,32 @@ endef
 
 define deleteVhostCert
 	@rm -f $(CERT_DIR)/$(1).*
+endef
+
+
+
+define startDockerSync
+	$(call log,"Starting docker-sync. This can take several minutes depending on your project size")
+	@if [ -f docker-sync.yml ]; then \
+		docker-sync start; \
+	fi
+endef
+
+
+
+define stopDockerSync
+	$(call log,"Stopping docker-sync")
+	@if [ -f docker-sync.yml ]; then \
+		docker-sync stop; \
+	fi
+endef
+
+
+
+define cleanDockerSync
+	$(call log,"Cleaning up docker-sync")
+	$(call stopDockerSync)
+	@if [ -f docker-sync.yml ]; then \
+		docker-sync clean; \
+	fi
 endef
