@@ -55,7 +55,7 @@ services:
         environment:
             - MYSQL_ROOT_PASSWORD=root
         volumes:
-            - ./data/mariadb/var/lib/mysql:/var/lib/mysql
+            - ./data/mariadb/var/lib/mysql:/var/lib/mysql:delegated
         hostname: mariadb
         domainname: test
         container_name: dde_mariadb
@@ -83,7 +83,7 @@ services:
             - VIRTUAL_HOST=mailhog.test
             - VIRTUAL_PORT=8025
         volumes:
-            - ./data/mailhog/var/lib/mailhog:/var/lib/mailhog
+            - ./data/mailhog/var/lib/mailhog:/var/lib/mailhog:delegated
         hostname: mailhog
         domainname: test
         container_name: dde_mailhog
