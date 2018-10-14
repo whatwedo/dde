@@ -5,9 +5,10 @@
 
 ## Requirements
 
-* macOS, Arch Linux or Ubuntu
-* Docker 17.09.0+
-* docker-compose 1.22+
+* macOS or Ubuntu
+* [Docker 17.09.0+](https://docs.docker.com/)
+* [docker-compose 1.22+](https://docs.docker.com/compose/)
+* [docker-sync 0.5+](http://docker-sync.io/)
 * No other services listening localhost on:
     * Port 53
     * Port 80
@@ -28,6 +29,7 @@ dde system-up
 
 ## TODO:
 
+* Multiple Vhosts in one project
 * Apache Config UID
 * Symfony ohne dotenv
 * Sample project docker-compose.yml
