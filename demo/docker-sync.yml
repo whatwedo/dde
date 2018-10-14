@@ -1,0 +1,15 @@
+version: "2"
+
+options:
+    verbose: true
+
+syncs:
+    dde_demo_sync:
+        src: '.'
+        sync_userid: ${DDE_UID}
+        sync_groupid: ${DDE_GID}
+        sync_args:
+            - "-ignore='Path .idea'"          # no need to send PHPStorm config to container
+            - "-ignore='Path .git'"           # ignore the main .git repo
+            - "-ignore='Path foo'"            # don't share foo
+        monit_enable: true

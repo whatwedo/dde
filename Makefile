@@ -44,8 +44,7 @@ system-up: ## Initializes and starts dde system infrastructure
 	$(call log,"Starting containers")
 	@cd $(ROOT_DIR) && docker-compose up -d
 
-	$(call log,"Adding SSH key (maybe passphrase required)")
-	@cd $(ROOT_DIR) && docker-compose exec ssh-agent sh -c "ssh-add /home/dde/.ssh/id_rsa && ssh-add -l"
+	$(call addSshKey)
 
 	$(call log,"Finished startup successfully")
 
@@ -54,21 +53,23 @@ system-up: ## Initializes and starts dde system infrastructure
 .PHONY: system-status
 system-status: ## Print dde system status
 	@cd $(ROOT_DIR) && \
-		@docker-compose ps
+		docker-compose ps
 
 
 
 .PHONY: system-start
 system-start: ## Start already created system dde environment
 	@cd $(ROOT_DIR) && \
-		@docker-compose start
+		docker-compose start
+
+	$(call addSshKey)
 
 
 
 .PHONY: system-stop
 system-stop: ## Stop system dde environment
 	@cd $(ROOT_DIR) && \
-		@docker-compose stop
+		docker-compose stop
 
 
 
@@ -183,7 +184,7 @@ up: ## Creates and starts project containers
 				PHP_PATH=/etc/php/$$PHP_VERSION && \
 				\
 				if [ -f /usr/sbin/php-fpm$$PHP_VERSION ]; then \
-					sed -i "s/user = www-data/user = dde/" $$PHP_PATH/fpm/pool.d/www.conf  && \
+					sed -i "s/user = www-data/user = dde/" $$PHP_PATH/fpm/pool.d/www.conf && \
 					sed -i "s/group = www-data/group = dde/" $$PHP_PATH/fpm/pool.d/www.conf  && \
 					sed -i "s/listen\.owner.*/listen.owner = dde/" $$PHP_PATH/fpm/pool.d/www.conf  && \
 					sed -i "s/listen\.group.*/listen.group = dde/" $$PHP_PATH/fpm/pool.d/www.conf  && \
@@ -352,4 +353,11 @@ define cleanDockerSync
 	@if [ -f docker-sync.yml ]; then \
 		docker-sync clean; \
 	fi
+endef
+
+
+
+define addSshKey
+	$(call log,"Adding SSH key (maybe passphrase required)")
+	@cd $(ROOT_DIR) && docker-compose exec ssh-agent sh -c "ssh-add /home/dde/.ssh/id_rsa && ssh-add -l"
 endef
