@@ -5,7 +5,7 @@ PHONY :=
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 CERT_DIR := $(ROOT_DIR)/data/reverseproxy/etc/nginx/certs
 MAKEFILE := $(ROOT_DIR)/Makefile
-VHOST := $(shell grep VIRTUAL_HOST= docker-compose.yml | head -n1 | cut -d'=' -f2 | xargs)
+HELPER_DIR := $(ROOT_DIR)/helper
 NETWORK_NAME := dde
 DDE_UID := $(shell id -u)
 DDE_GID := $(shell id -g)
@@ -38,8 +38,8 @@ system-up: ## Initializes and starts dde system infrastructure
 		fi
 
 	$(call log,"Creating certs used by system services")
-	$(call generateVhostCert,portainer.test)
-	$(call generateVhostCert,mailhog.test)
+	@$(HELPER_DIR)/generate-vhost-cert.sh $(CERT_DIR) portainer.test;
+	@$(HELPER_DIR)/generate-vhost-cert.sh $(CERT_DIR) mailhog.test;
 
 	$(call log,"Starting containers")
 	@cd $(ROOT_DIR) && docker-compose up -d
@@ -137,7 +137,9 @@ up: ## Creates and starts project containers
 	$(call checkProject)
 
 	$(call log,"Generating SSL cert")
-	$(call generateVhostCert,$(VHOST))
+	@for vhost in `grep VIRTUAL_HOST= docker-compose.yml | cut -d'=' -f2`; do \
+		$(HELPER_DIR)/generate-vhost-cert.sh $(CERT_DIR) $$vhost; \
+	done
 
 	$(call startDockerSync)
 
@@ -252,7 +254,9 @@ destroy: ## Remove central project infrastructure
 	@docker-compose down -v --remove-orphans
 
 	$(call log,"Deleting SSL certs")
-	$(call deleteVhostCert,$(VHOST))
+	@for vhost in `grep VIRTUAL_HOST= docker-compose.yml | cut -d'=' -f2`; do \
+		rm -f $(CERT_DIR)/$$vhost.*; \
+	done
 
 	$(call cleanDockerSync)
 
@@ -306,32 +310,10 @@ endef
 
 
 
-define generateVhostCert
-	@cd $(CERT_DIR) && \
-		if [ ! -f $(1).crt ]; then \
-			openssl genrsa -out $(1).key 2048 && \
-			openssl req -new -key $(1).key -out $(1).csr -subj "/C=CH/ST=Bern/L=Bern/O=dde/CN=$(1)" && \
-			echo "authorityKeyIdentifier=keyid,issuer" > $(1).ext && \
-			echo "basicConstraints=CA:FALSE" >> $(1).ext && \
-			echo "keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment" >> $(1).ext && \
-			echo "subjectAltName = @alt_names" >> $(1).ext && \
-			echo "[alt_names]" >> $(1).ext && \
-			echo "DNS.1 = $(1)" >> $(1).ext && \
-			openssl x509 -req -in $(1).csr -CA ca.pem -CAkey ca.key -CAcreateserial -out $(1).crt -days 3650 -sha256 -extfile $(1).ext; \
-		fi
-endef
-
-
-
-define deleteVhostCert
-	@rm -f $(CERT_DIR)/$(1).*
-endef
-
-
-
 define startDockerSync
 	$(call log,"Starting docker-sync. This can take several minutes depending on your project size")
 	@if [ -f docker-sync.yml ]; then \
+		docker-sync stop && \
 		docker-sync start; \
 	fi
 endef

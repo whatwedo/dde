@@ -29,10 +29,7 @@ dde system-up
 
 ## TODO:
 
-* Multiple Vhosts in one project
 * Apache Config UID
-* Symfony ohne dotenv
-* Sample project docker-compose.yml
 
 
 ## License
