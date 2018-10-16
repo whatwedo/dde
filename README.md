@@ -26,6 +26,13 @@ echo "alias dde='make -f ~/dde/Makefile'" >> .bash_profile
 dde system-up
 ```
 
+Set your DNS to `127.0.0.1` with fallbacks of your choice.
+
+
+# Known problems
+
+* Files of filesystem mapped with docker-sync will get group id `0` as owner.
+
 
 ## TODO:
 
