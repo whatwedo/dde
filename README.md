@@ -31,12 +31,12 @@ Set your DNS to `127.0.0.1` with fallbacks of your choice.
 
 # Known problems
 
-* Files of filesystem mapped with docker-sync will get group id `0` as owner.
+* Files of filesystem mapped with docker-sync will get owner group with id `0`.
 
 
 ## TODO:
 
-* Apache Config UID
+* Linux testing
 
 
 ## License
