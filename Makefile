@@ -83,8 +83,7 @@ system-update: ## Update dde system
 		@cd $(ROOT_DIR) && git pull
 
 		$(call log,"Updating docker images")
-		@docker-compose pull
-		@docker-compose build
+		@cd $(ROOT_DIR) && docker-compose pull && docker-compose build
 
 		$(call log,"Starting dde (system)")
 		@make -f $(MAKEFILE) system-up
@@ -129,6 +128,13 @@ system-cleanup: ## Cleanup whole docker environment. USE WITH CAUTION
 	@docker run --rm -it --privileged --pid=host walkerlee/nsenter -t 1 -m -u -i -n fstrim /var/lib/docker
 
 	$(call log,"Finished system cleanup")
+
+
+
+.PHONY: system-log
+system-log: ## Show log output of system services
+	@cd $(ROOT_DIR) && docker-compose logs -f --tail=100
+
 
 
 

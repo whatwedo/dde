@@ -93,10 +93,10 @@ services:
     ssh-agent:
         build:
             context: docker/ssh-agent/.
-            args:
-                - DDE_UID=${DDE_UID}
-                - DDE_GID=${DDE_GID}
         restart: unless-stopped
+        environment:
+            - DDE_UID=${DDE_UID}
+            - DDE_GID=${DDE_GID}
         volumes:
             - ~/.ssh:/home/dde/.ssh
             - ssh-agent_socket-dir:/tmp/ssh-agent
