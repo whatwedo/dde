@@ -1,2 +1,7 @@
+# Data directory
 /data/*
 !/data/.gitkeep
+
+# Vagrant
+.vagrant
+ubuntu*.log

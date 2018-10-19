@@ -2,11 +2,10 @@ FROM alpine:3.8
 
 ENV SOCKET_DIR /tmp/ssh-agent
 ENV SSH_AUTH_SOCK $SOCKET_DIR/socket
-ARG DDE_UID
-ARG DDE_GID
 
 # Install system deps OpenSSh
 RUN apk add --update openssh shadow && rm -rf /var/cache/apk/*
+RUN sed -i 's/^CREATE_MAIL_SPOOL=yes/CREATE_MAIL_SPOOL=no/' /etc/default/useradd
 
 # Install gosu
 ENV GOSU_VERSION 1.10
