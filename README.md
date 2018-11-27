@@ -22,7 +22,13 @@
 ```
 cd ~
 git clone git@dev.whatwedo.ch:wwd-internal/dde.git
+
+# if you're using bash
 echo "alias dde='make -f ~/dde/Makefile'" >> ~/.bash_profile
+
+# if you're using zsh
+echo "alias dde='make -f ~/dde/Makefile'" >> ~/.zshrc
+
 dde system-up
 ```
 
