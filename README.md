@@ -34,6 +34,7 @@ dde system-up
 
 On OSX you can forward requests for `.test`-domains only
 ```
+mkdir -p /etc/resolver
 echo -e "nameserver 127.0.0.1" | sudo tee /etc/resolver/test
 ```
 
