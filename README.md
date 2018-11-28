@@ -32,7 +32,10 @@ echo "alias dde='make -f ~/dde/Makefile'" >> ~/.zshrc
 dde system-up
 ```
 
-On OSX you can create file `/etc/resolver/test` with content `nameserver 127.0.0.1` to forward all requests for `.test`-domains.
+On OSX you can forward requests for `.test`-domains only
+```
+echo -e "nameserver 127.0.0.1" | sudo tee /etc/resolver/test
+```
 
 Otherwise set your DNS to `127.0.0.1` with fallbacks of your choice.
 
