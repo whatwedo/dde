@@ -32,10 +32,6 @@ if [ -f /etc/dde/firstboot ]; then
     exit
 fi
 
-log "Set firstboot flag"
-mkdir -p /etc/dde
-touch /etc/dde/firstboot
-
 log "Installing dependencies"
 apt-get update
 apt-get install -qq wget sed bash-completion
@@ -80,3 +76,7 @@ if commandExists php; then
         log "PHP-FPM is not installed"
     fi
 fi
+
+log "Set firstboot flag"
+mkdir -p /etc/dde
+touch /etc/dde/firstboot
