@@ -37,8 +37,8 @@ apt-get update
 apt-get install -qq wget sed bash-completion
 
 log "Add dde user and group"
-groupadd -g $DDE_GID -o dde
-useradd -d /home/dde -u $DDE_UID -g $DDE_GID -c "dde" -s /bin/bash -N -o -m dde
+groupadd -g $DDE_GID -o dde || true
+useradd -d /home/dde -u $DDE_UID -g $DDE_GID -c "dde" -s /bin/bash -N -o -m dde || true
 
 log "Add dde user to www-data if exists"
 if [ $(getent group www-data) ]; then
