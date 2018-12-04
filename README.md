@@ -40,6 +40,11 @@ echo -e "nameserver 127.0.0.1" | sudo tee /etc/resolver/test
 
 Otherwise set your DNS to `127.0.0.1` with fallbacks of your choice.
 
+To trust the self-signed certificates on OSX run the following command from within the dde folder
+```
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain data/reverseproxy/etc/nginx/certs/ca.pem
+```
+
 
 # Known problems
 
