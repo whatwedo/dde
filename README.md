@@ -2,7 +2,6 @@
 
 > Local development environment toolset on Docker supporting multiple projects.
 
-
 ## Requirements
 
 * macOS or Ubuntu
@@ -32,17 +31,48 @@ echo "alias dde='make -f ~/dde/Makefile'" >> ~/.zshrc
 dde system-up
 ```
 
-On OSX you can forward requests for `.test`-domains only
+### macOS
+Forward requests for `.test`-domains to the local DNS resolver:
+
 ```
 mkdir -p /etc/resolver
 echo -e "nameserver 127.0.0.1" | sudo tee /etc/resolver/test
 ```
 
-Otherwise set your DNS to `127.0.0.1` with fallbacks of your choice.
-
-To trust the self-signed certificates on OSX run the following command from within the dde folder
+Trust the newly generated Root-CA for the self-signed certificates
 ```
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain data/reverseproxy/etc/nginx/certs/ca.pem
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/dde/data/reverseproxy/etc/nginx/certs/ca.pem
+```
+
+### Linux / Unix
+Set your DNS to `127.0.0.1` with fallbacks of your choice.
+
+Trust the newly generated Root-CA found here:
+```
+~/dde/data/reverseproxy/etc/nginx/certs/ca.pem
+```
+
+## Usage
+```
+$ dde
+destroy              Remove central project infrastructure
+exec                 Opens shell with user dde on first container
+exec_root            Opens privileged shell on first container
+help                 Display this message
+log                  Show log output
+start                Start already created project environment
+status               Print project status
+stop                 Stop project environment
+system-cleanup       Cleanup whole docker environment. USE WITH CAUTION
+system-destroy       Remove system dde infrastructure
+system-log           Show log output of system services
+system-nuke          Remove system dde infrastructure and nukes data
+system-start         Start already created system dde environment
+system-status        Print dde system status
+system-stop          Stop system dde environment
+system-up            Initializes and starts dde system infrastructure
+system-update        Update dde system
+up                   Creates and starts project containers
 ```
 
 
@@ -51,11 +81,12 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 * Files of filesystem mapped with docker-sync will get owner group with id `0`.
 
 
-## TODO:
+# TODO:
 
 * Linux testing
 
 
-## License
+# License
 
 This project is under the MIT license. See the complete license in the bundle: [LICENSE](LICENSE)
+
