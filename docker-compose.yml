@@ -27,6 +27,7 @@ services:
         volumes:
             - /var/run/docker.sock:/tmp/docker.sock:ro
             - ./data/reverseproxy/etc/nginx/certs:/etc/nginx/certs
+            - ./data/reverseproxy/etc/nginx/conf.d/custom.conf:/etc/nginx/conf.d/custom.conf:ro
         hostname: reverseproxy
         domainname: test
         container_name: dde_reverseproxy
