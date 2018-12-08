@@ -75,6 +75,15 @@ system-update        Update dde system
 up                   Creates and starts project containers
 ```
 
+### Custom nginx settings
+
+You can add custom nginx directives to `data/reverseproxy/etc/conf.d/custom.conf`
+
+for example:
+
+```
+echo "client_max_body_size 100m;" >> ~/dde/data/reverseproxy/etc/conf.d/custom.conf
+```
 
 # Known problems
 
