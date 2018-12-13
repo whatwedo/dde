@@ -87,7 +87,7 @@ system-update: ## Update dde system
 		@cd $(ROOT_DIR) && git pull
 
 		$(call log,"Updating docker images")
-		@cd $(ROOT_DIR) && docker-compose pull && docker-compose build
+		@cd $(ROOT_DIR) && docker-compose pull && docker-compose build --pull
 
 		$(call log,"Starting dde (system)")
 		@make -f $(MAKEFILE) system-up
@@ -205,7 +205,7 @@ update: ## Update/rebuild project
 	@make -f $(MAKEFILE) destroy
 
 	$(call log," Pulling/building images")
-	@docker-compose build
+	@docker-compose build --pull
 	@docker-compose pull
 
 	$(call log,"Starting project")
