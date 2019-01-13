@@ -8,6 +8,7 @@ CUSTOM_CONF_DIR := $(ROOT_DIR)/data/reverseproxy/etc/nginx/custom.conf
 MAKEFILE := $(ROOT_DIR)/Makefile
 HELPER_DIR := $(ROOT_DIR)/helper
 NETWORK_NAME := dde
+DOCKER_BUILDKIT := 1
 DDE_UID := $(shell id -u)
 DDE_GID := $(shell id -g)
 
@@ -156,15 +157,6 @@ up: ## Creates and starts project containers
 	$(call log,"Starting containers")
 	@docker-compose up -d
 
-	$(call log,"Giving containers some time to start")
-	@sleep 5
-
-	$(call log,"Running container startup tasks")
-	@for id in `docker-compose ps -q`; do \
-		docker cp $(HELPER_DIR)/container-upstart.sh $$id:/tmp && \
-		docker exec $$id sh /tmp/container-upstart.sh $(DDE_UID) $(DDE_GID); \
-	done
-
 	$(call log,"Finished startup successfully")
 
 
@@ -236,14 +228,14 @@ destroy: ## Remove central project infrastructure
 .PHONY: exec
 exec: ## Opens shell with user dde on first container
 	$(call checkProject)
-	@docker-compose exec `docker-compose config --services | head -n1` gosu dde bash || true
+	@docker-compose exec `docker-compose config --services | head -n1` gosu dde sh || true
 
 
 
 .PHONY: exec_root
 exec_root: ## Opens privileged shell on first container
 	$(call checkProject)
-	@docker-compose exec `docker-compose config --services | head -n1` gosu root bash  || true
+	@docker-compose exec `docker-compose config --services | head -n1` sh || true
 
 
 
@@ -275,6 +267,7 @@ define checkProject
 		echo docker-compose.yml not found && \
 		exit 1; \
 	fi
+	@cp -R "$(ROOT_DIR)/helper/configure-image.sh" .dde/configure-image.sh
 endef
 
 
