@@ -157,15 +157,6 @@ up: ## Creates and starts project containers
 	$(call log,"Starting containers")
 	@docker-compose up -d
 
-	$(call log,"Giving containers some time to start")
-	@sleep 5
-
-	$(call log,"Running container startup tasks")
-	@for id in `docker-compose ps -q`; do \
-		docker cp $(HELPER_DIR)/container-upstart.sh $$id:/tmp && \
-		docker exec $$id sh /tmp/container-upstart.sh $(DDE_UID) $(DDE_GID); \
-	done
-
 	$(call log,"Finished startup successfully")
 
 
@@ -276,6 +267,7 @@ define checkProject
 		echo docker-compose.yml not found && \
 		exit 1; \
 	fi
+	@cp -R "$(ROOT_DIR)/helper/configure-image.sh" .dde/configure-image.sh
 endef
 
 
