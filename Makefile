@@ -237,14 +237,14 @@ destroy: ## Remove central project infrastructure
 .PHONY: exec
 exec: ## Opens shell with user dde on first container
 	$(call checkProject)
-	@docker-compose exec `docker-compose config --services | head -n1` gosu dde bash || true
+	@docker-compose exec `docker-compose config --services | head -n1` gosu dde sh || true
 
 
 
 .PHONY: exec_root
 exec_root: ## Opens privileged shell on first container
 	$(call checkProject)
-	@docker-compose exec `docker-compose config --services | head -n1` gosu root bash  || true
+	@docker-compose exec `docker-compose config --services | head -n1` sh || true
 
 
 
