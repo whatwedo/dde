@@ -8,6 +8,7 @@ CUSTOM_CONF_DIR := $(ROOT_DIR)/data/reverseproxy/etc/nginx/custom.conf
 MAKEFILE := $(ROOT_DIR)/Makefile
 HELPER_DIR := $(ROOT_DIR)/helper
 NETWORK_NAME := dde
+DOCKER_BUILDKIT := 1
 DDE_UID := $(shell id -u)
 DDE_GID := $(shell id -g)
 
