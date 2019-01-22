@@ -2,7 +2,7 @@ version: '3.4'
 
 services:
     dnsmasq:
-        image: andyshinn/dnsmasq:2.78
+        image: andyshinn/dnsmasq
         restart: unless-stopped
         cap_add:
             - NET_ADMIN
