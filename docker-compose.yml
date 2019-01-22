@@ -13,8 +13,6 @@ services:
         hostname: dnsmasq
         domainname: test
         container_name: dde_dnsmasq
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
 
     reverseproxy:
         image: jwilder/nginx-proxy
@@ -31,8 +29,6 @@ services:
         hostname: reverseproxy
         domainname: test
         container_name: dde_reverseproxy
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
 
     portainer:
         image: portainer/portainer
@@ -45,8 +41,6 @@ services:
         hostname: portainer
         domainname: test
         container_name: dde_portainer
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
 
     mariadb:
         image: whatwedo/mariadb
@@ -60,21 +54,6 @@ services:
         hostname: mariadb
         domainname: test
         container_name: dde_mariadb
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
-
-    watchtower:
-        image: v2tec/watchtower
-        restart: unless-stopped
-        command: --interval 300 --cleanup --tlsverify --label-enable
-        volumes:
-            - /var/run/docker.sock:/var/run/docker.sock
-            - ~/.docker/config.json:/config.json
-        hostname: watchtower
-        domainname: test
-        container_name: dde_watchtower
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
 
     mailhog:
         image: mailhog/mailhog
@@ -88,8 +67,6 @@ services:
         hostname: mailhog
         domainname: test
         container_name: dde_mailhog
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
 
     ssh-agent:
         build:
