@@ -1,0 +1,5 @@
+# docker-sync work directory
+.docker-sync
+
+# .dde work directory
+.dde
