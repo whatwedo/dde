@@ -1,6 +1,24 @@
+![Logo](assets/img/logo.png)
+
+
 # dde (Docker based Development Environment)
 
-> Local development environment toolset on Docker supporting multiple projects.
+Local development environment toolset on Docker supporting multiple projects.
+
+Features include:
+
+* Simplified Docker web application development
+* Installation of system wide services:
+    * `*.test` domain lookup based on [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html)
+    * Reverse Proxy based on [jwilder/nginx-proxy](https://github.com/jwilder/nginx-proxy) to run multiple projects on same port (80/443) with autoconfigured SSL certificates
+    * [MariaDB](https://mariadb.org/) ([MySQL](https://www.mysql.com/) alternative)
+    * [MailHog](https://github.com/mailhog/MailHog) (SMTP testing server)
+    * [Portainer](https://www.portainer.io/) (Docker Webinterface)
+    * [ssh-agent](https://www.ssh.com/ssh/agent) used for sharing your SSH key without adding it to your project Docker containers.
+* Performance optimized file sharing based on [docker-sync](http://docker-sync.io/)
+
+**Note:** dde is currently under heavy development and we don't offer any backward compatibility. However we use it at [whatwedo](https://www.whatwedo.ch/) on daily bases and it's safe to use it in your development environment.
+
 
 ## Requirements
 
@@ -13,7 +31,11 @@
     * Port 80
     * Port 443
     * Port 3306
-* Application service images based on the official [Ubuntu](https://hub.docker.com/_/ubuntu/) image with AMD64 as platform.
+
+
+# Architecture
+
+![Architecture](assets/img/architecture.svg)
 
 
 ## Setup
@@ -31,28 +53,38 @@ echo "alias dde='make -f ~/dde/Makefile'" >> ~/.zshrc
 dde system-up
 ```
 
-### macOS
+### Additional OS specific installation steps
+
+
+#### macOS
+
 Forward requests for `.test`-domains to the local DNS resolver:
 
 ```
-mkdir -p /etc/resolver
+sudo mkdir -p /etc/resolver
 echo -e "nameserver 127.0.0.1" | sudo tee /etc/resolver/test
 ```
 
 Trust the newly generated Root-CA for the self-signed certificates
+
 ```
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/dde/data/reverseproxy/etc/nginx/certs/ca.pem
 ```
 
-### Linux / Unix
+
+#### Linux
+
 Set your DNS to `127.0.0.1` with fallbacks of your choice.
 
 Trust the newly generated Root-CA found here:
+
 ```
 ~/dde/data/reverseproxy/etc/nginx/certs/ca.pem
 ```
 
+
 ## Usage
+
 ```
 $ dde
 destroy              Remove central project infrastructure
@@ -75,27 +107,21 @@ system-update        Update dde system
 up                   Creates and starts project containers
 ```
 
-### Custom nginx settings
+### Project configuration
 
-You can add custom nginx directives to `data/reverseproxy/etc/conf.d/custom.conf`
-
-for example:
-
-```
-echo "client_max_body_size 100m;" >> ~/dde/data/reverseproxy/etc/conf.d/custom.conf
-```
-
-# Known problems
-
-* Files of filesystem mapped with docker-sync will get owner group with id `0`.
+Due to the early stage of this project there is no full documentation available. We created a [example](example) project with all required and optional configuration. Please checkout the [example](example) directory.
 
 
-# TODO:
+## Known problems
 
-* Linux testing
+* Files of filesystem mapped with docker-sync will get group id `0`.
 
 
-# License
+## Bugs and Issues
+
+If you have any problems with this image, feel free to open a new issue in our issue tracker https://github.com/whatwedo/dde/issues
+
+
+## License
 
 This project is under the MIT license. See the complete license in the bundle: [LICENSE](LICENSE)
-
