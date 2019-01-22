@@ -97,6 +97,7 @@ system-update: ## Update dde system
 system-destroy: ## Remove system dde infrastructure
 
 	$(call log,"Removing containers")
+	@docker rm -f $$(docker network inspect -f '{{ range $$key, $$value := .Containers }}{{ printf "%s\n" $$key }}{{ end }}' $(NETWORK_NAME)) &> /dev/null
 	@cd $(ROOT_DIR) && docker-compose down -v --remove-orphans
 
 	$(call log,"Removing network if created")
@@ -105,6 +106,7 @@ system-destroy: ## Remove system dde infrastructure
 	fi
 
 	$(call log,"Finished destroying successfully")
+
 
 
 .PHONY: system-nuke
@@ -117,6 +119,7 @@ system-nuke: ## Remove system dde infrastructure and nukes data
 	@cd $(ROOT_DIR) && sudo find ./data/* -maxdepth 1 -not -name .gitkeep -exec rm -rf {} ';'
 
 	$(call log,"Finished nuking successfully")
+
 
 
 .PHONY: system-cleanup
@@ -138,7 +141,6 @@ system-log: ## Show log output of system services
 
 
 
-
 .PHONY: up
 up: ## Creates and starts project containers
 	$(call checkProject)
@@ -154,6 +156,7 @@ up: ## Creates and starts project containers
 	@docker-compose up -d
 
 	$(call log,"Finished startup successfully")
+
 
 
 .PHONY: status
@@ -263,6 +266,7 @@ define checkProject
 		echo docker-compose.yml not found && \
 		exit 1; \
 	fi
+	@mkdir -p .dde
 	@cp -R "$(ROOT_DIR)/helper/configure-image.sh" .dde/configure-image.sh
 endef
 
