@@ -4,7 +4,6 @@ PHONY :=
 .EXPORT_ALL_VARIABLES:
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 CERT_DIR := $(ROOT_DIR)/data/reverseproxy/etc/nginx/certs
-CUSTOM_CONF_DIR := $(ROOT_DIR)/data/reverseproxy/etc/nginx/custom.conf
 MAKEFILE := $(ROOT_DIR)/Makefile
 HELPER_DIR := $(ROOT_DIR)/helper
 NETWORK_NAME := dde
@@ -42,9 +41,6 @@ system-up: ## Initializes and starts dde system infrastructure
 	$(call log,"Creating certs used by system services")
 	@$(HELPER_DIR)/generate-vhost-cert.sh $(CERT_DIR) portainer.test;
 	@$(HELPER_DIR)/generate-vhost-cert.sh $(CERT_DIR) mailhog.test;
-
-	$(call log,"Creating empty nginx custom.conf")
-	@touch $(CUSTOM_CONF_DIR)
 
 	$(call log,"Starting containers")
 	@cd $(ROOT_DIR) && docker-compose up -d
