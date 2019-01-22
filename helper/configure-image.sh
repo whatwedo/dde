@@ -27,17 +27,19 @@ fi
 # Install package manager dependencies
 case "$PACKAGE_MANAGER" in
         apt-get)
-            apt-get install -qq
-            apt-get update curl shadow
+            apt-get update
+            apt-get install -qq curl
             ;;
         apk)
             apk add --no-cache --virtual .temp-dde-deps curl shadow
 esac
 
 # Install gosu
-curl -L https://github.com/tianon/gosu/releases/download/1.11/gosu-amd64 -o /usr/local/bin/gosu
-chmod +x /usr/local/bin/gosu
-gosu --version
+if [ ! -x /usr/local/bin/gosu ]; then
+    curl -L https://github.com/tianon/gosu/releases/download/1.11/gosu-amd64 -o /usr/local/bin/gosu
+    chmod +x /usr/local/bin/gosu
+    gosu --version
+fi
 
 # Add ddde user and group
 groupadd -g $DDE_GID -o dde || true
