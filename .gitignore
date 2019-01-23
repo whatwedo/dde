@@ -1,9 +1,13 @@
 # Data directory
 /data/*
 !/data/.gitkeep
+!/data/reverseproxy
 /data/reverseproxy/*
+!/data/reverseproxy/etc
 /data/reverseproxy/etc/*
+!/data/reverseproxy/etc/nginx
 /data/reverseproxy/etc/nginx/*
+!/data/reverseproxy/etc/nginx/conf.d
 /data/reverseproxy/etc/nginx/conf.d/*
 !/data/reverseproxy/etc/nginx/conf.d/dde.conf
 
