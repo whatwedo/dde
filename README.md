@@ -26,6 +26,9 @@ Features include:
 * [Docker 17.09.0+](https://docs.docker.com/)
 * [docker-compose 1.22+](https://docs.docker.com/compose/)
 * [docker-sync 0.5+](http://docker-sync.io/)
+* [Bash](https://www.gnu.org/software/bash/)
+* [make](https://www.gnu.org/software/make/)
+* [openssl](https://www.openssl.org/)
 * No other services listening localhost on:
     * Port 53
     * Port 80
@@ -107,6 +110,7 @@ system-update        Update dde system
 up                   Creates and starts project containers
 ```
 
+
 ### Project configuration
 
 Due to the early stage of this project there is no full documentation available. We created a [example](example) project with all required and optional configuration. Please checkout the [example](example) directory.
@@ -124,4 +128,4 @@ If you have any problems with this image, feel free to open a new issue in our i
 
 ## License
 
-This project is under the MIT license. See the complete license in the bundle: [LICENSE](LICENSE)
+This project is under the MIT license. See the complete license in the repository: [LICENSE](LICENSE)
