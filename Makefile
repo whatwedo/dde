@@ -7,6 +7,7 @@ CERT_DIR := $(ROOT_DIR)/data/reverseproxy/etc/nginx/certs
 MAKEFILE := $(ROOT_DIR)/Makefile
 HELPER_DIR := $(ROOT_DIR)/helper
 NETWORK_NAME := dde
+DOCKER_BUILDKIT := 1
 DDE_UID := $(shell id -u)
 DDE_GID := $(shell id -g)
 
@@ -96,6 +97,7 @@ system-update: ## Update dde system
 system-destroy: ## Remove system dde infrastructure
 
 	$(call log,"Removing containers")
+	@docker rm -f $$(docker network inspect -f '{{ range $$key, $$value := .Containers }}{{ printf "%s\n" $$key }}{{ end }}' $(NETWORK_NAME)) &> /dev/null
 	@cd $(ROOT_DIR) && docker-compose down -v --remove-orphans
 
 	$(call log,"Removing network if created")
@@ -104,6 +106,7 @@ system-destroy: ## Remove system dde infrastructure
 	fi
 
 	$(call log,"Finished destroying successfully")
+
 
 
 .PHONY: system-nuke
@@ -116,6 +119,7 @@ system-nuke: ## Remove system dde infrastructure and nukes data
 	@cd $(ROOT_DIR) && sudo find ./data/* -maxdepth 1 -not -name .gitkeep -exec rm -rf {} ';'
 
 	$(call log,"Finished nuking successfully")
+
 
 
 .PHONY: system-cleanup
@@ -137,7 +141,6 @@ system-log: ## Show log output of system services
 
 
 
-
 .PHONY: up
 up: ## Creates and starts project containers
 	$(call checkProject)
@@ -152,16 +155,8 @@ up: ## Creates and starts project containers
 	$(call log,"Starting containers")
 	@docker-compose up -d
 
-	$(call log,"Giving containers some time to start")
-	@sleep 5
-
-	$(call log,"Running container startup tasks")
-	@for id in `docker-compose ps -q`; do \
-		docker cp $(HELPER_DIR)/container-upstart.sh $$id:/tmp && \
-		docker exec $$id sh /tmp/container-upstart.sh $(DDE_UID) $(DDE_GID); \
-	done
-
 	$(call log,"Finished startup successfully")
+
 
 
 .PHONY: status
@@ -232,14 +227,14 @@ destroy: ## Remove central project infrastructure
 .PHONY: exec
 exec: ## Opens shell with user dde on first container
 	$(call checkProject)
-	@docker-compose exec `docker-compose config --services | head -n1` gosu dde bash || true
+	@docker-compose exec `docker-compose config --services | head -n1` gosu dde sh || true
 
 
 
 .PHONY: exec_root
 exec_root: ## Opens privileged shell on first container
 	$(call checkProject)
-	@docker-compose exec `docker-compose config --services | head -n1` gosu root bash  || true
+	@docker-compose exec `docker-compose config --services | head -n1` sh || true
 
 
 
@@ -271,6 +266,8 @@ define checkProject
 		echo docker-compose.yml not found && \
 		exit 1; \
 	fi
+	@mkdir -p .dde
+	@cp -R "$(ROOT_DIR)/helper/configure-image.sh" .dde/configure-image.sh
 endef
 
 

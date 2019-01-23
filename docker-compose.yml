@@ -2,7 +2,7 @@ version: '3.4'
 
 services:
     dnsmasq:
-        image: andyshinn/dnsmasq:2.78
+        image: andyshinn/dnsmasq
         restart: unless-stopped
         cap_add:
             - NET_ADMIN
@@ -13,8 +13,6 @@ services:
         hostname: dnsmasq
         domainname: test
         container_name: dde_dnsmasq
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
 
     reverseproxy:
         image: jwilder/nginx-proxy
@@ -31,13 +29,11 @@ services:
         hostname: reverseproxy
         domainname: test
         container_name: dde_reverseproxy
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
 
     portainer:
         image: portainer/portainer
         restart: unless-stopped
-        command: --no-auth -H unix:///var/run/docker.sock --logo "https://www.whatwedo.ch/wp-content/uploads/2016/05/whatwedo-logo-inverted.svg"
+        command: --no-auth -H unix:///var/run/docker.sock
         environment:
             - VIRTUAL_HOST=portainer.test
         volumes:
@@ -45,11 +41,9 @@ services:
         hostname: portainer
         domainname: test
         container_name: dde_portainer
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
 
     mariadb:
-        image: whatwedo/mariadb
+        image: mariadb
         restart: unless-stopped
         ports:
             - "127.0.0.1:3306:3306"
@@ -60,21 +54,6 @@ services:
         hostname: mariadb
         domainname: test
         container_name: dde_mariadb
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
-
-    watchtower:
-        image: v2tec/watchtower
-        restart: unless-stopped
-        command: --interval 300 --cleanup --tlsverify --label-enable
-        volumes:
-            - /var/run/docker.sock:/var/run/docker.sock
-            - ~/.docker/config.json:/config.json
-        hostname: watchtower
-        domainname: test
-        container_name: dde_watchtower
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
 
     mailhog:
         image: mailhog/mailhog
@@ -88,8 +67,6 @@ services:
         hostname: mailhog
         domainname: test
         container_name: dde_mailhog
-        labels:
-            com.centurylinklabs.watchtower.enable: "true"
 
     ssh-agent:
         build:
