@@ -41,11 +41,11 @@ Features include:
 ![Architecture](assets/img/architecture.svg)
 
 
-## Setup
+## Installation
 
 ```
 cd ~
-git clone git@dev.whatwedo.ch:wwd-internal/dde.git
+git clone https://github.com/whatwedo/dde.git
 
 # if you're using bash
 echo "alias dde='make -f ~/dde/Makefile'" >> ~/.bash_profile
