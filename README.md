@@ -3,7 +3,7 @@
 
 # dde (Docker based Development Environment)
 
-Local development environment toolset on Docker supporting multiple projects.
+Local development environment toolset based on Docker supporting multiple projects.
 
 Features include:
 
