@@ -59,6 +59,12 @@ fi
 if [ -d /etc/nginx ]; then
     find /etc/nginx -type f -name *.conf -print0 | xargs -r -0 sed -i "s/user .*;/user dde;/"
 fi
+if [ -d /var/cache/nginx ]; then
+    chown -R dde:dde /var/tmp/nginx
+fi
+if [ -d /var/tmp/nginx ]; then
+    chown -R dde:dde /var/tmp/nginx
+fi
 
 # Configure PHP
 if [ -d /etc/php* ]; then
