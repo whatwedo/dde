@@ -4,7 +4,6 @@ FROM whatwedo/nginx:v2.0-dev as base
 # Set workdir
 WORKDIR /var/www
 
-
 ########################################################################################################################
 
 # Development stage (depencencies and configuration used in development only)
