@@ -1,6 +1,6 @@
 version: '3.4' # Minimal docker-compose.yml compatibility
 services:
-    web: # Example web services
+    web: # Example web service
         build:
             context: "." # Build directory
             target: dev # Build stage
