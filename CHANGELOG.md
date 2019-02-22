@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## v0.1.3 - 2019-02-22
+
+### Bugfixes
+
+* example: use new v2.0 image tag of whatwedo/nginx base image
+
+
 ## v0.1.2 - 2019-02-09
 
 ### Bugfixes
