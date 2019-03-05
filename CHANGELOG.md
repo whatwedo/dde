@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## v0.1.4 - 2019-03-05
+
+### Bugfixes
+
+* configure-image.sh: fixes image auto configration
+
+
 ## v0.1.3 - 2019-02-22
 
 ### Bugfixes
