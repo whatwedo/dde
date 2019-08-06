@@ -75,6 +75,15 @@ if [ -d /etc/php* ]; then
     find /etc/php* -type f -name www.conf -print0 | xargs -r -0 sed -i "s/listen\.mode.*/listen.mode = 0666/"
 fi
 
+# Configure NPM / Yarn registry proxy
+if commandExists npm; then
+    npm config set registry http://verdaccio:4873
+fi
+
+if commandExists yarn; then
+    yarn config set registry http://verdaccio:4873
+fi
+
 # Cleanup
 case "$PACKAGE_MANAGER" in
         apt-get)
