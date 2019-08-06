@@ -82,6 +82,24 @@ services:
         domainname: test
         container_name: dde_ssh-agent
 
+    # NPM registry proxy
+    verdaccio:
+        container_name: dde_verdaccio
+        hostname: verdaccio
+        domainname: test
+        image: verdaccio/verdaccio
+        restart: unless-stopped
+        expose:
+            - 4873
+        environment:
+            - VIRTUAL_HOST=verdaccio.test
+            - VIRTUAL_PORT=4873
+            - VERDACCIO_USER_UID=${DDE_UID}
+        volumes:
+            - "./data/verdaccio/storage:/verdaccio/storage"
+            - "./data/verdaccio/config:/verdaccio/conf"
+            - "./data/verdaccio/plugins:/verdaccio/plugins"  
+
 networks:
     default:
         external:

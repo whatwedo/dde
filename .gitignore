@@ -10,6 +10,11 @@
 !/data/reverseproxy/etc/nginx/conf.d
 /data/reverseproxy/etc/nginx/conf.d/*
 !/data/reverseproxy/etc/nginx/conf.d/dde.conf
+!/data/verdaccio
+/data/verdaccio/*
+!/data/verdaccio/config
+/data/verdaccio/config/*
+!/data/verdaccio/config/config.yaml
 
 # Vagrant
 .vagrant
