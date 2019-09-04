@@ -188,6 +188,15 @@ stop: ## Stop project environment
 
 
 
+.PHONY: kill
+kill: ## Kill project environment
+	$(call checkProject)
+
+	$(call log,"Kill docker containers")
+	@docker-compose kill
+
+
+
 .PHONY: update
 update: ## Update/rebuild project
 	$(call checkProject)

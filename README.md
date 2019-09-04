@@ -98,6 +98,7 @@ log                  Show log output
 start                Start already created project environment
 status               Print project status
 stop                 Stop project environment
+kill                 Kill project environment
 system-cleanup       Cleanup whole docker environment. USE WITH CAUTION
 system-destroy       Remove system dde infrastructure
 system-log           Show log output of system services
