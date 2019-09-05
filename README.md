@@ -25,7 +25,7 @@ Features include:
 * macOS or Ubuntu
 * [Docker 17.09.0+](https://docs.docker.com/)
 * [docker-compose 1.22+](https://docs.docker.com/compose/)
-* [docker-sync 0.5+](http://docker-sync.io/)
+* [docker-sync 0.5+](http://docker-sync.io/) / [Mutagen](https://mutagen.io/)
 * [Bash](https://www.gnu.org/software/bash/)
 * [make](https://www.gnu.org/software/make/)
 * [openssl](https://www.openssl.org/)
@@ -60,6 +60,7 @@ dde system-up
 
 
 #### macOS
+##### DNS
 
 Forward requests for `.test`-domains to the local DNS resolver:
 
@@ -76,7 +77,7 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 
 
 #### Linux
-
+##### DNS
 Set your DNS to `127.0.0.1` with fallbacks of your choice.
 
 Trust the newly generated Root-CA found here:
@@ -84,6 +85,7 @@ Trust the newly generated Root-CA found here:
 ```
 ~/dde/data/reverseproxy/etc/nginx/certs/ca.pem
 ```
+
 
 
 ## Usage

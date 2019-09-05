@@ -1,0 +1,10 @@
+sync:
+  exampleweb: # name of the sync
+    alpha: . # what folder to sync to container
+    beta: docker://example_web_1/var/www # container and folder im container
+    mode: one-way-safe # sync-mode
+    ignore: # what to ignore
+      vcs: true
+      paths:
+      - .idea
+      - .git

@@ -1,4 +1,4 @@
-SHELL := /bin/bash
+SHELL := /bin/bash -O expand_aliases
 PHONY :=
 .DEFAULT_GOAL := help
 .EXPORT_ALL_VARIABLES:
@@ -150,11 +150,12 @@ up: ## Creates and starts project containers
 		$(HELPER_DIR)/generate-vhost-cert.sh $(CERT_DIR) $$vhost; \
 	done
 
-	$(call startDockerSync)
+	$(if $(wildcard ./docker-sync.yml), $(call startDockerSync))
 
 	$(call log,"Starting containers")
 	@docker-compose up -d
 
+	$(if $(wildcard ./mutagen.yml),$(call startMutagen))
 	$(call log,"Finished startup successfully")
 
 
@@ -169,11 +170,10 @@ status: ## Print project status
 .PHONY: start
 start: ## Start already created project environment
 	$(call checkProject)
-
-	$(call startDockerSync)
-
+	$(if $(wildcard ./docker-sync.yml),$(call startDockerSync))
 	$(call log,"Starting docker containers")
 	@docker-compose start
+	$(if $(wildcard ./mutagen.yml),$(call startMutagen))
 
 
 
@@ -184,8 +184,8 @@ stop: ## Stop project environment
 	$(call log,"Starting docker containers")
 	@docker-compose stop
 
-	$(call stopDockerSync)
-
+	$(if $(wildcard ./mutagen.yml),$(call stopMutagen))
+	$(if $(wildcard ./docker-sync.yml),$(call startDockerSync))
 
 
 .PHONY: update
@@ -209,7 +209,6 @@ update: ## Update/rebuild project
 .PHONY: destroy
 destroy: ## Remove central project infrastructure
 	$(call checkProject)
-
 	$(call log,"Removing containers")
 	@docker-compose down -v --remove-orphans
 
@@ -218,7 +217,9 @@ destroy: ## Remove central project infrastructure
 		rm -f $(CERT_DIR)/$$vhost.*; \
 	done
 
-	$(call cleanDockerSync)
+	$(if $(wildcard ./mutagen.yml),$(call stopMutagen))
+	$(if $(wildcard ./docker-sync.yml),$(call startDockerSync))
+	$(call cleanup)
 
 	$(call log,"Finished destroying successfully")
 
@@ -243,8 +244,6 @@ exec_root: ## Opens privileged shell on first container
 log: ## Show log output
 	@docker-compose logs -f --tail=100
 
-
-
 #
 # FUNCTIONS
 #
@@ -256,7 +255,6 @@ define log
 endef
 
 
-
 define checkProject
 	@if [ "$(ROOT_DIR)" == "$(shell pwd)" ]; then \
 		echo dde root is not a valid project directory && \
@@ -266,14 +264,16 @@ define checkProject
 		echo docker-compose.yml not found && \
 		exit 1; \
 	fi
+
 	@mkdir -p .dde
 	@cp -R "$(ROOT_DIR)/helper/configure-image.sh" .dde/configure-image.sh
 endef
 
 
-
 define startDockerSync
+    $(if $(shell which docker-sync),$(call log, "docker-sync is installed"), $(call log, "docker-sync is not installed, see: https://docker-sync.io"); exit 1)
 	$(call log,"Starting docker-sync. This can take several minutes depending on your project size")
+
 	@if [ -f docker-sync.yml ]; then \
 		docker-sync stop && \
 		docker-sync start; \
@@ -283,22 +283,28 @@ endef
 
 
 define stopDockerSync
-	$(call log,"Stopping docker-sync")
-	@if [ -f docker-sync.yml ]; then \
-		docker-sync stop; \
-	fi
+   $(call log,"Stopping docker-sync");
+	docker-sync stop;
 endef
 
 
-
-define cleanDockerSync
-	$(call log,"Cleaning up docker-sync")
-	$(call stopDockerSync)
-	@if [ -f docker-sync.yml ]; then \
-		docker-sync clean; \
-	fi
+define stopMutagen
+   $(call log,"Stopping mutagen");
+   mutagen project terminate;
 endef
 
+
+define startMutagen
+    $(if $(shell which mutagen),$(call log, "mutagen is installed"), $(call log, "mutagen is not installed, see: https://mutagen.io"); exit 1)
+	$(call log,"Starting mutagen. This can take several minutes depending on your project size")
+
+	@if ! grep -q "defaultOwner" "./mutagen.yml"; then \
+	docker run --rm -e DDE_UID -e DDE_GID -v $(CURDIR):/workdir mikefarah/yq sh -c "yq w -d'*' -i  mutagen.yml 'sync.*.configurationBeta.permissions.defaultOwner' id:${DDE_UID} && yq w -d'*' -i mutagen.yml  'sync.*.configurationBeta.permissions.defaultGroup' id:${DDE_GID}"; \
+	fi
+
+	 @-mutagen project terminate &> /dev/null || true
+	mutagen project start;
+endef
 
 
 define addSshKey
