@@ -304,11 +304,6 @@ endef
 define startMutagen
     $(if $(shell which mutagen),$(call log, "mutagen is installed"), $(call log, "mutagen is not installed, see: https://mutagen.io"); exit 1)
 	$(call log,"Starting mutagen. This can take several minutes depending on your project size")
-
-	@if ! grep -q "defaultOwner" "./mutagen.yml"; then \
-	docker run --rm -e DDE_UID -e DDE_GID -v $(CURDIR):/workdir mikefarah/yq sh -c "yq w -d'*' -i  mutagen.yml 'sync.*.configurationBeta.permissions.defaultOwner' id:${DDE_UID} && yq w -d'*' -i mutagen.yml  'sync.*.configurationBeta.permissions.defaultGroup' id:${DDE_GID}"; \
-	fi
-
 	@-mutagen project terminate &> /dev/null || true
 	mutagen project start;
 endef
