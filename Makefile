@@ -181,11 +181,11 @@ start: ## Start already created project environment
 stop: ## Stop project environment
 	$(call checkProject)
 
-	$(call log,"Starting docker containers")
+	$(call log,"Stopping docker containers")
 	@docker-compose stop
 
 	$(if $(wildcard ./mutagen.yml),$(call stopMutagen))
-	$(if $(wildcard ./docker-sync.yml),$(call startDockerSync))
+	$(if $(wildcard ./docker-sync.yml),$(call stopDockerSync))
 
 
 .PHONY: update
@@ -218,8 +218,7 @@ destroy: ## Remove central project infrastructure
 	done
 
 	$(if $(wildcard ./mutagen.yml),$(call stopMutagen))
-	$(if $(wildcard ./docker-sync.yml),$(call startDockerSync))
-	$(call cleanup)
+	$(if $(wildcard ./docker-sync.yml),$(call cleanupDockerSync))
 
 	$(call log,"Finished destroying successfully")
 
@@ -288,6 +287,14 @@ define stopDockerSync
 endef
 
 
+
+define cleanupDockerSync
+   $(call stopDockerSync);
+	docker-sync clean;
+endef
+
+
+
 define stopMutagen
    $(call log,"Stopping mutagen");
    mutagen project terminate;
@@ -302,7 +309,7 @@ define startMutagen
 	docker run --rm -e DDE_UID -e DDE_GID -v $(CURDIR):/workdir mikefarah/yq sh -c "yq w -d'*' -i  mutagen.yml 'sync.*.configurationBeta.permissions.defaultOwner' id:${DDE_UID} && yq w -d'*' -i mutagen.yml  'sync.*.configurationBeta.permissions.defaultGroup' id:${DDE_GID}"; \
 	fi
 
-	 @-mutagen project terminate &> /dev/null || true
+	@-mutagen project terminate &> /dev/null || true
 	mutagen project start;
 endef
 
