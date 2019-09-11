@@ -195,6 +195,8 @@ kill: ## Kill project environment
 	$(call log,"Kill docker containers")
 	@docker-compose kill
 
+	$(call stopDockerSync)
+
 
 
 .PHONY: update
