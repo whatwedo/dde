@@ -150,7 +150,7 @@ up: ## Creates and starts project containers
 		$(HELPER_DIR)/generate-vhost-cert.sh $(CERT_DIR) $$vhost; \
 	done
 
-	$(call startDockerSync)
+	$(if $(wildcard ./docker-sync.yml), $(call startDockerSync))
 
 	$(call log,"Starting containers")
 	@docker-compose up -d
@@ -170,7 +170,7 @@ status: ## Print project status
 start: ## Start already created project environment
 	$(call checkProject)
 
-	$(call startDockerSync)
+	$(if $(wildcard ./docker-sync.yml),$(call startDockerSync))
 
 	$(call log,"Starting docker containers")
 	@docker-compose start
@@ -184,8 +184,7 @@ stop: ## Stop project environment
 	$(call log,"Starting docker containers")
 	@docker-compose stop
 
-	$(call stopDockerSync)
-
+	$(if $(wildcard ./docker-sync.yml),$(call stopDockerSync))
 
 
 .PHONY: update
@@ -218,7 +217,7 @@ destroy: ## Remove central project infrastructure
 		rm -f $(CERT_DIR)/$$vhost.*; \
 	done
 
-	$(call cleanDockerSync)
+	$(if $(wildcard ./docker-sync.yml),$(call cleanDockerSync))
 
 	$(call log,"Finished destroying successfully")
 
@@ -274,19 +273,14 @@ endef
 
 define startDockerSync
 	$(call log,"Starting docker-sync. This can take several minutes depending on your project size")
-	@if [ -f docker-sync.yml ]; then \
-		docker-sync stop && \
-		docker-sync start; \
-	fi
+	docker-sync stop && docker-sync start
 endef
 
 
 
 define stopDockerSync
 	$(call log,"Stopping docker-sync")
-	@if [ -f docker-sync.yml ]; then \
-		docker-sync stop; \
-	fi
+	docker-sync stop
 endef
 
 
@@ -294,9 +288,7 @@ endef
 define cleanDockerSync
 	$(call log,"Cleaning up docker-sync")
 	$(call stopDockerSync)
-	@if [ -f docker-sync.yml ]; then \
-		docker-sync clean; \
-	fi
+	docker-sync clean
 endef
 
 
