@@ -150,7 +150,7 @@ up: ## Creates and starts project containers
 		$(HELPER_DIR)/generate-vhost-cert.sh $(CERT_DIR) $$vhost; \
 	done
 
-	$(if $(wildcard ./docker-sync.yml), $(call startDockerSync))
+	$(if $(wildcard ./docker-sync.yml), $(if $(wildcard ./mutagen.yml),$(call log, "Skipping docker-sync because Mutagen config exists"),$(call startDockerSync)))
 
 	$(call log,"Starting containers")
 	@docker-compose up -d
@@ -170,8 +170,7 @@ status: ## Print project status
 .PHONY: start
 start: ## Start already created project environment
 	$(call checkProject)
-
-	$(if $(wildcard ./docker-sync.yml),$(call startDockerSync))
+	$(if $(wildcard ./docker-sync.yml),$(if $(wildcard ./mutagen.yml),$(call log, "Skipping docker-sync because Mutagen config exists"),$(call startDockerSync)))
 
 	$(call log,"Starting docker containers")
 	@docker-compose start
