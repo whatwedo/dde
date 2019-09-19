@@ -182,7 +182,7 @@ start: ## Start already created project environment
 stop: ## Stop project environment
 	$(call checkProject)
 
-	$(call log,"Starting docker containers")
+	$(call log,"Stopping docker containers")
 	@docker-compose stop
 
 	$(if $(wildcard ./mutagen.yml),$(call pauseMutagen))
