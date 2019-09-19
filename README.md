@@ -15,7 +15,7 @@ Features include:
     * [MailHog](https://github.com/mailhog/MailHog) (SMTP testing server)
     * [Portainer](https://www.portainer.io/) (Docker Webinterface)
     * [ssh-agent](https://www.ssh.com/ssh/agent) used for sharing your SSH key without adding it to your project Docker containers.
-* Performance optimized file sharing based on [docker-sync](http://docker-sync.io/)
+* Performance optimized file sharing based on [docker-sync](http://docker-sync.io/) / [Mutagen](https://mutagen.io/)
 
 **Note:** dde is currently under heavy development and we don't offer any backward compatibility. However we use it at [whatwedo](https://www.whatwedo.ch/) on daily bases and it's safe to use it in your development environment.
 
@@ -25,7 +25,7 @@ Features include:
 * macOS or Ubuntu
 * [Docker 17.09.0+](https://docs.docker.com/)
 * [docker-compose 1.22+](https://docs.docker.com/compose/)
-* [docker-sync 0.5+](http://docker-sync.io/)
+* [docker-sync 0.5+](http://docker-sync.io/) / [Mutagen v0.10.0+](https://mutagen.io/)
 * [Bash](https://www.gnu.org/software/bash/)
 * [make](https://www.gnu.org/software/make/)
 * [openssl](https://www.openssl.org/)
