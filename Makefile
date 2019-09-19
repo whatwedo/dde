@@ -155,6 +155,7 @@ up: ## Creates and starts project containers
 	$(call log,"Starting containers")
 	@docker-compose up -d
 
+	$(if $(wildcard ./mutagen.yml),$(call startOrResumeMutagen))
 	$(call log,"Finished startup successfully")
 
 
@@ -174,6 +175,7 @@ start: ## Start already created project environment
 
 	$(call log,"Starting docker containers")
 	@docker-compose start
+	$(if $(wildcard ./mutagen.yml),$(call startOrResumeMutagen))
 
 
 
@@ -184,6 +186,7 @@ stop: ## Stop project environment
 	$(call log,"Starting docker containers")
 	@docker-compose stop
 
+	$(if $(wildcard ./mutagen.yml),$(call pauseMutagen))
 	$(if $(wildcard ./docker-sync.yml),$(call stopDockerSync))
 
 
@@ -217,6 +220,7 @@ destroy: ## Remove central project infrastructure
 		rm -f $(CERT_DIR)/$$vhost.*; \
 	done
 
+	$(if $(wildcard ./mutagen.yml),$(call terminateMutagen))
 	$(if $(wildcard ./docker-sync.yml),$(call cleanDockerSync))
 
 	$(call log,"Finished destroying successfully")
@@ -291,6 +295,21 @@ define cleanDockerSync
 	docker-sync clean
 endef
 
+
+define startOrResumeMutagen
+    $(call log,"Starting Mutagen. This can take several minutes depending on your project size")
+	mutagen project resume 2>/dev/null || mutagen project start;
+endef
+
+define pauseMutagen
+   $(call log,"Stopping Mutagen");
+   mutagen project pause;
+endef
+
+define terminateMutagen
+	$(call log,"Terminating Mutagen");
+   mutagen project terminate;
+endef
 
 
 define addSshKey
