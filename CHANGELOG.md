@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Bugfixes
 
-* configure-image.sh: fixes image auto configration
+* configure-image.sh: fixes image auto configuration
 
 
 ## v0.1.3 - 2019-02-22

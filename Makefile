@@ -150,11 +150,12 @@ up: ## Creates and starts project containers
 		$(HELPER_DIR)/generate-vhost-cert.sh $(CERT_DIR) $$vhost; \
 	done
 
-	$(call startDockerSync)
+	$(if $(wildcard ./docker-sync.yml), $(if $(wildcard ./mutagen.yml),$(call log, "Skipping docker-sync because Mutagen config exists"),$(call startDockerSync)))
 
 	$(call log,"Starting containers")
 	@docker-compose up -d
 
+	$(if $(wildcard ./mutagen.yml),$(call startOrResumeMutagen))
 	$(call log,"Finished startup successfully")
 
 
@@ -169,11 +170,11 @@ status: ## Print project status
 .PHONY: start
 start: ## Start already created project environment
 	$(call checkProject)
-
-	$(call startDockerSync)
+	$(if $(wildcard ./docker-sync.yml),$(if $(wildcard ./mutagen.yml),$(call log, "Skipping docker-sync because Mutagen config exists"),$(call startDockerSync)))
 
 	$(call log,"Starting docker containers")
 	@docker-compose start
+	$(if $(wildcard ./mutagen.yml),$(call startOrResumeMutagen))
 
 
 
@@ -181,11 +182,11 @@ start: ## Start already created project environment
 stop: ## Stop project environment
 	$(call checkProject)
 
-	$(call log,"Starting docker containers")
+	$(call log,"Stopping docker containers")
 	@docker-compose stop
 
-	$(call stopDockerSync)
-
+	$(if $(wildcard ./mutagen.yml),$(call pauseMutagen))
+	$(if $(wildcard ./docker-sync.yml),$(call stopDockerSync))
 
 
 .PHONY: update
@@ -218,7 +219,8 @@ destroy: ## Remove central project infrastructure
 		rm -f $(CERT_DIR)/$$vhost.*; \
 	done
 
-	$(call cleanDockerSync)
+	$(if $(wildcard ./mutagen.yml),$(call terminateMutagen))
+	$(if $(wildcard ./docker-sync.yml),$(call cleanDockerSync))
 
 	$(call log,"Finished destroying successfully")
 
@@ -273,20 +275,16 @@ endef
 
 
 define startDockerSync
+	$(if $(shell which docker-sync),$(call log, "docker-sync is installed"), $(call log, "docker-sync is not installed, see: https://docker-sync.io"); exit 1)
 	$(call log,"Starting docker-sync. This can take several minutes depending on your project size")
-	@if [ -f docker-sync.yml ]; then \
-		docker-sync stop && \
-		docker-sync start; \
-	fi
+	docker-sync stop && docker-sync start
 endef
 
 
 
 define stopDockerSync
 	$(call log,"Stopping docker-sync")
-	@if [ -f docker-sync.yml ]; then \
-		docker-sync stop; \
-	fi
+	docker-sync stop
 endef
 
 
@@ -294,11 +292,25 @@ endef
 define cleanDockerSync
 	$(call log,"Cleaning up docker-sync")
 	$(call stopDockerSync)
-	@if [ -f docker-sync.yml ]; then \
-		docker-sync clean; \
-	fi
+	docker-sync clean
 endef
 
+
+define startOrResumeMutagen
+	$(if $(shell which mutagen),$(call log, "Mutagen is installed"), $(call log, "Mutagen is not installed, see: https://mutagen.io"); exit 1)
+    $(call log,"Starting Mutagen. This can take several minutes depending on your project size")
+	mutagen project resume 2>/dev/null || mutagen project start;
+endef
+
+define pauseMutagen
+   $(call log,"Stopping Mutagen");
+   mutagen project pause;
+endef
+
+define terminateMutagen
+	$(call log,"Terminating Mutagen");
+   mutagen project terminate;
+endef
 
 
 define addSshKey
