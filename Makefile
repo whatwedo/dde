@@ -276,6 +276,7 @@ endef
 
 
 define startDockerSync
+	$(if $(shell which docker-sync),$(call log, "docker-sync is installed"), $(call log, "docker-sync is not installed, see: https://docker-sync.io"); exit 1)
 	$(call log,"Starting docker-sync. This can take several minutes depending on your project size")
 	docker-sync stop && docker-sync start
 endef
@@ -297,6 +298,7 @@ endef
 
 
 define startOrResumeMutagen
+	$(if $(shell which mutagen),$(call log, "Mutagen is installed"), $(call log, "Mutagen is not installed, see: https://mutagen.io"); exit 1)
     $(call log,"Starting Mutagen. This can take several minutes depending on your project size")
 	mutagen project resume 2>/dev/null || mutagen project start;
 endef
