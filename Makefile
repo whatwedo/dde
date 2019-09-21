@@ -300,6 +300,7 @@ define startOrResumeMutagen
 	$(if $(shell which mutagen),$(call log, "Mutagen is installed"), $(call log, "Mutagen is not installed, see: https://mutagen.io"); exit 1)
     $(call log,"Starting Mutagen. This can take several minutes depending on your project size")
 	mutagen project resume 2>/dev/null || mutagen project start;
+	mutagen project flush;
 endef
 
 define pauseMutagen
