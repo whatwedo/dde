@@ -309,7 +309,7 @@ endef
 
 define terminateMutagen
 	$(call log,"Terminating Mutagen");
-   mutagen project terminate;
+   -mutagen project terminate;
 endef
 
 
