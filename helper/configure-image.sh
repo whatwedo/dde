@@ -65,6 +65,9 @@ fi
 if [ -d /var/tmp/nginx ]; then
     chown -R dde:dde /var/tmp/nginx
 fi
+if [ -d /var/www ]; then
+    chown -R dde:dde /var/www
+fi
 
 # Configure PHP
 if [ -d /etc/php* ]; then
