@@ -16,5 +16,5 @@ if [ ! -f $VHOST.crt ]; then \
     echo "subjectAltName = @alt_names" >> $VHOST.ext && \
     echo "[alt_names]" >> $VHOST.ext && \
     echo "DNS.1 = $VHOST" >> $VHOST.ext && \
-    openssl x509 -req -in $VHOST.csr -CA ca.pem -CAkey ca.key -CAcreateserial -out $VHOST.crt -days 3650 -sha256 -extfile $VHOST.ext; \
+    openssl x509 -req -in $VHOST.csr -CA ca.pem -CAkey ca.key -CAcreateserial -out $VHOST.crt -days 730 -sha256 -extfile $VHOST.ext; \
 fi
