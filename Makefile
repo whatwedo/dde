@@ -229,14 +229,14 @@ destroy: ## Remove central project infrastructure
 .PHONY: exec
 exec: ## Opens shell with user dde on first container
 	$(call checkProject)
-	@docker-compose exec `docker run --rm -v $(CURDIR):/workdir mikefarah/yq yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//'` gosu dde sh || true
+	@docker-compose exec `docker run --rm -v $(CURDIR):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//'` gosu dde sh || true
 
 
 
 .PHONY: exec_root
 exec_root: ## Opens privileged shell on first container
 	$(call checkProject)
-	@docker-compose exec `docker run --rm -v $(CURDIR):/workdir mikefarah/yq yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//'` sh || true
+	@docker-compose exec `docker run --rm -v $(CURDIR):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//'` sh || true
 
 
 
