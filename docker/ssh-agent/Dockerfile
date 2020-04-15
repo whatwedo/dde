@@ -26,6 +26,10 @@ RUN set -ex; \
 	\
 	apk del .gosu-deps
 
+# Add impport-keys script
+COPY import-keys.sh /import-keys.sh
+RUN chmod +x /import-keys.sh
+
 # Set run configuration
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
