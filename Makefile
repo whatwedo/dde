@@ -316,5 +316,5 @@ endef
 
 define addSshKey
 	$(call log,"Adding SSH key (maybe passphrase required)")
-	@cd $(ROOT_DIR) && docker-compose exec ssh-agent sh -c "ssh-add /home/dde/.ssh/id_rsa && ssh-add -l"
+	@cd $(ROOT_DIR) && docker-compose exec ssh-agent sh -c /import-keys.sh
 endef
