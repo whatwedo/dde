@@ -9,6 +9,8 @@
 /data/reverseproxy/etc/nginx/*
 !/data/reverseproxy/etc/nginx/conf.d
 /data/reverseproxy/etc/nginx/conf.d/*
+!/data/reverseproxy/etc/nginx/vhost.d
+/data/reverseproxy/etc/nginx/vhost.d/*
 !/data/reverseproxy/etc/nginx/conf.d/dde.conf
 
 # Vagrant
