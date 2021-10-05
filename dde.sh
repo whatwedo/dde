@@ -46,6 +46,7 @@ function _build_run_down {
 function system:env {
     # show the dde system env
     _logGreen 'dde.sh system environment'
+    echo OSTYPE=${OSTYPE}
     echo SOURCE=${SOURCE}
     echo ROOT_DIR=${ROOT_DIR}
     echo CERT_DIR=${CERT_DIR}
