@@ -1,3 +1,5 @@
+dde.local.sh
+
 # Data directory
 /data/*
 !/data/.gitkeep
