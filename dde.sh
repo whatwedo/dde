@@ -2,6 +2,7 @@
 
 set -eo pipefail
 
+
 DC="${DC:-exec}"
 SOURCE=${BASH_SOURCE}
 ROOT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -11,6 +12,8 @@ NETWORK_NAME=dde
 DOCKER_BUILDKIT=1
 DDE_UID=$(id -u)
 DDE_GID=$(id -g)
+export DDE_UID
+export DDE_GID
 
 
 # If we're running in CI we need to disable TTY allocation for docker-compose
@@ -20,6 +23,10 @@ if [[ ! -t 1 ]]; then
   TTY="-T"
 fi
 
+
+if [ -f ${ROOT_DIR}/dde.local.sh ]; then
+    source ${ROOT_DIR}/dde.local.sh
+fi
 # -----------------------------------------------------------------------------
 # Helper functions start with _ and aren't listed in this script's help menu.
 # -----------------------------------------------------------------------------
@@ -364,7 +371,7 @@ function _pauseMutagen {
    mutagen project pause;
 }
 
-function terminateMutagen {
+function _terminateMutagen {
 	_logYellow "Terminating Mutagen"
     mutagen project terminate;
 }
