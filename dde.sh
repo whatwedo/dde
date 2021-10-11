@@ -455,13 +455,23 @@ function help {
     compgen -A function | grep "system:" | sed 's/^/  /g'
     _logYellow "\nPrject Commands:"
     compgen -A function | grep "project:" | sed 's/^/  /g'
+
+
+        compgen -A function | grep "local:" | sed 's/^/  /g'
+
+
+    _HELP_MODE=1
     if [ -f ${ROOT_DIR}/dde.local.sh ]; then
         _logYellow "\nLocal Commands:"
-        compgen -A function | grep "local:" | sed 's/^/  /g'
-    fi
+        for commandName in `compgen -A function | grep "local:"`
+        do
+            echo "   ${commandName}                  $(${commandName})"
+        done
+	fi
 }
 
+
+
 # This idea is heavily inspired by: https://github.com/adriancooney/Taskfile
-TIMEFORMAT=$'\nTask completed in %3lR'
-time "${@:-help}"
+"${@:-help}"
 
