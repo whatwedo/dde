@@ -55,6 +55,9 @@ function system:env {
     echo DOCKER_BUILDKIT=${DOCKER_BUILDKIT}
     echo DDE_UID=${DDE_UID}
     echo DDE_GID=${DDE_GID}
+    if [ -f ${ROOT_DIR}/dde.local.sh ]; then
+        echo include ${ROOT_DIR}/dde.local.sh script
+    fi
 }
 
 function system:up {
@@ -172,6 +175,30 @@ function system:log {
 	docker-compose logs -f --tail=100
 }
 
+function project:env  {
+    _checkProject
+    system:env
+
+    _logGreen  "DDE Project env:"
+    if [ -f ./docker-compose.override.yml ]; then
+        echo ./docker-compose.override.yml defined
+    fi
+    echo SYNC_MODE=${SYNC_MODE}
+
+}
+
+function project:docker-compose-override  {
+    _checkProject
+    if [ -f ./docker-compose.override.yml ]; then
+        _logRed "docker-compose.override.yml already installed"
+    else
+        cp ${ROOT_DIR}/docker-compose.override.yml .
+        _logGreen "docker-compose.override.yml installed, make your custom changes"
+    fi
+
+}
+
+
 function project:up  {
     ## Creates and starts project containers
 	_checkProject
@@ -183,17 +210,15 @@ function project:up  {
 		${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} ${vhost}
 	done
 
-    if [ -f docker-sync.yml ]; then
-	    if [ -f mutagen.yml ]; then
-	        _logYellow "Skipping docker-sync because Mutagen config exists"
-	        _startDockerSync
-        fi
+    if [ "${SYNC_MODE}" = "docker-sync" ]; then
+        _logYellow "Skipping docker-sync because Mutagen config exists"
+        _startDockerSync
     fi
 
 	_logYellow "Starting containers"
 	docker-compose up -d
 
-    if [ -f mutagen.yml ]; then
+    if [ "${SYNC_MODE}" = "mutagen" ]; then
         _startOrResumeMutagen
     fi
 	_logGreen "Finished startup successfully"
@@ -202,16 +227,15 @@ function project:up  {
 function project:start {
     ## Start already created project environment
 	_checkProject
-	if [ -f ./docker-sync.yml ]; then
-	    if [ -f ./mutagen.yml ]; then
-	        _logYellow "Skipping docker-sync because Mutagen config exists"
-	        _startDockerSync
-        fi
+	if [ "${SYNC_MODE}" = "docker-sync" ]; then
+        _logYellow "Skipping docker-sync because Mutagen config exists"
+        _startDockerSync
     fi
 
 	_logYellow "Starting docker containers"
 	docker-compose start
-	if [ -f ./mutagen.yml ]; then
+
+    if [ "${SYNC_MODE}" = "mutagen" ]; then
         _startOrResumeMutagen
     fi
 }
@@ -223,11 +247,11 @@ function project:stop {
 	_logYellow "Stopping docker containers"
 	docker-compose stop
 
-    if [ -f ./mutagen.yml ]; then
+    if [ "${SYNC_MODE}" = "mutagen" ]; then
         _pauseMutagen
     fi
 
-    if [ -f ./docker-sync.yml ]; then
+    if [ "${SYNC_MODE}" = "docker-sync" ]; then
         _stopDockerSyn
     fi
 }
@@ -264,11 +288,11 @@ function project:destroy {
 		rm -f ${CERT_DIR}/${vhost}.*
 	done
 
-    if [ -f ./mutagen.yml ]; then
+    if [ "${SYNC_MODE}" = "mutagen" ]; then
         _terminateMutagen
     fi
 
-    if [ -f ./docker-sync.yml ]; then
+    if [ "${SYNC_MODE}" = "docker-sync" ]; then
         _cleanDockerSync
     fi
 
@@ -290,6 +314,7 @@ function project:exec:root {
 
 function project:log {
     ## Show log output
+    _checkProject
 	docker-compose logs -f --tail=100
 }
 
@@ -300,7 +325,7 @@ function project:status {
 }
 
 function _syncMode {
-    SYNC_MODE=no-sync
+    SYNC_MODE=volume
     if [ -f ./mutagen.yml ]; then
         SYNC_MODE=mutagen
     fi
@@ -310,14 +335,12 @@ function _syncMode {
     fi
 
     if [ -f ./docker-compose.override.yml ]; then
-        if [ $(grep "^x-dde:" docker-compose.override.yml | cut -d':' -f2) ]; then
-            SYNC_MODE=$(grep "x-dde:" docker-compose.override.yml | cut -d':' -f2 | xargs)
+        if [ $(grep "^x-dde-sync:" docker-compose.override.yml | cut -d':' -f2) ]; then
+            SYNC_MODE=$(grep "x-dde-sync:" docker-compose.override.yml | cut -d':' -f2 | xargs)
         fi
     fi
 
-    if [[ "${SYNC_MODE}" = "no-sync" ]]  || [[ "${SYNC_MODE}" = "docker-sync" ]] || [[ "${SYNC_MODE}" = "mutagen" ]]; then
-        _logYellow "Sync mode is ${SYNC_MODE}"
-    else
+    if [[ "${SYNC_MODE}" != "volume" ]] && [[ "${SYNC_MODE}" != "docker-sync" ]] && [[ "${SYNC_MODE}" != "mutagen" ]]; then
         _logRed "Unknown Sync mode ${SYNC_MODE}"
         exit 1
     fi
@@ -335,6 +358,7 @@ function _checkProject {
 	fi
 	mkdir -p .dde
 	cp -R ${ROOT_DIR}/helper/configure-image.sh .dde/configure-image.sh
+	_syncMode
 }
 
 function _logYellow {
@@ -355,6 +379,10 @@ function _addSshKey {
 
 
 function _startDockerSync {
+    if [ "${SYNC_MODE}" != "docker-sync" ]; then
+        return
+    fi
+
     if [ $(which docker-sync) ]; then
         _logYellow "docker-sync is installed"
     else
@@ -368,11 +396,19 @@ function _startDockerSync {
 
 
 function _stopDockerSync {
+    if [ "${SYNC_MODE}" != "docker-sync" ]; then
+        return
+    fi
+
 	_logYellow "Stopping docker-sync"
 	docker-sync stop
 }
 
 function _cleanDockerSync {
+    if [ "${SYNC_MODE}" != "docker-sync" ]; then
+        return
+    fi
+
 	_logYellow "Cleaning up docker-sync"
 	_stopDockerSync
 	docker-sync clean
@@ -380,6 +416,10 @@ function _cleanDockerSync {
 
 
 function _startOrResumeMutagen {
+    if [ "${SYNC_MODE}" != "mutagen" ]; then
+        return
+    fi
+
 	if [ $(which mutagen) ]; then
 	    _logYellow "Mutagen is installed"
 	else
@@ -392,23 +432,36 @@ function _startOrResumeMutagen {
 }
 
 function _pauseMutagen {
-   _logYellow "Stopping Mutagen"
-   mutagen project pause;
+    if [ "${SYNC_MODE}" != "mutagen" ]; then
+        return
+    fi
+
+    _logYellow "Stopping Mutagen"
+    mutagen project pause;
 }
 
 function _terminateMutagen {
+    if [ "${SYNC_MODE}" != "mutagen" ]; then
+        return
+    fi
 	_logYellow "Terminating Mutagen"
     mutagen project terminate;
 }
 
 function help {
-  printf "%s <task> [args]\n\nTasks:\n" "${0}"
+  printf "%s <command> [args]\n" "${0}"
 
-  compgen -A function | grep -v "^_" | cat -n
-
-  printf "\nExtended help:\n  Each task has comments for general usage\n"
+    _logYellow "System Commands:"
+    compgen -A function | grep "system:" | sed 's/^/  /g'
+    _logYellow "\nPrject Commands:"
+    compgen -A function | grep "project:" | sed 's/^/  /g'
+    if [ -f ${ROOT_DIR}/dde.local.sh ]; then
+        _logYellow "\nLocal Commands:"
+        compgen -A function | grep "local:" | sed 's/^/  /g'
+    fi
 }
 
 # This idea is heavily inspired by: https://github.com/adriancooney/Taskfile
 TIMEFORMAT=$'\nTask completed in %3lR'
 time "${@:-help}"
+

@@ -48,12 +48,12 @@ cd ~
 git clone https://github.com/whatwedo/dde.git
 
 # if you're using bash
-echo "alias dde='make -f ~/dde/Makefile'" >> ~/.bash_profile
+echo "alias dde='~/dde/dde.sh'" >> ~/.bash_profile
 
 # if you're using zsh
-echo "alias dde='make -f ~/dde/Makefile'" >> ~/.zshrc
+echo "alias dde='~/dde/dde.sh'" >> ~/.zshrc
 
-dde system-up
+dde system:up
 ```
 
 ### Additional OS specific installation steps
@@ -89,25 +89,27 @@ Trust the newly generated Root-CA found here:
 ## Usage
 
 ```
-$ dde
-destroy              Remove central project infrastructure
-exec                 Opens shell with user dde on first container
-exec_root            Opens privileged shell on first container
+$ dde help
 help                 Display this message
-log                  Show log output
-start                Start already created project environment
-status               Print project status
-stop                 Stop project environment
-system-cleanup       Cleanup whole docker environment. USE WITH CAUTION
-system-destroy       Remove system dde infrastructure
-system-log           Show log output of system services
-system-nuke          Remove system dde infrastructure and nukes data
-system-start         Start already created system dde environment
-system-status        Print dde system status
-system-stop          Stop system dde environment
-system-up            Initializes and starts dde system infrastructure
-system-update        Update dde system
-up                   Creates and starts project containers
+
+project:destroy              Remove central project infrastructure
+project:exec                 Opens shell with user dde on first container
+project:exec_root            Opens privileged shell on first container
+project:log                  Show log output
+project:start                Start already created project environment
+project:status               Print project status
+project:stop                 Stop project environment
+project:up                   Creates and starts project containers
+
+system:cleanup       Cleanup whole docker environment. USE WITH CAUTION
+system:destroy       Remove system dde infrastructure
+system:log           Show log output of system services
+system:nuke          Remove system dde infrastructure and nukes data
+system:start         Start already created system dde environment
+system:status        Print dde system status
+system:stop          Stop system dde environment
+system:up            Initializes and starts dde system infrastructure
+system:update        Update dde system
 ```
 
 
