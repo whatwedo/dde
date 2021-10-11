@@ -1,0 +1,7 @@
+function local:command {
+    if [ ${_HELP_MODE} ]; then
+        _HELP='local:command_help'
+    else
+        echo 'local:command'
+    fi
+}
