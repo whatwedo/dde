@@ -64,7 +64,10 @@ function system:env {  ## show the dde system env
 
 function system:up {  ## Initializes and starts dde system infrastructure
     _logYellow "Creating network if required"
-	docker network create ${NETWORK_NAME}
+    docker network inspect ${NETWORK_NAME} &> /dev/null
+    if [ $? -ne 0 ]; then
+	    docker network create ${NETWORK_NAME}
+    fi
 
 	_logYellow "Creating default docker config.json"
 	if [ ! -f ~/.docker/config.json ]; then
@@ -214,6 +217,13 @@ function project:up  {          ## Creates and starts project containers
         _startOrResumeMutagen
     fi
 	_logGreen "Finished startup successfully"
+
+
+	for vhost in `grep VIRTUAL_HOST= docker-compose.yml | cut -d'=' -f2`
+    do
+		_logYellow "visit: https://${vhost}"
+	done
+
 }
 
 function project:start {   ## Start already created project environment
