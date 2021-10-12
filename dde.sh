@@ -12,6 +12,7 @@ NETWORK_NAME=dde
 DOCKER_BUILDKIT=1
 DDE_UID=$(id -u)
 DDE_GID=$(id -g)
+DDE_SH=${0}
 export DDE_UID
 export DDE_GID
 
@@ -43,8 +44,7 @@ function _build_run_down {
 
 # -----------------------------------------------------------------------------
 
-function system:env {
-    # show the dde system env
+function system:env {  ## show the dde system env
     _logGreen 'dde.sh system environment'
     echo OSTYPE=${OSTYPE}
     echo SOURCE=${SOURCE}
@@ -55,12 +55,14 @@ function system:env {
     echo DOCKER_BUILDKIT=${DOCKER_BUILDKIT}
     echo DDE_UID=${DDE_UID}
     echo DDE_GID=${DDE_GID}
+    echo DDE_SH=${DDE_SH}
+
     if [ -f ${ROOT_DIR}/dde.local.sh ]; then
-        echo include ${ROOT_DIR}/dde.local.sh script
+        _logYellow "include: ${ROOT_DIR}/dde.local.sh"
     fi
 }
 
-function system:up {
+function system:up {  ## Initializes and starts dde system infrastructure
     _logYellow "Creating network if required"
 	docker network create ${NETWORK_NAME}
 
@@ -91,27 +93,23 @@ function system:up {
 	_logGreen "Finished startup successfully"
 }
 
-function system:status {
-    ## Print dde system status
+function system:status {   ## Print dde system status
     cd ${ROOT_DIR}
     docker-compose ps
 }
 
-function system:start {
-    ## Start already created system dde environment
+function system:start { ## Start already created system dde environment
     cd ${ROOT_DIR}
     docker-compose start
 	_addSshKey
 }
 
-function system:stop {
-    ## Start already created system dde environment
+function system:stop { ## Start already created system dde environment
     cd ${ROOT_DIR}
     docker-compose stop
 }
 
-function system:destroy {
-    ## Remove system dde infrastructure
+function system:destroy { ## Remove system dde infrastructure
     _logRed "Removing containers"
 	docker rm -f $(docker network inspect -f '{{ range $$key, $$value := .Containers }}{{ printf "%s\n" $$key }}{{ end }}' ${NETWORK_NAME}) &> /dev/null
 	cd ${ROOT_DIR}
@@ -125,8 +123,7 @@ function system:destroy {
 	_logGreen "Finished destroying successfully"
 }
 
-function system:update {
-    ## Update dde system
+function system:update { ## Update dde system
     _logRed "Removing dde (system)"
     system:destroy
 
@@ -145,8 +142,7 @@ function system:update {
     _logGreen "Finished update successfully"
 }
 
-function system:nuke {
-    ## Remove system dde infrastructure and nukes data
+function system:nuke {  ## Remove system dde infrastructure and nukes data
     _logRed "Removing dde sytem"
 	system:destroy
 
@@ -157,9 +153,7 @@ function system:nuke {
 	_logGreen "Finished nuking successfully"
 }
 
-function system:cleanup {
-    ## Cleanup whole docker environment. USE WITH CAUTION
-
+function system:cleanup { ## Cleanup whole docker environment. USE WITH CAUTION
 	_logYellow "Running docker-gc"
 	docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -e REMOVE_VOLUMES=1 spotify/docker-gc sh -c "/docker-gc || true"
 
@@ -169,13 +163,12 @@ function system:cleanup {
 	_logGreen "Finished system cleanup"
 }
 
-function system:log {
-    ## Show log output of system services
+function system:log {  ## Show log output of system services
 	cd ${ROOT_DIR}
 	docker-compose logs -f --tail=100
 }
 
-function project:env  {
+function project:env  { ## Show system environment
     _checkProject
     system:env
 
@@ -187,7 +180,7 @@ function project:env  {
 
 }
 
-function project:docker-compose-override  {
+function project:docker-override  { ## creates  docker-compose.override.yml in your project
     _checkProject
     if [ -f ./docker-compose.override.yml ]; then
         _logRed "docker-compose.override.yml already installed"
@@ -199,8 +192,7 @@ function project:docker-compose-override  {
 }
 
 
-function project:up  {
-    ## Creates and starts project containers
+function project:up  {          ## Creates and starts project containers
 	_checkProject
 
 	_logYellow "Generating SSL cert"
@@ -224,8 +216,7 @@ function project:up  {
 	_logGreen "Finished startup successfully"
 }
 
-function project:start {
-    ## Start already created project environment
+function project:start {   ## Start already created project environment
 	_checkProject
 	if [ "${SYNC_MODE}" = "docker-sync" ]; then
         _logYellow "Skipping docker-sync because Mutagen config exists"
@@ -240,8 +231,7 @@ function project:start {
     fi
 }
 
-function project:stop {
-    ## Stop project environment
+function project:stop {  ## Stop project environment
 	_checkProject
 
 	_logYellow "Stopping docker containers"
@@ -256,8 +246,7 @@ function project:stop {
     fi
 }
 
-function project:update {
-    ## Update/rebuild project
+function project:update {  ## Update/rebuild project
 	_checkProject
 
 	_logRed "Destroying project"
@@ -273,8 +262,7 @@ function project:update {
 	_logGreen "Finished update successfully"
 }
 
-function project:destroy {
-    ## Remove central project infrastructure
+function project:destroy {  ## Remove central project infrastructure
 	_checkProject
 
 	_logYellow "Removing containers"
@@ -300,26 +288,22 @@ function project:destroy {
 }
 
 
-function project:exec {
-    ## Opens shell with user dde on first container
+function project:exec { ## Opens shell with user dde on first container
 	_checkProject
 	docker-compose exec `docker run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//'` gosu dde sh
 }
 
-function project:exec:root {
-    ## Opens privileged shell on first container
+function project:exec:root {  ## Opens privileged shell on first container
 	_checkProject
 	docker-compose exec `docker run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//'` sh
 }
 
-function project:log {
-    ## Show log output
+function project:log {  ## Show log output
     _checkProject
 	docker-compose logs -f --tail=100
 }
 
-function project:status {
-     ## Print project status
+function project:status {  ## Print project status
 	_checkProject
 	docker-compose ps
 }
@@ -448,24 +432,33 @@ function _terminateMutagen {
     mutagen project terminate;
 }
 
+function _getFunctionHelp {
+    cat ${2} | grep "function ${1} .*##" | sed -e 's/function.*##\s*//'
+}
+
+
 function help {
-  printf "%s <command> [args]\n" "${0}"
+    printf "%s <command> [args]\n" "${0}"
+
+    local _functionName="                          "
 
     _logYellow "System Commands:"
-    compgen -A function | grep "system:" | sed 's/^/  /g'
-    _logYellow "\nPrject Commands:"
-    compgen -A function | grep "project:" | sed 's/^/  /g'
+    for commandName in `compgen -A function | grep "system:"`
+    do
+        echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName} ${DDE_SH})"
+    done
 
+    _logYellow "\nProject Commands:"
+    for commandName in `compgen -A function | grep "project:"`
+    do
+        echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName} ${DDE_SH})"
+    done
 
-        compgen -A function | grep "local:" | sed 's/^/  /g'
-
-
-    _HELP_MODE=1
     if [ -f ${ROOT_DIR}/dde.local.sh ]; then
         _logYellow "\nLocal Commands:"
         for commandName in `compgen -A function | grep "local:"`
         do
-            echo "   ${commandName}                  $(${commandName})"
+            echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName} ${ROOT_DIR}/dde.local.sh)"
         done
 	fi
 }
