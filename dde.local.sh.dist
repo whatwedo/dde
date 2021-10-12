@@ -1,7 +1,4 @@
-function local:command {
-    if [ ${_HELP_MODE} ]; then
-        _HELP='local:command_help'
-    else
-        echo 'local:command'
-    fi
+function local:command {   ## inline help for local:command
+    echo 'execute local:command'
 }
+
