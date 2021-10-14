@@ -56,6 +56,11 @@ echo "alias dde='~/dde/dde.sh'" >> ~/.zshrc
 dde system:up
 ```
 
+## Autocompletion
+
+add `eval $(dde.sh _autocomplete)`  to  `~/.zshrc` or `~/.bash_profile`  
+
+
 ### Additional OS specific installation steps
 
 
@@ -111,6 +116,15 @@ system:stop          Stop system dde environment
 system:up            Initializes and starts dde system infrastructure
 system:update        Update dde system
 ```
+
+### Insparations
+
+https://github.com/stylemistake/runner
+
+https://github.com/nickjj/docker-flask-example
+
+https://github.com/adriancooney/Taskfile
+
 
 
 ### Project configuration
