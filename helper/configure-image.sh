@@ -73,7 +73,7 @@ if [ -d /var/www ]; then
 fi
 
 # Configure PHP
-if [ -d /etc/php7 ] || [ -d /etc/php8 ]; then
+if [ -d /etc/php* ]; then
     find /etc/php* -type f -name www.conf -print0 | xargs -r -0 sed -i "s/user = .*/user = dde/"
     find /etc/php* -type f -name www.conf -print0 | xargs -r -0 sed -i "s/group = .*/group = dde/"
     find /etc/php* -type f -name www.conf -print0 | xargs -r -0 sed -i "s/listen\.owner.*/listen.owner = dde/"
