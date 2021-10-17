@@ -1,0 +1,9 @@
+## inline help for local:command
+
+function local:command {
+    echo 'execute local:command'
+}
+
+
+
+

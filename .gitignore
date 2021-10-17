@@ -1,4 +1,8 @@
 dde.local.sh
+/commands/local.sh
+/commands/local
+!/commands/local/command.sh.dist
+
 
 # Data directory
 /data/*
