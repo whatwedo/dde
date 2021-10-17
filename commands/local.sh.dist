@@ -1,0 +1,3 @@
+function _local_someGlobalHelperFunction() {
+    echo "a global helper function"
+}

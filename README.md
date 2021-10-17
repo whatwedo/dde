@@ -125,10 +125,53 @@ https://github.com/adriancooney/Taskfile
 Due to the early stage of this project there is no full documentation available. We created a [example](example) project with all required and optional configuration. Please checkout the [example](example) directory.
 
 
+## Including custom command
+
+you can include custom command by adding them in the `commands/local/` directory. 
+To access the custome command the command must be prefixed with `local:` namespace.
+
+### Anatomy of a command
+
+`commands\local\my_command.sh`
+```bash
+## inline help for local:my_command
+#
+# more help for the command
+#
+# this will be displayed with the --help argument on the command
+#
+# e.g dde local:command --help
+#
+
+function local:my_command() {
+    echo 'execute local:my_command'
+    _localCommand_someInternalFunction arg1
+}
+
+function _localCommand_someInternalFunction() {
+    echo "do something with ${1}
+}
+```
+
+* scipt must be located in the `command` directory
+* Help text for the commands
+  * `:` will be replaced by `/` for locating the help script
+  * the first line beginning with `##` is the help text diplayed be the help command
+  * all following lines beginning with `#` will diplayed in the command help 
+* you can add as many functions as you want in the script
+* to avoid conflicts prefix internal functions 
+* functions and can also be defined in the `command/local.sh` file
+
+`command/local.sh`
+```
+function _local_someGlobalHelperFunction() {
+    echo "a global helper function"
+}
+```
+
 ## Known problems
 
 * Files of filesystem mapped with docker-sync will get group id `0`.
-
 
 ## Bugs and Issues
 
