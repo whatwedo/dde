@@ -463,6 +463,12 @@ function help() {
     else
 
         printf "%s <command> [args]\n" "${0}"
+        echo ""
+
+        _logYellow "Arguments:"
+        echo "   --autocomplete             add \`eval \$(~/dde/dde.sh --autocomplete)\`  to  your \`~/.zshrc\` or \`~/.bash_profile\`"
+        echo "   --help                     show extended help for command, if exists"
+        echo ""
 
         local _functionName="                          "
 
@@ -500,6 +506,9 @@ function _parse_args() {
         ## Help message
         if [[ ${1} == '-h' || ${1} == '--help' ]]; then
             _help=1
+        elif [[ ${1} == '--autocomplete' ]]; then
+            _autocomplete
+            exit 0
         else
             command_args+=("${1}")
         fi
