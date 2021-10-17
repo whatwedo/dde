@@ -1,8 +1,12 @@
 
 function help() {
-    if [[ ${1} && -f "${HELP_DIR}/${1//:/.}.txt" ]]; then
-        _logGreen "help for ${1}"
-        cat "${HELP_DIR}/${1//:/.}.txt"
+    if [[ ${1} ]]; then
+        local _scriptFile="${ROOT_DIR}/commands/${1//:/\/}.sh"
+        if [[ -f ${_scriptFile} ]]; then
+
+            _logGreen "help for ${1}"
+            sed -n '/^#/,$p;/^function/q' ${_scriptFile} | head -n -1 | sed -e 's/^#*\s//g' | sed -e 's/^#//g'
+        fi
     else
 
         printf "%s <command> [args]\n" "${0}"
