@@ -1,4 +1,0 @@
-function local:command {   ## inline help for local:command
-    echo 'execute local:command'
-}
-
