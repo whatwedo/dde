@@ -1,0 +1,6 @@
+Command
+    project:up
+
+Creates and starts project containers
+
+must be started in the project directory, where the docker-composer.yml is located
