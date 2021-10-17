@@ -15,7 +15,10 @@ Features include:
     * [MailHog](https://github.com/mailhog/MailHog) (SMTP testing server)
     * [Portainer](https://www.portainer.io/) (Docker Webinterface)
     * [ssh-agent](https://www.ssh.com/ssh/agent) used for sharing your SSH key without adding it to your project Docker containers.
-* Performance optimized file sharing based on [docker-sync](http://docker-sync.io/) / [Mutagen](https://mutagen.io/)
+* Choose you preferred file sharing
+    * docker volume export
+    * Performance optimized file sharing based on [docker-sync](http://docker-sync.io/) 
+    * [Mutagen](https://mutagen.io/)
 
 **Note:** dde is currently under heavy development and we don't offer any backward compatibility. However we use it at [whatwedo](https://www.whatwedo.ch/) on daily bases and it's safe to use it in your development environment.
 
@@ -25,9 +28,9 @@ Features include:
 * macOS or Ubuntu
 * [Docker 17.09.0+](https://docs.docker.com/)
 * [docker-compose 1.22+](https://docs.docker.com/compose/)
-* [docker-sync 0.5+](http://docker-sync.io/) / [Mutagen v0.10.0+](https://mutagen.io/)
+* [docker-sync 0.5+](http://docker-sync.io/) 
+* [Mutagen v0.10.0+](https://mutagen.io/)
 * [Bash](https://www.gnu.org/software/bash/)
-* [make](https://www.gnu.org/software/make/)
 * [openssl](https://www.openssl.org/)
 * No other services listening localhost on:
     * Port 53
@@ -46,19 +49,29 @@ Features include:
 ```
 cd ~
 git clone https://github.com/whatwedo/dde.git
+~/dde/dde.sh system:dde:setup
+~/dde/dde.sh system:up
+```
 
+`system:dde:install` modifies your .profile files based on your shell:
+
+* autocompletion 
+* aliases 
+
+dde can know be used in a new shell, enjoy!
+
+### Aliases
+```
 # if you're using bash
 echo "alias dde='~/dde/dde.sh'" >> ~/.bash_profile
 
 # if you're using zsh
 echo "alias dde='~/dde/dde.sh'" >> ~/.zshrc
-
-dde system:up
 ```
 
-## Autocompletion
+### Autocompletion
 
-add `eval $(dde.sh _autocomplete)`  to  `~/.zshrc` or `~/.bash_profile`  
+add `eval $(~/dde/dde.sh --autocomplete)`  to  `~/.zshrc` or `~/.bash_profile`  
 
 
 ### Additional OS specific installation steps
@@ -95,26 +108,6 @@ Trust the newly generated Root-CA found here:
 
 ```
 $ dde help
-help                 Display this message
-
-project:destroy              Remove central project infrastructure
-project:exec                 Opens shell with user dde on first container
-project:exec_root            Opens privileged shell on first container
-project:log                  Show log output
-project:start                Start already created project environment
-project:status               Print project status
-project:stop                 Stop project environment
-project:up                   Creates and starts project containers
-
-system:cleanup       Cleanup whole docker environment. USE WITH CAUTION
-system:destroy       Remove system dde infrastructure
-system:log           Show log output of system services
-system:nuke          Remove system dde infrastructure and nukes data
-system:start         Start already created system dde environment
-system:status        Print dde system status
-system:stop          Stop system dde environment
-system:up            Initializes and starts dde system infrastructure
-system:update        Update dde system
 ```
 
 ### Insparations
