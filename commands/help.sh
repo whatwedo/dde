@@ -28,7 +28,7 @@ function help() {
         if [ -f ${ROOT_DIR}/dde.local.sh ]; then
             _logYellow "\nLocal Commands:"
             for commandName in $(compgen -A function | grep "local:"); do
-                echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName} ${ROOT_DIR}/dde.local.sh)"
+                echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName})"
             done
         fi
     fi
@@ -36,5 +36,9 @@ function help() {
 
 
 function _getFunctionHelp() {
-    cat ${2} | grep "function ${1}() .*##" | sed -e 's/function.*##\s*//'
+
+    local _scriptFile="${ROOT_DIR}/commands/${1//:/\/}.sh"
+    if [[ -f ${_scriptFile} ]]; then
+        sed -e '/^##.*/!d;p' ${_scriptFile} | head -1 | sed -e 's/^##\s*//g' | tr -d '\n'
+    fi
 }
