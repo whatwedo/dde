@@ -169,26 +169,57 @@ function system:log() { ## Show log output of system services
     docker-compose logs -f --tail=100
 }
 
-function _autocomplete() { ## add bash completions
+function system:dde:install() {  ## makes the setup for your shell
+    system:dde:install:alias
+    system:dde:install:autocomplete
 
-    commands=""
+}
 
-    for commandName in $(compgen -A function | grep "system:"); do
-        commands="${commands} ${commandName}"
-    done
-
-    commands="${commands} project"
-    for commandName in $(compgen -A function | grep "project:"); do
-        commands="${commands} ${commandName}"
-    done
-
-    if [ -f ${ROOT_DIR}/dde.local.sh ]; then
-        for commandName in $(compgen -A function | grep ":"); do
-            commands="${commands} ${commandName}"
-        done
+function system:dde:install:alias() {  ## install alias for your shell
+    local _rcFile=""
+    if [[ `basename $SHELL` == "zsh" ]]; then
+        _rcFile="${HOME}/.zshrc"
+    elif [[ `basename $SHELL` == "bash" ]]; then
+        _rcFile="${HOME}/.bash_profile"
     fi
 
-    echo -n "complete -W '${commands}' dde.sh"
+    if [[ "${_rcFile}" == "" ]]; then
+        _logRed "unkown shell ${SHELL}"
+        exit 1
+    fi
+
+    local _rcLine="alias dde='\$(${ROOT_DIR}/dde.sh'"
+
+    if [[ $(cat ${_rcFile} | grep -c "${_rcLine}") -eq 0 ]]; then
+        echo "${_rcLine}" >> ${_rcFile}
+        _logGreen "dde alias added to your ${_rcFile}"
+    else
+        _logRed "dde alias already added to your ${_rcFile}"
+    fi
+}
+
+function system:dde:install:autocomplete() {  ## installs autocompletion for your shell
+    local _rcFile=""
+    if [[ `basename $SHELL` == "zsh" ]]; then
+        _rcFile="${HOME}/.zshrc"
+    elif [[ `basename $SHELL` == "bash" ]]; then
+        _rcFile="${HOME}/.bash_profile"
+    fi
+
+    if [[ "${_rcFile}" == "" ]]; then
+        _logRed "unkown shell ${SHELL}"
+        exit 1
+    fi
+
+    local _rcLine="eval \$(${ROOT_DIR}/dde.sh --autocomplete)"
+
+    if [[ $(cat ${_rcFile} | grep -c "${_rcLine}") -eq 0 ]]; then
+        echo "" >> ${_rcFile}
+        echo "${_rcLine}" >> ${_rcFile}
+        _logGreen "dde autocomplete added to your ${_rcFile}"
+    else
+        _logRed "dde autocomplete already added to your ${_rcFile}"
+    fi
 }
 
 function project:env() { ## Show system environment
@@ -466,11 +497,11 @@ function help() {
         echo ""
 
         _logYellow "Arguments:"
-        echo "   --autocomplete             add \`eval \$(~/dde/dde.sh --autocomplete)\`  to  your \`~/.zshrc\` or \`~/.bash_profile\`"
-        echo "   --help                     show extended help for command, if exists"
+        echo "   --autocomplete                  add \`eval \$(~/dde/dde.sh --autocomplete)\`  to  your \`~/.zshrc\` or \`~/.bash_profile\`"
+        echo "   --help                          show extended help for command, if exists"
         echo ""
 
-        local _functionName="                          "
+        local _functionName="                               "
 
         _logYellow "System Commands:"
         for commandName in $(compgen -A function | grep "system:"); do
@@ -491,8 +522,28 @@ function help() {
     fi
 }
 
-## Parses CLI-specific flags.
-## Must take "${runner_args[@]}" as the argument.
+function _autocomplete() { ## add bash completions
+
+    commands=""
+
+    for commandName in $(compgen -A function | grep "system:"); do
+        commands="${commands} ${commandName}"
+    done
+
+    commands="${commands} project"
+    for commandName in $(compgen -A function | grep "project:"); do
+        commands="${commands} ${commandName}"
+    done
+
+    if [ -f ${ROOT_DIR}/dde.local.sh ]; then
+        for commandName in $(compgen -A function | grep ":"); do
+            commands="${commands} ${commandName}"
+        done
+    fi
+
+    echo -n "complete -W '${commands}' dde.sh"
+}
+
 function _parse_args() {
     local _help=0
     ## Clean up currently defined arguments
@@ -528,7 +579,7 @@ function _parse_args() {
 }
 
 function _checkCommand() {
-    if [[ "${1%:*}" != "system" && "${1%:*}" != "project" && "${1%:*}" != "local" && "${1%:*}" != "help" ]]; then
+    if [[ "${1%%:*}" != "system" && "${1%%:*}" != "project" && "${1%%:*}" != "local" && "${1%%:*}" != "help" ]]; then
         _logRed "Invalid command ${1}"
         _logYellow "Command must be prefixed with system: project: or :local"
         echo ""
