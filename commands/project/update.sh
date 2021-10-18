@@ -15,7 +15,7 @@ function project:update() {
     docker-compose pull
 
     _logYellow "Starting project"
-    projectup
+    project:up
 
     _logGreen "Finished update successfully"
 }
