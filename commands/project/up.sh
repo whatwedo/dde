@@ -3,6 +3,7 @@
 # Command
 #    project:up
 #    p:u
+#    up
 #
 # Creates and starts project containers
 #
@@ -35,6 +36,11 @@ function project:up() {
     done
 
 }
+
 function p:u() {
+    project:up
+}
+
+function up() {
     project:up
 }

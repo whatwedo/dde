@@ -2,6 +2,7 @@
 #
 # Command
 #    system:start
+#    system-start
 
 function system:start() {
     cd ${ROOT_DIR}
@@ -9,3 +10,6 @@ function system:start() {
     _addSshKey
 }
 
+function system-start() {
+    system:start
+}

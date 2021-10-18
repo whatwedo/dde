@@ -3,6 +3,7 @@
 # Command
 #    project:log
 #    p:l
+#    log
 
 function project:log() {
     _checkProject
@@ -10,5 +11,9 @@ function project:log() {
 }
 
 function p:l() {
+    project:log
+}
+
+function log() {
     project:log
 }

@@ -2,6 +2,7 @@
 #
 # Command
 #    system:up
+#    system-up
 
 function system:up() {
     _logYellow "Creating network if required"
@@ -35,5 +36,9 @@ function system:up() {
     _addSshKey
 
     _logGreen "Finished startup successfully"
+}
+
+function system-up() {
+    system:up
 }
 

@@ -2,6 +2,7 @@
 #
 # Command
 #    system:cleanup
+#    system-cleanup
 
 
 function system:cleanup() {
@@ -12,4 +13,8 @@ function system:cleanup() {
     @docker run --rm -it --privileged --pid=host walkerlee/nsenter -t 1 -m -u -i -n fstrim /var/lib/docker
 
     _logGreen "Finished system cleanup"
+}
+
+function system-cleanup() {
+    system:cleanup
 }

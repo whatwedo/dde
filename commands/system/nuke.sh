@@ -2,6 +2,7 @@
 #
 # Command
 #    system:nuke
+#    system-nuke
 
 function system:nuke() {
     _logRed "Removing dde sytem"
@@ -14,3 +15,6 @@ function system:nuke() {
     _logGreen "Finished nuking successfully"
 }
 
+function system-nuke() {
+    system:nuke
+}

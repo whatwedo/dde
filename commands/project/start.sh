@@ -2,6 +2,7 @@
 #
 # Command
 #    project:start
+#    start
 
 function project:start() {
     _checkProject
@@ -16,5 +17,9 @@ function project:start() {
     if [ "${SYNC_MODE}" = "mutagen" ]; then
         _startOrResumeMutagen
     fi
+}
+
+function start() {
+    project:start
 }
 
