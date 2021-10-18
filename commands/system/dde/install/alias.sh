@@ -13,7 +13,7 @@ function system:dde:install:alias() {
         exit 1
     fi
 
-    local _rcLine="alias dde='\$(${ROOT_DIR}/dde.sh'"
+    local _rcLine="alias dde='${ROOT_DIR}/dde.sh'"
 
     if [[ $(cat ${_rcFile} | grep -c "${_rcLine}") -eq 0 ]]; then
         echo "${_rcLine}" >> ${_rcFile}

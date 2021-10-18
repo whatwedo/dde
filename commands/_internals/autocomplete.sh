@@ -1,22 +1,19 @@
 
 function _autocomplete() { ## add bash completions
 
-    commands=""
+    commands=()
 
     for commandName in $(compgen -A function | grep "system:"); do
-        commands="${commands} ${commandName}"
+        commands+="${commandName} "
     done
 
-    commands="${commands} project"
     for commandName in $(compgen -A function | grep "project:"); do
-        commands="${commands} ${commandName}"
+        commands+="${commandName} "
     done
 
-    if [ -f ${ROOT_DIR}/dde.local.sh ]; then
-        for commandName in $(compgen -A function | grep ":"); do
-            commands="${commands} ${commandName}"
-        done
-    fi
+    for commandName in $(compgen -A function | grep "local:"); do
+        commands+="${commandName} "
+    done
 
-    echo -n "complete -W '${commands}' dde.sh"
+    echo -n "complete -W '${commands[*]}' dde"
 }

@@ -11,9 +11,4 @@ function system:env() {
     echo DOCKER_BUILDKIT=${DOCKER_BUILDKIT}
     echo DDE_UID=${DDE_UID}
     echo DDE_GID=${DDE_GID}
-    echo DDE_SH=${DDE_SH}
-
-    if [ -f ${ROOT_DIR}/dde.local.sh ]; then
-        _logYellow "include: ${ROOT_DIR}/dde.local.sh"
-    fi
 }
