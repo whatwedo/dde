@@ -2,6 +2,7 @@
 #
 # Command
 #    system:destroy
+#    system-destroy
 
 function system:destroy() {
     _logRed "Removing containers"
@@ -15,4 +16,9 @@ function system:destroy() {
     fi
 
     _logGreen "Finished destroying successfully"
+}
+
+
+function system-destroy() {
+    system:destroy
 }

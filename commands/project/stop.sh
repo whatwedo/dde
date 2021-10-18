@@ -2,6 +2,7 @@
 #
 # Command
 #    project:stop
+#    stop
 
 function project:stop() {
     _checkProject
@@ -16,5 +17,9 @@ function project:stop() {
     if [ "${SYNC_MODE}" = "docker-sync" ]; then
         _stopDockerSyn
     fi
+}
+
+function stop() {
+    project:stop
 }
 

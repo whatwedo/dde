@@ -1,4 +1,7 @@
 ## creates  docker-compose.override.yml in your project
+#
+# Command
+#    project:docker-override
 
 function project:docker-override() {
     _checkProject

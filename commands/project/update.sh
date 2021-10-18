@@ -2,6 +2,7 @@
 #
 # Command
 #    project:update
+#    update
 
 function project:update() {
     _checkProject
@@ -17,4 +18,8 @@ function project:update() {
     projectup
 
     _logGreen "Finished update successfully"
+}
+
+function update() {
+    project:update
 }

@@ -2,6 +2,7 @@
 #
 # Command
 #    system:update
+#    system-update
 
 function system:update() {
     _logRed "Removing dde (system)"
@@ -20,4 +21,8 @@ function system:update() {
     system:up
 
     _logGreen "Finished update successfully"
+}
+
+function system-update() {
+    system:update
 }

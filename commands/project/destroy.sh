@@ -1,4 +1,8 @@
 ## Remove central project infrastructure
+#
+# Command
+#    project:destroy
+#    destroy
 
 function project:destroy() {
     _checkProject
@@ -22,5 +26,9 @@ function project:destroy() {
     fi
 
     _logGreen "Finished destroying successfully"
+}
+
+function destroy() {
+    project:destroy
 }
 

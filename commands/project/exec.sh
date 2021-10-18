@@ -3,6 +3,7 @@
 # Command
 #    project:exec
 #    p:e
+#    exec
 
 function project:exec() {
     _checkProject
@@ -10,6 +11,10 @@ function project:exec() {
 }
 
 function p:e() {
+    project:exec
+}
+
+function exec() {
     project:exec
 }
 
