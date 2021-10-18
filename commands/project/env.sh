@@ -1,4 +1,8 @@
 ## Show system environment
+#
+# Command
+#    project:env
+#    p:env
 
 function project:env() {
     _checkProject
@@ -10,4 +14,8 @@ function project:env() {
     fi
     echo SYNC_MODE=${SYNC_MODE}
 
+}
+
+function p:env() {
+    project:env
 }

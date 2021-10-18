@@ -1,4 +1,7 @@
 ## Stop project environment
+#
+# Command
+#    project:stop
 
 function project:stop() {
     _checkProject

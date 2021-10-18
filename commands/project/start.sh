@@ -1,4 +1,7 @@
 ## Start already created project environment
+#
+# Command
+#    project:start
 
 function project:start() {
     _checkProject

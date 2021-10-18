@@ -1,4 +1,8 @@
 ## Cleanup whole docker environment. USE WITH CAUTION
+#
+# Command
+#    system:cleanup
+
 
 function system:cleanup() {
     _logYellow "Running docker-gc"

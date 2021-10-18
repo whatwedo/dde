@@ -2,6 +2,7 @@
 #
 # Command
 #    project:up
+#    p:u
 #
 # Creates and starts project containers
 #
@@ -33,4 +34,7 @@ function project:up() {
         _logYellow "visit: https://${vhost}"
     done
 
+}
+function p:u() {
+    project:up
 }

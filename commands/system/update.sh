@@ -1,4 +1,7 @@
 ## Update dde system
+#
+# Command
+#    system:update
 
 function system:update() {
     _logRed "Removing dde (system)"

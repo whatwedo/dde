@@ -1,5 +1,10 @@
 function _checkCommand() {
-    if [[ "${1%%:*}" != "system" && "${1%%:*}" != "project" && "${1%%:*}" != "local" && "${1%%:*}" != "help" ]]; then
+    if [[ "${1%%:*}" != "system"
+            && "${1%%:*}" != "s"
+            && "${1%%:*}" != "project"
+            && "${1%%:*}" != "p"
+            && "${1%%:*}" != "local"
+            && "${1%%:*}" != "help" ]]; then
         _logRed "Invalid command ${1}"
         _logYellow "Command must be prefixed with system: project: or :local"
         echo ""
