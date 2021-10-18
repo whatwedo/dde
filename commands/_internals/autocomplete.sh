@@ -15,5 +15,5 @@ function _autocomplete() { ## add bash completions
         commands+="${commandName} "
     done
 
-    echo -n "complete -W '${commands[*]}' dde"
+    echo "complete -W '${commands[*]}' ${ROOT_DIR}/dde.sh"
 }
