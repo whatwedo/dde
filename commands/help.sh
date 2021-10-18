@@ -5,7 +5,7 @@ function help() {
         if [[ -f ${_scriptFile} ]]; then
 
             _logGreen "help for ${1}"
-            sed -n '/^#/,$p;/^function/q' ${_scriptFile} | head -n -1 | sed -e 's/^#*\s//g' | sed -e 's/^#//g'
+            sed -n '/^#/,$p;/^function/q' ${_scriptFile} | sed -n -e '/^#/p' | sed -e 's/^#*\s//g' | sed -e 's/^#//g'
         fi
     else
 
@@ -38,7 +38,6 @@ function help() {
 
 
 function _getFunctionHelp() {
-
     local _scriptFile="${ROOT_DIR}/commands/${1//:/\/}.sh"
     if [[ -f ${_scriptFile} ]]; then
         sed -e '/^##.*/!d;p' ${_scriptFile} | head -1 | sed -e 's/^##\s*//g' | tr -d '\n'

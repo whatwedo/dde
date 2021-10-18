@@ -1,4 +1,7 @@
 ## Remove system dde infrastructure
+#
+# Command
+#    system:destroy
 
 function system:destroy() {
     _logRed "Removing containers"

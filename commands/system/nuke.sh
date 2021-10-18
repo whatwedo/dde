@@ -1,4 +1,7 @@
 ## Remove system dde infrastructure and nukes data
+#
+# Command
+#    system:nuke
 
 function system:nuke() {
     _logRed "Removing dde sytem"

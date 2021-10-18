@@ -1,4 +1,7 @@
 ## Update/rebuild project
+#
+# Command
+#    project:update
 
 function project:update() {
     _checkProject

@@ -1,4 +1,7 @@
 ## Initializes and starts dde system infrastructure
+#
+# Command
+#    system:up
 
 function system:up() {
     _logYellow "Creating network if required"
