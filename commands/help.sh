@@ -21,20 +21,18 @@ function help() {
 
         _logYellow "System Commands:"
         for commandName in $(compgen -A function | grep "system:"); do
-            echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName} ${DDE_SH})"
+            echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName})"
         done
 
         _logYellow "\nProject Commands:"
         for commandName in $(compgen -A function | grep "project:"); do
-            echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName} ${DDE_SH})"
+            echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName})"
         done
 
-        if [ -f ${ROOT_DIR}/dde.local.sh ]; then
-            _logYellow "\nLocal Commands:"
-            for commandName in $(compgen -A function | grep "local:"); do
-                echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName})"
-            done
-        fi
+        _logYellow "\nLocal Commands:"
+        for commandName in $(compgen -A function | grep "local:"); do
+            echo "   ${commandName:0:${#_functionName}}${_functionName:0:$((${#_functionName} - ${#commandName}))} $(_getFunctionHelp ${commandName})"
+        done
     fi
 }
 
