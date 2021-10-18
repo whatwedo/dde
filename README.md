@@ -15,7 +15,10 @@ Features include:
     * [MailHog](https://github.com/mailhog/MailHog) (SMTP testing server)
     * [Portainer](https://www.portainer.io/) (Docker Webinterface)
     * [ssh-agent](https://www.ssh.com/ssh/agent) used for sharing your SSH key without adding it to your project Docker containers.
-* Performance optimized file sharing based on [docker-sync](http://docker-sync.io/) / [Mutagen](https://mutagen.io/)
+* Choose you preferred file sharing
+    * docker volume export
+    * Performance optimized file sharing based on [docker-sync](http://docker-sync.io/) 
+    * [Mutagen](https://mutagen.io/)
 
 **Note:** dde is currently under heavy development and we don't offer any backward compatibility. However we use it at [whatwedo](https://www.whatwedo.ch/) on daily bases and it's safe to use it in your development environment.
 
@@ -25,9 +28,9 @@ Features include:
 * macOS or Ubuntu
 * [Docker 17.09.0+](https://docs.docker.com/)
 * [docker-compose 1.22+](https://docs.docker.com/compose/)
-* [docker-sync 0.5+](http://docker-sync.io/) / [Mutagen v0.10.0+](https://mutagen.io/)
+* [docker-sync 0.5+](http://docker-sync.io/) 
+* [Mutagen v0.10.0+](https://mutagen.io/)
 * [Bash](https://www.gnu.org/software/bash/)
-* [make](https://www.gnu.org/software/make/)
 * [openssl](https://www.openssl.org/)
 * No other services listening localhost on:
     * Port 53
@@ -46,15 +49,30 @@ Features include:
 ```
 cd ~
 git clone https://github.com/whatwedo/dde.git
+~/dde/dde.sh system:dde:setup
+~/dde/dde.sh system:up
+```
 
+`system:dde:install` modifies your .profile files based on your shell:
+
+* autocompletion 
+* aliases 
+
+dde can know be used in a new shell, enjoy!
+
+### Aliases
+```
 # if you're using bash
-echo "alias dde='make -f ~/dde/Makefile'" >> ~/.bash_profile
+echo "alias dde='~/dde/dde.sh'" >> ~/.bash_profile
 
 # if you're using zsh
-echo "alias dde='make -f ~/dde/Makefile'" >> ~/.zshrc
-
-dde system-up
+echo "alias dde='~/dde/dde.sh'" >> ~/.zshrc
 ```
+
+### Autocompletion
+
+add `eval $(~/dde/dde.sh --autocomplete)`  to  `~/.zshrc` or `~/.bash_profile`  
+
 
 ### Additional OS specific installation steps
 
@@ -89,26 +107,17 @@ Trust the newly generated Root-CA found here:
 ## Usage
 
 ```
-$ dde
-destroy              Remove central project infrastructure
-exec                 Opens shell with user dde on first container
-exec_root            Opens privileged shell on first container
-help                 Display this message
-log                  Show log output
-start                Start already created project environment
-status               Print project status
-stop                 Stop project environment
-system-cleanup       Cleanup whole docker environment. USE WITH CAUTION
-system-destroy       Remove system dde infrastructure
-system-log           Show log output of system services
-system-nuke          Remove system dde infrastructure and nukes data
-system-start         Start already created system dde environment
-system-status        Print dde system status
-system-stop          Stop system dde environment
-system-up            Initializes and starts dde system infrastructure
-system-update        Update dde system
-up                   Creates and starts project containers
+$ dde help
 ```
+
+### Insparations
+
+https://github.com/stylemistake/runner
+
+https://github.com/nickjj/docker-flask-example
+
+https://github.com/adriancooney/Taskfile
+
 
 
 ### Project configuration
@@ -116,10 +125,53 @@ up                   Creates and starts project containers
 Due to the early stage of this project there is no full documentation available. We created a [example](example) project with all required and optional configuration. Please checkout the [example](example) directory.
 
 
+## Including custom command
+
+you can include custom command by adding them in the `commands/local/` directory. 
+To access the custome command the command must be prefixed with `local:` namespace.
+
+### Anatomy of a command
+
+`commands\local\my_command.sh`
+```bash
+## inline help for local:my_command
+#
+# more help for the command
+#
+# this will be displayed with the --help argument on the command
+#
+# e.g dde local:command --help
+#
+
+function local:my_command() {
+    echo 'execute local:my_command'
+    _localCommand_someInternalFunction arg1
+}
+
+function _localCommand_someInternalFunction() {
+    echo "do something with ${1}
+}
+```
+
+* scipt must be located in the `command` directory
+* Help text for the commands
+  * `:` will be replaced by `/` for locating the help script
+  * the first line beginning with `##` is the help text diplayed be the help command
+  * all following lines beginning with `#` will diplayed in the command help 
+* you can add as many functions as you want in the script
+* to avoid conflicts prefix internal functions 
+* functions and can also be defined in the `command/local.sh` file
+
+`command/local.sh`
+```
+function _local_someGlobalHelperFunction() {
+    echo "a global helper function"
+}
+```
+
 ## Known problems
 
 * Files of filesystem mapped with docker-sync will get group id `0`.
-
 
 ## Bugs and Issues
 
