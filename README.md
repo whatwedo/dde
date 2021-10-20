@@ -134,7 +134,7 @@ copy sample `docker-compose.override.yml`:
 $ dde project:docker-override
 ```
 
-this command copies [docker-compose.override.yml](helper/docker-compose.override.yml) to your project directory.
+this command copies [docker-compose.override.yml](example/docker-compose.override.yml) to your project directory.
 
 edit the file. With the custom-tag  `x-dde-sync` you can now choose you preferred syncing mode. 
 

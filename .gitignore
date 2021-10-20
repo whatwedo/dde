@@ -2,7 +2,9 @@
 /commands/local
 !/commands/local/command.sh.dist
 
-docker-compose.override.yml
+./docker-compose.override.yml
+
+
 
 # Data directory
 /data/*
