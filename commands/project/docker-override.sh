@@ -8,7 +8,7 @@ function project:docker-override() {
     if [ -f ./docker-compose.override.yml ]; then
         _logRed "docker-compose.override.yml already installed"
     else
-        cp ${ROOT_DIR}/docker-compose.override.yml .
+        cp ${ROOT_DIR}/example/docker-compose.override.yml .
         _logGreen "docker-compose.override.yml installed, make your custom changes"
     fi
 
