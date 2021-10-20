@@ -103,6 +103,58 @@ Trust the newly generated Root-CA found here:
 ~/dde/data/reverseproxy/etc/nginx/certs/ca.pem
 ```
 
+## File-Sync
+
+File-sync can be done by mutagen, docker-sync or by native docker volumes. 
+
+### Mutagen
+
+put the `mutagen.yml` file in the project root directory see [mutagen-example](example/with-mutagen).
+
+In the `docker-compose.yml` the volume is not exposed.
+
+### Docker-Sync
+
+put the `docker-sync.yml` file in the project root directory see [docker-sync-example](example/with-dockersync).
+
+In the `docker-compose.yml` the volume is not exposed.
+
+### native Docker
+
+define in your `docker-compose.yml` or `docker-compose.override.yml` the exposed volumes.
+
+### override the sync Settings
+
+If you have project where the file-sync done by mutagen or docker-sync. you are able to override
+the setting in a `docker-compose.override.yml` file.
+
+copy sample `docker-compose.override.yml`:
+
+```
+$ dde project:docker-override
+```
+
+this command copies [docker-compose.override.yml](helper/docker-compose.override.yml) to your project directory.
+
+edit the file. With the custom-tag  `x-dde-sync` you can now choose you preferred syncing mode. 
+
+valid values are `docker-sync`, `mutagen` or `volume`
+
+if you use `volume` you must expose the volume in the `docker-compose.override.yml` file. 
+
+## Additional Services
+
+If you need additional central Services. eg. PostgresSQL just add then in `docker-compose.override.yml` in the 
+dde-directory.
+
+Available Services
+
+- [PostgresSQL](postgres/docker-compose.override.yml)
+- MySql
+- Redis
+- ....
+
+
 
 ## Usage
 
