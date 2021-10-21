@@ -15,6 +15,9 @@ function system:env() {
     echo DOCKER_BUILDKIT=${DOCKER_BUILDKIT}
     echo DDE_UID=${DDE_UID}
     echo DDE_GID=${DDE_GID}
+    echo ""
+    _logGreen "Avialable services";
+    system:services
 }
 
 function s:e() {
