@@ -22,9 +22,21 @@ if [[ ! -t 1 ]]; then
     TTY="-T"
 fi
 
+
+
 for commandFile in $(find ${ROOT_DIR}/commands -type f -name "*.sh"); do
-    source ${commandFile}
+    if [[ ${commandFile} != "local.sh" ]]; then
+        source ${commandFile}
+    fi
 done
+
+_syncMode
+
+
+if [[ -f  ${ROOT_DIR}/commands/local.sh ]]; then
+    source ${ROOT_DIR}/commands/local.sh
+fi
+
 
 ## Parse the actual arguments
 _parse_args "${@}"

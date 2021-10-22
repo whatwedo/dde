@@ -213,12 +213,26 @@ function _localCommand_someInternalFunction() {
 * you can add as many functions as you want in the script
 * to avoid conflicts prefix internal functions 
 * functions and can also be defined in the `command/local.sh` file
+* the `command/local.sh` file is the last loaded source, so you are able to overwrite system variables
+and functions there
 
 `command/local.sh`
-```
+```bash
 function _local_someGlobalHelperFunction() {
     echo "a global helper function"
 }
+
+
+# overwrite a variable
+SYNC_MODE=volume
+
+
+# overwrite a function/command
+function project:env() {
+    echo "my custom project env"
+}
+
+
 ```
 
 ## Known problems

@@ -10,5 +10,4 @@ function _checkProject() {
     fi
     mkdir -p .dde
     cp -R ${ROOT_DIR}/helper/configure-image.sh .dde/configure-image.sh
-    _syncMode
 }
