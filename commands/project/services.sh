@@ -1,10 +1,10 @@
 ## Print dde services
 #
 # Command
-#    system:services
+#    project:services
 
 function system:services() {
-    cd ${ROOT_DIR}
-    _logGreen "Available System services:"
+    _checkProject
+    _logGreen "Available project services:"
     _existingServices
 }

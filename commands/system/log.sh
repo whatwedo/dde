@@ -11,7 +11,19 @@
 
 function system:log() {
     cd ${ROOT_DIR}
-    docker-compose logs -f --tail=100 ${1}
+
+    local service=""
+    if [[ "${1}" != "" ]]; then
+        if _serviceExists ${1}; then
+            service=${1}
+        else
+            _logRed "service ${1} does not exists"
+            _existingServices
+            return 1
+        fi
+    fi
+
+    docker-compose logs -f --tail=100 ${service}
 }
 
 
