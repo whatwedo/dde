@@ -4,10 +4,23 @@
 #    project:log
 #    p:l
 #    log
-
+#
+# Arguments
+#    service       optional, show logs of service, default shows all
 function project:log() {
     _checkProject
-    docker-compose logs -f --tail=100
+    local service=""
+    if [[ "${1}" != "" ]]; then
+        if _serviceExists ${1}; then
+            service=${1}
+        else
+            _logRed "service ${1} does not exists in project"
+            _existingServices
+            return 1
+        fi
+    fi
+
+    docker-compose logs -f --tail=100 ${service}
 }
 
 function p:l() {
