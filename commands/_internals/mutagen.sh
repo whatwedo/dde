@@ -27,6 +27,11 @@ function _terminateMutagen() {
     if [ "${SYNC_MODE}" != "mutagen" ]; then
         return
     fi
+
+    if [ ! mutagen project list 2&> /dev/null ]; then
+        return;
+    fi
+
     _logYellow "Terminating Mutagen"
     mutagen project terminate
 }
