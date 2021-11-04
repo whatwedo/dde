@@ -49,7 +49,7 @@ Features include:
 ```
 cd ~
 git clone https://github.com/whatwedo/dde.git
-~/dde/dde.sh system:dde:setup
+~/dde/dde.sh system:dde:install
 ~/dde/dde.sh system:up
 ```
 
@@ -58,7 +58,7 @@ git clone https://github.com/whatwedo/dde.git
 * autocompletion 
 * aliases 
 
-dde can know be used in a new shell, enjoy!
+dde can now be used in a new shell, enjoy!
 
 ### Aliases
 ```
@@ -142,6 +142,39 @@ valid values are `docker-sync`, `mutagen` or `volume`
 
 if you use `volume` you must expose the volume in the `docker-compose.override.yml` file. 
 
+## Tip and Tricks
+
+### OPEN_URL & DDE_BROWSER
+
+Add `OPEN_URL` in the `environment` array of your `docker-compose.yml`.
+
+On the `project:up` or `project:open` command the website(s) will be opened in your standard browser.
+
+
+```yaml
+services:
+    web:
+        ...
+        environment:
+            - VIRTUAL_HOST=cloud.project.test
+            - OPEN_URL=http://cloud.project.test/
+    storage:
+        ...
+        environment:
+            - VIRTUAL_HOST=minio.project.test
+            - OPEN_URL=http://minio.project.test:9000/
+
+```
+
+Set the environment variable `DDE_BROWSER` if you what to start a specific browser.
+
+
+`command/local.sh`
+```bash
+DDE_BROWSER=/usr/bin/firefox
+```
+
+
 ## Additional Services
 
 If you need additional central Services. eg. PostgresSQL just add then in `docker-compose.override.yml` in the 
@@ -179,8 +212,8 @@ Due to the early stage of this project there is no full documentation available.
 
 ## Including custom command
 
-you can include custom command by adding them in the `commands/local/` directory. 
-To access the custome command the command must be prefixed with `local:` namespace.
+you can include custom commands by adding them in the `commands/local/` directory. 
+Custom commands must be prefixed with the `local:` namespace.
 
 ### Anatomy of a command
 
