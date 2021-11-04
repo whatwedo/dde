@@ -32,6 +32,7 @@ function project:up() {
     _logGreen "Finished startup successfully"
 
     _openUrl
+    project:open
 }
 
 function p:u() {
