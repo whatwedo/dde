@@ -6,7 +6,7 @@
 
 function system:destroy() {
     _logRed "Removing containers"
-    docker rm -f $(docker network inspect -f '{{ range $$key, $$value := .Containers }}{{ printf "%s\n" $$key }}{{ end }}' ${NETWORK_NAME}) &>/dev/null
+    docker rm -f $(docker network inspect -f '{{ range $key, $value := .Containers }}{{ printf "%s\n" $key }}{{ end }}' ${NETWORK_NAME}) &>/dev/null
     cd ${ROOT_DIR}
     docker-compose down -v --remove-orphans
 
