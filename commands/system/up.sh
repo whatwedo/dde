@@ -6,8 +6,8 @@
 
 function system:up() {
     _logYellow "Creating network if required"
-    docker network inspect ${NETWORK_NAME} &>/dev/null
-    if [ $? -ne 0 ]; then
+    local networks=$(docker network inspect dde)
+    if [ "$networks" == "[]" ]; then
         docker network create ${NETWORK_NAME}
     fi
 
