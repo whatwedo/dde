@@ -6,6 +6,7 @@ DC="${DC:-exec}"
 SOURCE=${BASH_SOURCE}
 ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 CERT_DIR=${ROOT_DIR}/data/reverseproxy/etc/nginx/certs
+DATA_DIR=${ROOT_DIR}/data
 HELP_DIR=${ROOT_DIR}/help
 HELPER_DIR=${ROOT_DIR}/helper
 NETWORK_NAME=dde
