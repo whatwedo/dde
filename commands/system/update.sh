@@ -13,7 +13,7 @@ function system:update() {
     git pull
 
     _logYellow "Updating docker images"
-    cd $(ROOT_DIR)
+    cd ${ROOT_DIR}
     docker-compose pull
     docker-compose build --pull
 
