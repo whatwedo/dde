@@ -14,7 +14,7 @@ function system:update() {
 
     _logYellow "Updating docker images"
     cd $(ROOT_DIR)
-    docker-compose pul
+    docker-compose pull
     docker-compose build --pull
 
     _logYellow "Starting dde (system)"
