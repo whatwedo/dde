@@ -5,6 +5,8 @@
 #    system-up
 
 function system:up() {
+    _ddeCheckUpdate
+
     _logYellow "Creating network if required"
     local networks=$(docker network inspect dde)
     if [ "$(docker network ls --filter=name=${NETWORK_NAME} -q)" == "" ]; then
