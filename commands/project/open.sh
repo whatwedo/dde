@@ -13,7 +13,7 @@ function project:open() {
 
     _serviceExists web
 
-    for openUrl in $(docker-compose config | _yq e '.services.*.environment.OPEN_URL'); do
+    for openUrl in $(docker-compose config | _yq_stdin e '.services.*.environment.OPEN_URL'); do
         if [[ "${openUrl}" != "null" ]]; then
             _logGreen "open ${openUrl}"
 
