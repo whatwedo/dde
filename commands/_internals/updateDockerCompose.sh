@@ -9,7 +9,7 @@ function _updateDockerCompose() {
         _logYellow "docker-compose deprecation: move networks.default.name"
         _yq eval 'del(.networks.default.external.name)' --inplace docker-compose.yml
 
-        if [ "$(yq eval '.networks.default.external | length' docker-compose.yml)" = "0" ]; then
+        if [ "$(_yq eval '.networks.default.external | length' docker-compose.yml)" = "0" ]; then
             _yq eval 'del(.networks.default.external)' --inplace docker-compose.yml
         fi
 
@@ -26,7 +26,7 @@ function _updateDockerCompose() {
         _logYellow "docker-compose deprecation: move volumes.ssh-agent_socket-dir.external.name"
         _yq eval 'del(.volumes.ssh-agent_socket-dir.external.name)' --inplace docker-compose.yml
 
-        if [ "$(yq eval '.volumes.ssh-agent_socket-dir.external | length' docker-compose.yml)" = "0" ]; then
+        if [ "$(_yq eval '.volumes.ssh-agent_socket-dir.external | length' docker-compose.yml)" = "0" ]; then
             _yq eval 'del(.volumes.ssh-agent_socket-dir.external)' --inplace docker-compose.yml
         fi
 
