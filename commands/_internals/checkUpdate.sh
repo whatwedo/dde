@@ -8,9 +8,10 @@ function _ddeCheckUpdate() {
 
     dde_git_upstream=${1:-'@{u}'}
     dde_git_local=$(git rev-parse @)
+    dde_git_remote=$(git rev-parse "$dde_git_upstream")
     dde_git_base=$(git merge-base @ "$dde_git_upstream")
 
-    if [ $dde_git_local = $dde_git_base ]; then
+    if [ "$dde_git_local" != "$dde_git_remote" ] && [ "$dde_git_local" = "$dde_git_base" ]; then
         _logRed ""
         _logRed "--------------------------------------------"
         _logRed "|           dde update available           |"
