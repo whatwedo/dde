@@ -9,6 +9,7 @@ function system:env() {
     echo OSTYPE=${OSTYPE}
     echo SOURCE=${SOURCE}
     echo ROOT_DIR=${ROOT_DIR}
+    echo DATA_DIR=${DATA_DIR}
     echo CERT_DIR=${CERT_DIR}
     echo HELPER_DIR=${HELPER_DIR}
     echo NETWORK_NAME=${NETWORK_NAME}
