@@ -35,9 +35,9 @@ function system:up() {
     _logYellow "Starting containers"
     cd ${ROOT_DIR}
 
-    _addSshKey
-
     docker-compose up -d
+
+    _addSshKey
 
     _logGreen "Finished startup successfully"
 }
