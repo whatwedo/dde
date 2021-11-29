@@ -11,7 +11,8 @@ function system:destroy() {
     docker-compose down -v --remove-orphans
 
     _logRed "Removing network if created"
-    if [ $(docker network ls | grep ${NETWORK_NAME}) ]; then
+    if [ "$(docker network ls --filter=name=${NETWORK_NAME} -q)" != "" ]; then
+        _logRed "Remove network ${NETWORK_NAME}"
         docker network rm ${NETWORK_NAME}
     fi
 
