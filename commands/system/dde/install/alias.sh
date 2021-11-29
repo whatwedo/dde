@@ -6,6 +6,9 @@ function system:dde:install:alias() {
         _rcFile="${HOME}/.zshrc"
     elif [[ `basename $SHELL` == "bash" ]]; then
         _rcFile="${HOME}/.bash_profile"
+        if [[ "${OSTYPE}" == "linux-gnu" ]]; then
+            _rcFile="${HOME}/.bashrc"
+        fi
     fi
 
     if [[ "${_rcFile}" == "" ]]; then
