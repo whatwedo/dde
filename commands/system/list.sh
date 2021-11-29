@@ -7,15 +7,17 @@ function system:list() {
     local currentDir=${pwd}
 
     for serviceName in $(docker ps --format {{.Names}}); do
-#        echo "${serviceName}"
         local dirs
         if [ "$(docker inspect --format='{{json .NetworkSettings.Networks.dde}}' ${serviceName})" != "null" ]; then
-            for dir in $(docker inspect --format='{{json .Config.Labels}}' ${serviceName} | _yq e '."com.docker.compose.project.working_dir"'); do
-
+            for dir in $(docker inspect --format='{{index .Config.Labels "com.docker.compose.project.working_dir" }}' ${serviceName}); do
                 if [[ ! " ${dirs[*]} " =~ " ${dir} " ]]; then
                     dirs+=" ${dir} "
                     echo ""
-                    _logYellow "Project ${dir} is running"
+                    if [ "${dir}" != "${ROOT_DIR}" ]; then
+                        _logYellow "Project ${dir} is running"
+                    else
+                        _logYellow "System ${dir} is running"
+                    fi
                     cd ${dir}
                     docker-compose ps --services
                 fi
