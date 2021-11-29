@@ -7,7 +7,8 @@
 function system:up() {
     _logYellow "Creating network if required"
     local networks=$(docker network inspect dde)
-    if [ "$networks" == "[]" ]; then
+    if [ "$(docker network ls --filter=name=${NETWORK_NAME} -q)" == "" ]; then
+        _logGreen "Create network ${NETWORK_NAME}"
         docker network create ${NETWORK_NAME}
     fi
 
@@ -31,9 +32,10 @@ function system:up() {
 
     _logYellow "Starting containers"
     cd ${ROOT_DIR}
-    docker-compose up -d
 
     _addSshKey
+
+    docker-compose up -d
 
     _logGreen "Finished startup successfully"
 }
