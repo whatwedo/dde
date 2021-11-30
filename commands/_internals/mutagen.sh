@@ -28,11 +28,7 @@ function _terminateMutagen() {
         return
     fi
 
-    if [ ! mutagen project list 2&> /dev/null ]; then
-        return;
-    fi
-
     _logYellow "Terminating Mutagen"
-    mutagen project terminate
+    mutagen project terminate || true
 }
 
