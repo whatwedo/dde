@@ -11,7 +11,6 @@
 
 function project:up() {
     _checkProject
-    _updateDockerCompose
 
     _logYellow "Generating SSL cert"
 
