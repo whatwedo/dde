@@ -3,7 +3,7 @@
 # Command
 #    project:services
 
-function system:services() {
+function project:services() {
     _checkProject
     _logGreen "Available project services:"
     _existingServices
