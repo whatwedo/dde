@@ -1,3 +1,11 @@
+/commands/local.sh
+/commands/local
+!/commands/local/command.sh.dist
+
+./docker-compose.override.yml
+
+
+
 # Data directory
 /data/*
 !/data/.gitkeep
