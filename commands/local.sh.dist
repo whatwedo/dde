@@ -1,0 +1,6 @@
+# custom Browser for the open command
+#DDE_BROWSER=/usr/bin/firefox
+
+function _local_someGlobalHelperFunction() {
+    echo "a global helper function"
+}
