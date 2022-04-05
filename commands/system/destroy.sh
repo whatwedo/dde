@@ -8,7 +8,7 @@ function system:destroy() {
     _logRed "Removing containers"
     docker rm -f $(docker network inspect -f '{{ range $key, $value := .Containers }}{{ printf "%s\n" $key }}{{ end }}' ${NETWORK_NAME}) &>/dev/null
     cd ${ROOT_DIR}
-    docker-compose down -v --remove-orphans
+    docker-compose down --remove-orphans
 
     _logRed "Removing network if created"
     if [ "$(docker network ls --filter=name=${NETWORK_NAME} -q)" != "" ]; then
