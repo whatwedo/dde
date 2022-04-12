@@ -8,7 +8,7 @@ function project:destroy() {
     _checkProject
 
     _logYellow "Removing containers"
-    docker-compose down -v --remove-orphans
+    docker-compose down --remove-orphans
 
     _logYellow "Deleting SSL certs"
 
