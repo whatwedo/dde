@@ -268,6 +268,17 @@ function project:env() {
 
 ```
 
+## Known solutions
+* **failed to remove network dde**  
+If you get this error it means your project `docker-compose.yml` is wrongly configured.
+Be sure to mark the `dde` network as external, like in our examples:
+```yml
+networks:
+    default:
+        external: # <-- important
+            name: "dde"
+```
+
 ## Known problems
 
 * Files of filesystem mapped with docker-sync will get group id `0`.
