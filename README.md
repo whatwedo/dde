@@ -25,7 +25,7 @@ Features include:
 
 ## Requirements
 
-* macOS or Ubuntu
+* macOS, Ubuntu or Windows (WSL 2)
 * [Docker 17.09.0+](https://docs.docker.com/)
 * [docker-compose 1.22+](https://docs.docker.com/compose/)
 * [docker-sync 0.5+](http://docker-sync.io/) 
@@ -102,6 +102,35 @@ Trust the newly generated Root-CA found here:
 ```
 ~/dde/data/reverseproxy/etc/nginx/certs/ca.pem
 ```
+
+#### Windows (WSL 2)
+
+Set your DNS to `127.0.0.1` with fallbacks of your choice.
+
+1. In WSL-Terminal, adjust the file `/etc/wsl.conf` to
+
+```
+[network]
+generateResolvConf = false
+```
+
+2. Remove the file / link `resolv.conf` and close the WSL-Terminal
+
+3. To restart WSL, run in powershell (admin):
+
+```
+wsl --shutdown
+Get-Service LxssManager | Restart-Service
+```
+
+4. Open a WSL-Terminal and create a file `/etc/resolv.conf` with the following content:
+
+```
+nameserver 127.0.0.1
+nameserver 1.1.1.1
+```
+
+5. Restart WSL again (step #3)
 
 ## File-Sync
 
