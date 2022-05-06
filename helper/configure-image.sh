@@ -31,7 +31,7 @@ case "$PACKAGE_MANAGER" in
             apt-get install -qq curl
             ;;
         apk)
-            apk add --no-cache --virtual .temp-dde-deps curl shadow
+            apk add --update-cache --upgrade --virtual .temp-dde-deps curl shadow
 esac
 
 # Install gosu
