@@ -1,3 +1,11 @@
+/commands/local.sh
+/commands/local
+!/commands/local/command.sh.dist
+
+./docker-compose.override.yml
+
+
+
 # Data directory
 /data/*
 !/data/.gitkeep
@@ -9,6 +17,8 @@
 /data/reverseproxy/etc/nginx/*
 !/data/reverseproxy/etc/nginx/conf.d
 /data/reverseproxy/etc/nginx/conf.d/*
+!/data/reverseproxy/etc/nginx/vhost.d
+/data/reverseproxy/etc/nginx/vhost.d/*
 !/data/reverseproxy/etc/nginx/conf.d/dde.conf
 
 # Vagrant

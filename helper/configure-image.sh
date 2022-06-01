@@ -31,7 +31,7 @@ case "$PACKAGE_MANAGER" in
             apt-get install -qq curl
             ;;
         apk)
-            apk add --no-cache --virtual .temp-dde-deps curl shadow
+            apk add --update-cache --upgrade --virtual .temp-dde-deps curl shadow
 esac
 
 # Install gosu
@@ -65,12 +65,16 @@ fi
 if [ -d /var/tmp/nginx ]; then
     chown -R dde:dde /var/tmp/nginx
 fi
+if [ -d /var/lib/nginx/tmp ]; then
+    chown -R dde:dde /var/lib/nginx/tmp
+fi
 if [ -d /var/www ]; then
     chown -R dde:dde /var/www
 fi
 
 # Configure PHP
-if [ -d /etc/php* ]; then
+phpConfigFiles=$(ls /etc/php* 2> /dev/null | wc -l)
+if [ "$phpConfigFiles" != "0" ]; then
     find /etc/php* -type f -name www.conf -print0 | xargs -r -0 sed -i "s/user = .*/user = dde/"
     find /etc/php* -type f -name www.conf -print0 | xargs -r -0 sed -i "s/group = .*/group = dde/"
     find /etc/php* -type f -name www.conf -print0 | xargs -r -0 sed -i "s/listen\.owner.*/listen.owner = dde/"
