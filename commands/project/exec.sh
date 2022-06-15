@@ -1,4 +1,4 @@
-## Opens shell with user dde on first container or defined service
+## Opens shell with user dde on first container
 #
 # Command
 #    project:exec
@@ -21,7 +21,7 @@ function project:exec() {
         fi
     fi
 
-    docker-compose exec ${service} gosu dde sh
+    docker-compose exec ${service} /bin/sh -c "if [ -f /usr/bin/doas ]; then doas -u dde sh; else gosu dde sh; fi"
 }
 
 function p:e() {
