@@ -1,4 +1,7 @@
-## fix permissions in webcontainer
+## fix permissions in webcontainer and locally
+#
+# resolve permission issues by `chown dde:dde` in the container
+# and `chown {yourLocalUser}:{yourLocalGroup}` in the local host.
 #
 # Command:
 #   project:fix-permission [container] [persmission] [path]
