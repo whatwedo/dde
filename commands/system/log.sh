@@ -23,7 +23,7 @@ function system:log() {
         fi
     fi
 
-    docker-compose logs -f --tail=100 ${service}
+    ${DOCKER_COMPOSE} logs -f --tail=100 ${service}
 }
 
 

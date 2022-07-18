@@ -21,7 +21,7 @@ function project:exec() {
         fi
     fi
 
-    docker-compose exec ${service} /bin/sh -c "if [ -f /usr/bin/doas ]; then doas -u dde sh; else gosu dde sh; fi"
+    ${DOCKER_COMPOSE} exec ${service} /bin/sh -c "if [ -f /usr/bin/doas ]; then doas -u dde sh; else gosu dde sh; fi"
 }
 
 function p:e() {

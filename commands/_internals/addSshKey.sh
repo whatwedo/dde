@@ -10,6 +10,6 @@ function _addSshKey() {
 
     local oldPwd=$(pwd)
     cd ${ROOT_DIR}
-    docker-compose exec ssh-agent sh -c /import-keys.sh
+    ${DOCKER_COMPOSE} exec ssh-agent sh -c /import-keys.sh
     cd ${oldPwd}
 }

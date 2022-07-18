@@ -19,7 +19,7 @@ function system:list() {
                         _logYellow "System ${dir} is running"
                     fi
                     cd ${dir}
-                    docker-compose ps --services
+                    ${DOCKER_COMPOSE} ps --services
                 fi
             done
         fi
