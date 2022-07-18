@@ -14,6 +14,7 @@ DOCKER_BUILDKIT=1
 DDE_UID=$(id -u)
 DDE_GID=$(id -g)
 DDE_BROWSER=
+DOCKER_COMPOSE='docker-compose'
 export DDE_UID
 export DDE_GID
 

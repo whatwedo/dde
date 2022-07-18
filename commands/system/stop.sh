@@ -6,7 +6,7 @@
 
 function system:stop() {
     cd ${ROOT_DIR}
-    docker-compose stop
+    ${DOCKER_COMPOSE} stop
 }
 
 function system-stop() {

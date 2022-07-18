@@ -6,7 +6,7 @@
 
 function system:config() {
     cd ${ROOT_DIR}
-    docker-compose config
+    ${DOCKER_COMPOSE} config
 }
 
 function s:c() {

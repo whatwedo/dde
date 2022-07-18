@@ -7,7 +7,7 @@
 
 function system:status() {
     cd ${ROOT_DIR}
-    docker-compose ps
+    ${DOCKER_COMPOSE} ps
 }
 
 function s:s() {

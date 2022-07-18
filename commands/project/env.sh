@@ -20,7 +20,7 @@ function project:env() {
 
     echo ""
     _logYellow "Project services"
-    docker-compose ps --services
+    ${DOCKER_COMPOSE} ps --services
 
 }
 
