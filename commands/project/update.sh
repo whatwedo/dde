@@ -11,8 +11,8 @@ function project:update() {
     project:destroy
 
     _logYellow " Pulling/building images"
-    docker-compose build --pull
-    docker-compose pull
+    ${DOCKER_COMPOSE} build --pull
+    ${DOCKER_COMPOSE} pull
 
     _logYellow "Starting project"
     project:up

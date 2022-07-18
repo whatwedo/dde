@@ -1,6 +1,8 @@
 # custom Browser for the open command
 #DDE_BROWSER=/usr/bin/firefox
 
+#DOCKER_COMPOSE='docker compose'
+
 function _local_someGlobalHelperFunction() {
     echo "a global helper function"
 }

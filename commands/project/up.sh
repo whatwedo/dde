@@ -24,7 +24,7 @@ function project:up() {
     fi
 
     _logYellow "Starting containers"
-    docker-compose up -d
+    ${DOCKER_COMPOSE} up -d
 
     if [ "${SYNC_MODE}" = "mutagen" ]; then
         _startOrResumeMutagen
