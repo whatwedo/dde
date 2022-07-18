@@ -20,7 +20,7 @@ function project:log() {
         fi
     fi
 
-    docker-compose logs -f --tail=100 ${service}
+    ${DOCKER_COMPOSE} logs -f --tail=100 ${service}
 }
 
 function p:l() {

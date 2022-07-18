@@ -11,5 +11,5 @@ _serviceExists() {
 }
 
 _existingServices() {
-    docker-compose ps --services
+    ${DOCKER_COMPOSE} ps --services
 }

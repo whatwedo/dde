@@ -6,7 +6,7 @@
 
 function system:exec() {
     cd ${ROOT_DIR}
-    docker-compose exec ${1} /bin/sh
+    ${DOCKER_COMPOSE} exec ${1} /bin/sh
 }
 
 
