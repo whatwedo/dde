@@ -173,6 +173,17 @@ if you use `volume` you must expose the volume in the `docker-compose.override.y
 
 ## Tip and Tricks
 
+### Fix Permission
+
+Services such as nginx in Docker containers normally runs with the `root` user. With the `dde exec` command
+you login into the container with the user `dde`. If services writes files, ex. `var/cache`, `root` is the owner. 
+On the host files also the `root` is the owner. In this case you normally not able to delete or change the files 
+created by the services.
+
+the [command](commands/project/fix-permissions.sh) `project:fix-permissions` resolve this issue by `chown dde:dde` 
+in the container and `chown {yourLocalUser}:{yourLocalGroup}` in the local host.
+
+
 ### OPEN_URL & DDE_BROWSER
 
 Add `OPEN_URL` in the `environment` array of your `docker-compose.yml`.
@@ -211,7 +222,7 @@ dde-directory.
 
 Available Services
 
-- [PostgresSQL](postgres/docker-compose.override.yml)
+- [PostgresSQL](services/postgres/docker-compose.override.yml)
 - MySql
 - Redis
 - ....
@@ -263,15 +274,15 @@ function local:my_command() {
 }
 
 function _localCommand_someInternalFunction() {
-    echo "do something with ${1}
+    echo "do something with ${1}"
 }
 ```
 
-* scipt must be located in the `command` directory
+* script must be located in the `command` directory
 * Help text for the commands
   * `:` will be replaced by `/` for locating the help script
-  * the first line beginning with `##` is the help text diplayed be the help command
-  * all following lines beginning with `#` will diplayed in the command help 
+  * the first line beginning with `##` is the help text displayed be the help command
+  * all following lines beginning with `#` will displayed in the command help 
 * you can add as many functions as you want in the script
 * to avoid conflicts prefix internal functions 
 * functions and can also be defined in the `command/local.sh` file
