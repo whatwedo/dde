@@ -37,7 +37,7 @@ function project:fix-permissions() {
     fi
 
     _logYellow "appling 'chown -hR ${permission} ${path}' on container ${container}"
-    docker-compose exec ${container} chown -hR ${permission} ${path}
+    ${DOCKER_COMPOSE} exec ${container} chown -hR ${permission} ${path}
 
     _logYellow "appling 'chown -hR ${user}:${group}' locally"
     sudo chown -hR ${user}:${group} .
