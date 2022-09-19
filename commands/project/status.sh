@@ -6,7 +6,7 @@
 
 function project:status() {
     _checkProject
-    docker-compose ps
+    ${DOCKER_COMPOSE} ps
 }
 
 function status() {
