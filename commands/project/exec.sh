@@ -21,6 +21,11 @@ function project:exec() {
         fi
     fi
 
+    if _serviceRunning ${service}; then
+        _logYellow "Project is not running. Starting .."
+        project:up
+    fi
+
     ${DOCKER_COMPOSE} exec ${service} /bin/sh -c "if [ -f /usr/bin/doas ]; then doas -u dde sh; else gosu dde sh; fi"
 }
 
