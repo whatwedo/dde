@@ -1,7 +1,7 @@
 _serviceRunning() {
-    local running=1
+    local running=0
     if [ -z `docker ps -q --no-trunc | grep $(${DOCKER_COMPOSE} ps -q ${1})` ]; then
-        running=0
+        running=1
     fi
 
     return ${running}
