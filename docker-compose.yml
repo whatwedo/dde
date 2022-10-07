@@ -32,7 +32,7 @@ services:
         container_name: dde_reverseproxy
 
     portainer:
-        image: portainer/portainer
+        image: portainer/portainer:1.25.0
         restart: unless-stopped
         command: --no-auth -H unix:///var/run/docker.sock
         environment:
