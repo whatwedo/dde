@@ -13,7 +13,6 @@ Features include:
     * Reverse Proxy based on [jwilder/nginx-proxy](https://github.com/jwilder/nginx-proxy) to run multiple projects on same port (80/443) with autoconfigured SSL certificates
     * [MariaDB](https://mariadb.org/) ([MySQL](https://www.mysql.com/) alternative)
     * [MailHog](https://github.com/mailhog/MailHog) (SMTP testing server)
-    * [Portainer](https://www.portainer.io/) (Docker Webinterface)
     * [ssh-agent](https://www.ssh.com/ssh/agent) used for sharing your SSH key without adding it to your project Docker containers.
 * Choose you preferred file sharing
     * docker volume export

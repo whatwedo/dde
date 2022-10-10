@@ -31,18 +31,6 @@ services:
         domainname: test
         container_name: dde_reverseproxy
 
-    portainer:
-        image: portainer/portainer
-        restart: unless-stopped
-        command: --no-auth -H unix:///var/run/docker.sock
-        environment:
-            - VIRTUAL_HOST=portainer.test
-        volumes:
-            - /var/run/docker.sock:/var/run/docker.sock
-        hostname: portainer
-        domainname: test
-        container_name: dde_portainer
-
     mariadb:
         image: mariadb:10.5
         restart: unless-stopped
