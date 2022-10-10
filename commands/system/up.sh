@@ -29,7 +29,6 @@ function system:up() {
     fi
 
     _logYellow "Creating certs used by system services"
-    ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} portainer.test
     ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} mailhog.test
 
     _logYellow "Starting containers"
