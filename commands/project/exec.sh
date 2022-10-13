@@ -21,8 +21,8 @@ function project:exec() {
         fi
     fi
 
-    if ! _serviceRunning ${service}; then
-        _logYellow "Project is not running. Starting .."
+    if ! _serviceIsRunning ${service}; then
+        _logYellow "Project is not running. Starting ..."
         project:up
     fi
 
