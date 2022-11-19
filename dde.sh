@@ -15,6 +15,7 @@ DDE_UID=$(id -u)
 DDE_GID=$(id -g)
 DDE_BROWSER=
 DOCKER_COMPOSE='docker-compose'
+DOCKER_BIN='docker'
 export DDE_UID
 export DDE_GID
 

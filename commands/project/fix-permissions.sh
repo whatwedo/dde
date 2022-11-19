@@ -18,7 +18,7 @@ function project:fix-permissions() {
         _logYellow "fix-permissions not allowed with sync-mode '${SYNC_MODE}'"
     fi
 
-    local container=$(docker run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//')
+    local container=$(${DOCKER_BIN} run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//')
     local permission="dde:dde"
     local path="/var/www"
     local user=$(id -u)
