@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+
+    reverseproxy:
+        image: jwilder/nginx-proxy
+        restart: unless-stopped
+        ports:
+            - "127.0.0.1:80:80"
+            - "127.0.0.1:443:443"
+        environment:
+            - SSL_POLICY=Mozilla-Modern
+        volumes:
+            - /var/run/docker.sock:/tmp/docker.sock:ro
+            - ./../../data/reverseproxy/etc/nginx/certs:/etc/nginx/certs:ro
+            - ./../../data/reverseproxy/etc/nginx/vhost.d:/etc/nginx/vhost.d:ro
+            - ./../../data/reverseproxy/etc/nginx/conf.d/dde.conf:/etc/nginx/conf.d/dde.conf:ro
+        hostname: reverseproxy
+        domainname: test
+        container_name: dde_reverseproxy
+
+
+networks:
+    default:
+        name: dde
+        external: true
+
+volumes:
+    ssh-agent_socket-dir:
+        name: dde_ssh-agent_socket-dir

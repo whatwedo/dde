@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+    dnsmasq:
+        image: andyshinn/dnsmasq
+        restart: unless-stopped
+        cap_add:
+            - NET_ADMIN
+        ports:
+            - "127.0.0.1:53:53/tcp"
+            - "127.0.0.1:53:53/udp"
+        command: --address=/.test/127.0.0.1 --server 8.8.8.8 --server 8.8.4.4 --log-facility=-
+        hostname: dnsmasq
+        domainname: test
+        container_name: dde_dnsmasq
+
+networks:
+    default:
+        name: dde
+        external: true
+
+volumes:
+    ssh-agent_socket-dir:
+        name: dde_ssh-agent_socket-dir
