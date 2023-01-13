@@ -1,0 +1,28 @@
+auth:
+  - user: dde
+    group: dde
+    uid: 1000
+    gid: 1000
+    password: dde
+
+global:
+  - "force user = dde"
+  - "force group = dde"
+
+share:
+  - name: public
+    comment: Public
+    path: /samba/public
+    browsable: yes
+    readonly: yes
+    guestok: yes
+    veto: no
+    recycle: yes
+  - name: dde
+    path: /samba/dde
+    browsable: yes
+    readonly: no
+    guestok: no
+    validusers: dde
+    writelist: dde
+    veto: no
