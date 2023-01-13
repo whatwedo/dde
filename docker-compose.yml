@@ -1,63 +1,6 @@
-version: '3.4'
+version: '3.8'
 
 services:
-    dnsmasq:
-        image: andyshinn/dnsmasq
-        restart: unless-stopped
-        cap_add:
-            - NET_ADMIN
-        ports:
-            - "127.0.0.1:53:53/tcp"
-            - "127.0.0.1:53:53/udp"
-        command: --address=/.test/127.0.0.1 --server 8.8.8.8 --server 8.8.4.4 --log-facility=-
-        hostname: dnsmasq
-        domainname: test
-        container_name: dde_dnsmasq
-
-    reverseproxy:
-        image: jwilder/nginx-proxy
-        restart: unless-stopped
-        ports:
-            - "127.0.0.1:80:80"
-            - "127.0.0.1:443:443"
-        environment:
-            - SSL_POLICY=Mozilla-Modern
-        volumes:
-            - /var/run/docker.sock:/tmp/docker.sock:ro
-            - ./data/reverseproxy/etc/nginx/certs:/etc/nginx/certs:ro
-            - ./data/reverseproxy/etc/nginx/vhost.d:/etc/nginx/vhost.d:ro
-            - ./data/reverseproxy/etc/nginx/conf.d/dde.conf:/etc/nginx/conf.d/dde.conf:ro
-        hostname: reverseproxy
-        domainname: test
-        container_name: dde_reverseproxy
-
-    mariadb:
-        image: mariadb:10.5
-        restart: unless-stopped
-        ports:
-            - "127.0.0.1:3306:3306"
-        environment:
-            - MYSQL_ROOT_PASSWORD=root
-        volumes:
-            - ./data/mariadb/var/lib/mysql:/var/lib/mysql:delegated
-        hostname: mariadb
-        domainname: test
-        container_name: dde_mariadb
-
-    mailhog:
-        image: mailhog/mailhog
-        restart: unless-stopped
-        command: -storage=maildir -maildir-path=/var/lib/mailhog
-        environment:
-            - VIRTUAL_HOST=mailhog.test
-            - VIRTUAL_PORT=8025
-        volumes:
-            - ./data/mailhog/var/lib/mailhog:/var/lib/mailhog:delegated
-        ports:
-            - "127.0.0.1:1025:1025"
-        hostname: mailhog
-        domainname: test
-        container_name: dde_mailhog
 
     ssh-agent:
         build:
@@ -75,8 +18,8 @@ services:
 
 networks:
     default:
-        external:
-            name: "dde"
+        name: dde
+        external: true
 
 volumes:
     ssh-agent_socket-dir:

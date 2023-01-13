@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+    postgres:
+        image: postgres:14-alpine
+        restart: unless-stopped
+        shm_size: 1g
+        ports:
+            - "127.0.0.1:5432:5432"
+        environment:
+            - POSTGRES_PASSWORD=postgres
+        volumes:
+            - ./../../data/postgresql/var/lib/postgresql/data:/var/lib/postgresql/data:delegated
+        hostname: postgres
+        domainname: test
+        container_name: dde_postgres
+
+
+networks:
+    default:
+        name: dde
+        external: true
+
+volumes:
+    ssh-agent_socket-dir:
+        name: dde_ssh-agent_socket-dir

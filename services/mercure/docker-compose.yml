@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+
+
+    mercure:
+        # In production, you may want to use the managed version of Mercure, https://mercure.rocks
+        image: dunglas/mercure
+        container_name: dde_mercure
+        environment:
+            - VIRTUAL_HOST=mercure.test
+            # You should definitely change all these values in production
+            - JWT_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+            - ALLOW_ANONYMOUS=1
+            - CORS_ALLOWED_ORIGINS=*
+            - PUBLISH_ALLOWED_ORIGINS=http://localhost:1337,https://localhost:1338
+            - DEMO=1
+        ports:
+          - "1337:80"
+        restart: always
+
+networks:
+    default:
+        name: dde
+        external: true
+
+volumes:
+    ssh-agent_socket-dir:
+        name: dde_ssh-agent_socket-dir
