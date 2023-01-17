@@ -1,7 +1,7 @@
 # Update to Service.d Version
 
 - List all containers
-  - `docker stop`
+  - `docker ps`
 - stop all DDE-System Container (dde_*)
   - `docker stop dde_dnsmasq dde_mailhog dde_mariadb dde_reverseproxy`
 - remove all DDE-System Container (dde_*)
