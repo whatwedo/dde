@@ -49,6 +49,10 @@ Features include:
 cd ~
 git clone https://github.com/whatwedo/dde.git
 ~/dde/dde.sh system:dde:install
+~/dde/dde system:services:enable dnsmasq
+~/dde/dde system:services:enable mailhog
+~/dde/dde system:services:enable mariadb
+~/dde/dde system:services:enable reverseproxy
 ~/dde/dde.sh system:up
 ```
 
@@ -213,18 +217,35 @@ Set the environment variable `DDE_BROWSER` if you what to start a specific brows
 DDE_BROWSER=/usr/bin/firefox
 ```
 
+## Services
 
-## Additional Services
+With DDE you can install, enable and disable central system services.
 
-If you need additional central Services. eg. PostgresSQL just add then in `docker-compose.override.yml` in the 
-dde-directory.
+By adding new service in the `services` directory you can add new central services:
 
-Available Services
+example
 
-- [PostgresSQL](services/postgres/docker-compose.override.yml)
-- MySql
-- Redis
-- ....
+```
+services\
+    mycustomserver\
+        docker-compose.yaml
+```
+
+Enable Service:
+
+```shell
+> dde system:services:enable mycustomserver
+> dde system:up
+
+```
+
+### Manage Services
+
+  - list available service `dde system:services:available`
+  - list enabled service `dde system:services:enabled`
+  - enable service ex. `dde system:services:enable mailhog`
+  - disable service ex. `dde system:services:disable mailhog`
+
 
 
 
