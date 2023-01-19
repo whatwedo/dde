@@ -5,17 +5,17 @@
 #    p:e:r
 #    exec-root
 
-function project:exec:root() {
+function project:shell:root() {
     _checkProject
     ${DOCKER_COMPOSE} exec $(docker run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//') sh
 }
 
-function p:e:r() {
-    project:exec:root
+function p:s:r() {
+    project:shell:root
 }
 
-function exec-root() {
-    project:exec:root
+function shell-root() {
+    project:shell:root
 }
 
 
