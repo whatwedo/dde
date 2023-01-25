@@ -1,5 +1,9 @@
 # Update to Service.d Version
 
+- `dde system:update`
+  - fingers crossed, if is not working use manual procedure
+
+## Manual Procedure
 - List all containers
   - `docker ps`
 - stop all DDE-System Container (dde_*)
