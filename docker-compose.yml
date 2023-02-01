@@ -75,8 +75,8 @@ services:
 
 networks:
     default:
-        external:
-            name: "dde"
+        name: "dde"
+        external: true
 
 volumes:
     ssh-agent_socket-dir:
