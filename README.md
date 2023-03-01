@@ -26,7 +26,6 @@ Features include:
 
 * macOS, Ubuntu or Windows (WSL 2)
 * [Docker 17.09.0+](https://docs.docker.com/)
-* [docker-compose 1.22+](https://docs.docker.com/compose/)
 * [docker-sync 0.5+](http://docker-sync.io/) 
 * [Mutagen v0.10.0+](https://mutagen.io/)
 * [Bash](https://www.gnu.org/software/bash/)
