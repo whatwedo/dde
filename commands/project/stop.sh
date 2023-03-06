@@ -15,7 +15,7 @@ function project:stop() {
     fi
 
     if [ "${SYNC_MODE}" = "docker-sync" ]; then
-        _stopDockerSyn
+        _stopDockerSync
     fi
 }
 
