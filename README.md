@@ -234,16 +234,6 @@ Available Services
 $ dde help
 ```
 
-### Insparations
-
-https://github.com/stylemistake/runner
-
-https://github.com/nickjj/docker-flask-example
-
-https://github.com/adriancooney/Taskfile
-
-
-
 ### Project configuration
 
 Due to the early stage of this project there is no full documentation available. We created a [example](example) project with all required and optional configuration. Please checkout the [example](example) directory.
