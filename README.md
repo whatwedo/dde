@@ -304,8 +304,8 @@ Be sure to mark the `dde` network as external, like in our examples:
 ```yml
 networks:
     default:
-        external: # <-- important
-            name: "dde"
+        name: "dde"
+        external: true # <-- important
 ```
 
 ## Known problems
