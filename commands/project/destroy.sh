@@ -12,7 +12,7 @@ function project:destroy() {
 
     _logYellow "Deleting SSL certs"
 
-    for vhost in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.VIRTUAL_HOST'); do
+    for vhost in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.VIRTUAL_HOST' | grep -v null); do
         _logYellow "Delete certs for ${vhost}"
         rm -f ${CERT_DIR}/${vhost}.*
     done

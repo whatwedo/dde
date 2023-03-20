@@ -14,7 +14,7 @@ function project:up() {
 
     _logYellow "Generating SSL cert"
 
-    for vhost in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.VIRTUAL_HOST'); do
+    for vhost in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.VIRTUAL_HOST' | grep -v null); do
         ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} ${vhost}
     done
 
