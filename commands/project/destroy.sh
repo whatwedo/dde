@@ -12,6 +12,13 @@ function project:destroy() {
 
     _logYellow "Deleting SSL certs"
 
+    if [ -f "docker-compose.override.yml" ]; then
+        for vhost in $(grep VIRTUAL_HOST= docker-compose.override.yml | cut -d'=' -f2); do
+            _logYellow "Delete certs for ${vhost}"
+            rm -f ${CERT_DIR}/${vhost}.*
+        done
+    fi
+
     for vhost in $(grep VIRTUAL_HOST= docker-compose.yml | cut -d'=' -f2); do
         _logYellow "Delete certs for ${vhost}"
         rm -f ${CERT_DIR}/${vhost}.*
