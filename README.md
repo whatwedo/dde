@@ -205,6 +205,23 @@ services:
 
 ```
 
+or
+
+```yaml
+services:
+    web:
+        ...
+        environment:
+            VIRTUAL_HOST: 'cloud.project.test'
+            OPEN_URL: 'http://cloud.project.test/'
+    storage:
+        ...
+        environment:
+            VIRTUAL_HOST: 'minio.project.test'
+            OPEN_URL: 'http://minio.project.test:9000/'
+
+```
+
 Set the environment variable `DDE_BROWSER` if you what to start a specific browser.
 
 
