@@ -1,4 +1,4 @@
-version: '3.4' # Minimal docker-compose.yml compatibility
+version: '3.5' # Minimal docker-compose.yml compatibility
 services:
     web: # Example web service
         build:
@@ -18,13 +18,13 @@ services:
 
 networks: # Attach dde network
     default:
-        external:
-            name: "dde"
+        name: "dde"
+        external: true
 
 volumes:
     ssh-agent_socket-dir: # Optional: Use shared ssh-agent
-        external:
-            name: dde_ssh-agent_socket-dir
+        name: dde_ssh-agent_socket-dir
+        external: true
     sync: # Mount docker-sync volume
-        external:
-            name: example_sync  # Use value configured in docker-sync.yml
+        name: example_sync  # Use value configured in docker-sync.yml
+        external: true
