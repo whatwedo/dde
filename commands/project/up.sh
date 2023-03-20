@@ -14,6 +14,12 @@ function project:up() {
 
     _logYellow "Generating SSL cert"
 
+    if [ -f "docker-compose.override.yml" ]; then
+        for vhost in $(grep VIRTUAL_HOST= docker-compose.override.yml | cut -d'=' -f2); do
+            ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} ${vhost}
+        done
+    fi
+
     for vhost in $(grep VIRTUAL_HOST= docker-compose.yml | cut -d'=' -f2); do
         ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} ${vhost}
     done
