@@ -32,7 +32,7 @@ services:
         container_name: dde_reverseproxy
 
     mariadb:
-        image: mariadb:10.5
+        image: mariadb:10.11
         restart: unless-stopped
         ports:
             - "127.0.0.1:3306:3306"
