@@ -9,7 +9,7 @@
 #    service       optional, open shell of service, default open first container
 function project:exec() {
     _checkProject
-    local service=$(docker run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//')
+    local service=$(${DOCKER_BIN} run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//')
 
     if [[ "${1}" != "" ]]; then
         if _serviceExists ${1}; then

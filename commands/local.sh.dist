@@ -2,6 +2,7 @@
 #DDE_BROWSER=/usr/bin/firefox
 
 #DOCKER_COMPOSE='docker compose'
+#DOCKER_BIN='docker'
 
 function _local_someGlobalHelperFunction() {
     echo "a global helper function"

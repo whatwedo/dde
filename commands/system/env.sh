@@ -16,8 +16,14 @@ function system:env() {
     echo DOCKER_BUILDKIT=${DOCKER_BUILDKIT}
     echo DDE_UID=${DDE_UID}
     echo DDE_GID=${DDE_GID}
+
     echo ""
-    _logGreen "Avialable services";
+
+    _logGreen "Docker Server";
+    echo Docker Server Version $(${DOCKER_BIN} info --format '{{json .ServerVersion}}')
+
+    echo ""
+
     system:services
 }
 
