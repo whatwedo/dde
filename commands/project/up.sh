@@ -13,8 +13,7 @@ function project:up() {
     _checkProject
 
     _logYellow "Generating SSL cert"
-
-    for vhost in $(grep VIRTUAL_HOST= docker-compose.yml | cut -d'=' -f2); do
+    for vhost in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.VIRTUAL_HOST | select(length>0)'); do
         ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} ${vhost}
     done
 
