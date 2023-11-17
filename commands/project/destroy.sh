@@ -12,7 +12,7 @@ function project:destroy() {
 
     _logYellow "Deleting SSL certs"
 
-    for vhost in $(grep VIRTUAL_HOST= docker-compose.yml | cut -d'=' -f2); do
+    for vhost in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.VIRTUAL_HOST | select(length>0)'); do
         _logYellow "Delete certs for ${vhost}"
         rm -f ${CERT_DIR}/${vhost}.*
     done

@@ -13,19 +13,15 @@ function project:open() {
 
     _serviceExists web
 
-    for openUrl in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.OPEN_URL'); do
-        if [[ "${openUrl}" != "null" ]]; then
-            _logGreen "open ${openUrl}"
-
-            echo "DDE_BROWSER ${DDE_BROWSER}"
-
-            if [[ "${DDE_BROWSER}" != "" ]]; then
-              ${DDE_BROWSER} "${openUrl}" &
-            elif [[ "${OSTYPE}" == "linux-gnu" ]]; then
-                xdg-open "${openUrl}"
-            elif [[ "${OSTYPE}" == "darwin" ]]; then
-               open "${openUrl}"
-            fi
+    for openUrl in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.OPEN_URL | select(length>0)'); do
+        _logGreen "open ${openUrl}"
+        echo "DDE_BROWSER ${DDE_BROWSER}"
+        if [[ "${DDE_BROWSER}" != "" ]]; then
+          ${DDE_BROWSER} "${openUrl}" &
+        elif [[ "${OSTYPE}" == "linux-gnu" ]]; then
+            xdg-open "${openUrl}"
+        elif [[ "${OSTYPE}" == "darwin" ]]; then
+           open "${openUrl}"
         fi
     done
 }
