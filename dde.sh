@@ -14,7 +14,6 @@ DOCKER_BUILDKIT=1
 DDE_UID=$(id -u)
 DDE_GID=$(id -g)
 DDE_BROWSER=
-DOCKER_COMPOSE='docker-compose'
 export DDE_UID
 export DDE_GID
 
@@ -48,3 +47,13 @@ _checkCommand "${@}"
 
 # This idea is heavily inspired by: https://github.com/adriancooney/Taskfile
 "${@:-help}"
+
+# Check if 'docker-compose' (the older version with a hyphen) is installed
+if command -v docker-compose >/dev/null 2>&1; then
+    # Set DOCKER_COMPOSE variable to 'docker-compose' if the older version is found
+    DOCKER_COMPOSE='docker-compose'
+# Check if 'docker compose' (the newer version without a hyphen) is installed
+elif command -v docker >/dev/null 2>&1 && docker compose --version >/dev/null 2>&1; then
+    # Set DOCKER_COMPOSE variable to 'docker compose' if the newer version is found
+    DOCKER_COMPOSE='docker compose'
+fi
