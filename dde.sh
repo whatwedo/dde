@@ -39,15 +39,6 @@ if [[ -f  ${ROOT_DIR}/commands/local.sh ]]; then
     source ${ROOT_DIR}/commands/local.sh
 fi
 
-
-## Parse the actual arguments
-_parse_args "${@}"
-
-_checkCommand "${@}"
-
-# This idea is heavily inspired by: https://github.com/adriancooney/Taskfile
-"${@:-help}"
-
 # Check if 'docker-compose' (the older version with a hyphen) is installed
 if command -v docker-compose >/dev/null 2>&1; then
     # Set DOCKER_COMPOSE variable to 'docker-compose' if the older version is found
@@ -57,3 +48,11 @@ elif command -v docker >/dev/null 2>&1 && docker compose --version >/dev/null 2>
     # Set DOCKER_COMPOSE variable to 'docker compose' if the newer version is found
     DOCKER_COMPOSE='docker compose'
 fi
+
+## Parse the actual arguments
+_parse_args "${@}"
+
+_checkCommand "${@}"
+
+# This idea is heavily inspired by: https://github.com/adriancooney/Taskfile
+"${@:-help}"
