@@ -37,7 +37,7 @@ function system:up() {
         if [ -f ${ROOT_DIR}/services/${f}/docker-compose.yml ]; then
             _logGreen "Starting service ${f}"
             cd ${ROOT_DIR}/services/${f}
-            ${DOCKER_COMPOSE} up -d
+            ${DOCKER_COMPOSE} up -d || true
         fi
     done
 
