@@ -5,7 +5,15 @@
 
 function system:services:enable() {
     cd ${ROOT_DIR}
-    _logGreen "Enable System services: ${1}"
+
+    if [ -d "services/${1}" ]; then
+        _logGreen "System service: ${1} found"
+    else
+        _logRed "System service: :${1}: not found"
+        return
+    fi
+
+    _logYellow "Enable System services: ${1}"
     cd services
 
     for f in *; do

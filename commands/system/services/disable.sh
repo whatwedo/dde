@@ -5,7 +5,15 @@
 
 function system:services:disable() {
     cd ${ROOT_DIR}
-    _logGreen "Disable System services: ${1}"
+
+       if [ -d "services/${1}" ]; then
+        _logGreen "System service: ${1} found"
+    else
+        _logRed "System service: :${1}: not found"
+        return
+    fi
+
+    _logYellow "Disable System services: ${1}"
     cd services
 
     for f in *; do
