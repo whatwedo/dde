@@ -14,6 +14,7 @@ function system:env() {
     echo HELPER_DIR=${HELPER_DIR}
     echo NETWORK_NAME=${NETWORK_NAME}
     echo DOCKER_BUILDKIT=${DOCKER_BUILDKIT}
+    echo DOCKER_DEFAULT_PLATFORM=${DOCKER_DEFAULT_PLATFORM}
     echo DDE_UID=${DDE_UID}
     echo DDE_GID=${DDE_GID}
     echo ""
