@@ -39,9 +39,13 @@ function system:update() {
 
     _ddeCheckNetwork
 
+    system:services:update dnsmasq
     system:services:enable dnsmasq
+    system:services:update mailhog
     system:services:enable mailhog
+    system:services:update mariadb
     system:services:enable mariadb
+    system:services:update reverseproxy
     system:services:enable reverseproxy
 
     _logYellow "Starting dde (system)"
