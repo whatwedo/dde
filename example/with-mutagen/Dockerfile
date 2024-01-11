@@ -1,5 +1,5 @@
 # Base stage (used in development and production)
-FROM whatwedo/nginx:v2.0 as base
+FROM whatwedo/nginx:v2.6 as base
 
 # Set workdir
 WORKDIR /var/www

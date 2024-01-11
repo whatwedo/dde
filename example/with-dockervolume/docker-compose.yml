@@ -11,6 +11,7 @@ services:
             - VIRTUAL_HOST=example.test # Virtual host domain
             - SSH_AUTH_SOCK=/tmp/ssh-agent/socket # Optional: Use shared ssh-agent
         volumes:
+            - ./:/var/www # Map project directory as volume
             - ssh-agent_socket-dir:/tmp/ssh-agent:ro # Optional: Use shared ssh-agent
         hostname: example # Optional: Set hostname identical to VHOST configuration
         domainname: test # Optional: Set domain identical to VHOST configuration
@@ -24,3 +25,4 @@ volumes:
     ssh-agent_socket-dir: # Optional: Use shared ssh-agent
         name: dde_ssh-agent_socket-dir
         external: true
+
