@@ -91,6 +91,10 @@ Trust the newly generated Root-CA for the self-signed certificates
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/dde/data/reverseproxy/etc/nginx/certs/ca.pem
 ```
 
+To ensure DNS functionality in Docker on macOS X:
+
+In the Docker GUI: Go to `"Settings" → "Resources" → "Network"`, then turn off "Use kernel networking for UDP".
+In the configuration file: Set `kernelForUDP` to `false` in `~/Library/Group Containers/group.com.docker/settings.json`.
 
 #### Linux
 
