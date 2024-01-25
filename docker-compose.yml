@@ -4,15 +4,12 @@ services:
     dnsmasq:
         image: andyshinn/dnsmasq
         restart: unless-stopped
-        environment:
-            - DNS_FORWARD_1=${DDE_DNS_FORWARD_1}
-            - DNS_FORWARD_2=${DDE_DNS_FORWARD_2}
         cap_add:
             - NET_ADMIN
         ports:
             - "127.0.0.1:53:53/tcp"
             - "127.0.0.1:53:53/udp"
-        command: --address=/.test/127.0.0.1 --server ${DNS_FORWARD_1-8.8.8.8} --server ${DNS_FORWARD_2:-8.8.4.4} --log-facility=-
+        command: --address=/.test/127.0.0.1 --server ${DDE_DNS_FORWARD_1-8.8.8.8} --server ${DDE_DNS_FORWARD_2:-8.8.4.4} --log-facility=-
         hostname: dnsmasq
         domainname: test
         container_name: dde_dnsmasq
