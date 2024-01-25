@@ -106,6 +106,16 @@ Trust the newly generated Root-CA found here:
 ~/dde/data/reverseproxy/etc/nginx/certs/ca.pem
 ```
 
+##### Ubuntu
+
+1. **Convert PEM to CRT and Add Globally:**
+
+   ```bash
+   openssl x509 -outform der -in ~/dde/data/reverseproxy/etc/nginx/certs/ca.pem -out ~/dde/data/reverseproxy/etc/nginx/certs/ca.crt
+   sudo cp ~/dde/data/reverseproxy/etc/nginx/certs/ca.crt /usr/local/share/ca-certificates/
+   sudo update-ca-certificates
+   ```
+
 #### Windows (WSL 2)
 
 Set your DNS to `127.0.0.1` with fallbacks of your choice.
