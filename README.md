@@ -176,6 +176,51 @@ if you use `volume` you must expose the volume in the `docker-compose.override.y
 
 ## Tip and Tricks
 
+### Configuring DNS Forwarding in DDE
+
+The environment variables `DDE_DNS_FORWARD_1` and `DDE_DNS_FORWARD_2` allow for setting custom DNS servers in the Docker Development Environment (DDE). This is useful when local Internet DNS servers are to be used.
+
+#### Instructions
+
+1. Set `DDE_DNS_FORWARD_1` and `DDE_DNS_FORWARD_2` to the IP addresses of your preferred DNS servers.
+
+   Example:
+
+   ```bash
+   export DDE_DNS_FORWARD_1=192.168.1.100
+   export DDE_DNS_FORWARD_2=192.168.1.101
+   ```
+
+#### Adding `DDE_DNS_FORWARD_1` and `DDE_DNS_FORWARD_2` to `bashrc`
+
+For a more permanent solution, you can add the `DDE_DNS_FORWARD_1` and `DDE_DNS_FORWARD_2` variables to your `bashrc` file. This ensures that these variables are automatically set every time a new shell session is started.
+
+To do this, append the `export` commands to your `~/.bashrc` file:
+
+1. Open your `~/.bashrc` file in a text editor, for example, you can use `nano`:
+
+   ```bash
+   nano ~/.bashrc
+   ```
+
+Add the following lines at the end of the file:
+
+    ```bash
+    export DDE_DNS_FORWARD_1=<Your_First_DNS_IP_Address>
+    export DDE_DNS_FORWARD_2=<Your_Second_DNS_IP_Address>
+    ```
+Replace <Your_First_DNS_IP_Address> and <Your_Second_DNS_IP_Address> with the IP addresses of your preferred DNS servers.
+
+Save and close the file.
+
+To apply the changes immediately, source your ~/.bashrc file:
+
+```bash
+source ~/.bashrc
+```
+
+Now, `DDE_DNS_FORWARD_1` and `DDE_DNS_FORWARD_2` will be set automatically in each new shell session.
+
 ### Fix Permission
 
 Services such as nginx in Docker containers normally runs with the `root` user. With the `dde exec` command
