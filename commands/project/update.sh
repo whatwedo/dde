@@ -6,6 +6,7 @@
 
 function project:update() {
     _checkProject
+    _loadProjectDotdde
 
     _logRed "Destroying project"
     project:destroy
