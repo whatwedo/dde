@@ -1,20 +1,23 @@
 #!/usr/bin/env sh
-# Do not us bash. Not all containers have bash installed
+# Use a generic shell instead of bash for compatibility across different containers
+
 set -ex
+# -e: Exit immediately if a command exits with a non-zero status
+# -x: Print commands and their arguments as they are executed
 
-# Check configuration
-[ -z "$DDE_UID" ] && echo "DDE_UID is not set" && exit 1;
-[ -z "$DDE_GID" ] && echo "DDE_GID is not set" && exit 1;
+# Check if necessary environment variables are set
+[ -z "$DDE_UID" ] && echo "DDE_UID is not set" && exit 1
+[ -z "$DDE_GID" ] && echo "DDE_GID is not set" && exit 1
 
-###############################################################################
-
+# Function to check if a command exists in the PATH
 commandExists() {
   command -v "$1" >/dev/null 2>&1
 }
 
-###############################################################################
-
-# Check plaform
+DEFAULT_SHELL="sb"
+# Set default shell to /bin/sb, can be overridden by setting DDE_SHELL
+SHELL_TO_INSTALL="/bin/${DDE_CONTAINER_SHELL:-$DEFAULT_SHELL}"
+# Determine the package manager to use based on the available commands
 if commandExists apt-get; then
     PACKAGE_MANAGER="apt-get"
 elif commandExists apk; then
@@ -24,26 +27,34 @@ else
     exit 1
 fi
 
-# Install package manager dependencies
+# Install dependencies using the determined package manager
 case "$PACKAGE_MANAGER" in
-        apt-get)
-            apt-get update
-            apt-get install -qq curl
-            ;;
-        apk)
-            apk add --update-cache --upgrade --virtual .temp-dde-deps curl shadow
+    apt-get)
+        apt-get update
+        apt-get install -qq curl
+        [ "$SHELL_TO_INSTALL" = "/bin/zsh" ] && apt-get install -y zsh
+        ;;
+    apk)
+        apk add --update-cache --upgrade --virtual .temp-dde-deps curl shadow
+        [ "$SHELL_TO_INSTALL" = "/bin/zsh" ] && apk add zsh
+        ;;
 esac
 
-# Install gosu
+# Install gosu if not already installed
 if [ ! -x /usr/local/bin/gosu ]; then
     curl -L https://github.com/tianon/gosu/releases/download/1.11/gosu-amd64 -o /usr/local/bin/gosu
     chmod +x /usr/local/bin/gosu
     gosu --version
 fi
 
-# Add ddde user and group
+# Create a group and user for dde with specified IDs
 groupadd -g $DDE_GID -o dde || true
-useradd -d /home/dde -u $DDE_UID -g $DDE_GID -c "dde" -s /bin/sb -N -o -m dde -r || true
+useradd -d /home/dde -u $DDE_UID -g $DDE_GID -c "dde" -s "$SHELL_TO_INSTALL" -N -o -m dde -r || true
+
+# Install oh-my-zsh for the dde user if zsh is the selected shell
+if [ "$SHELL_TO_INSTALL" = "/bin/zsh" ] && which zsh > /dev/null 2>&1; then
+    doas -u dde sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+fi
 
 # Add dde user to www-data if exists
 if [ $(getent group www-data) ]; then
@@ -82,12 +93,13 @@ if [ "$phpConfigFiles" != "0" ]; then
     find /etc/php* -type f -name www.conf -print0 | xargs -r -0 sed -i "s/listen\.mode.*/listen.mode = 0666/"
 fi
 
-# Cleanup
+# Cleanup installed packages and temporary files
 case "$PACKAGE_MANAGER" in
-        apt-get)
-            rm -rf /var/lib/apt/lists/*
-            ;;
-        apk)
-            apk del --no-cache .temp-dde-deps
+    apt-get)
+        rm -rf /var/lib/apt/lists/*
+        ;;
+    apk)
+        apk del --no-cache .temp-dde-deps
+        ;;
 esac
-rm -- "$0"
+rm -- "$0"  # Remove the script itself after execution
