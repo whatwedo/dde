@@ -1,10 +1,10 @@
 function _ddeCheckUpdate() {
     local oldPwd=$(pwd)
     cd ${ROOT_DIR}
-    if [ ! -f "${DATA_DIR}/.dde_update_check" ] || [ $(find "${DATA_DIR}/.dde_update_check" -mtime +1 -print) ]; then
+    if [ ! -f "${DDE_DATA_HOME}/.dde_update_check" ] || [ $(find "${DDE_DATA_HOME}/.dde_update_check" -mtime +1 -print) ]; then
         _logYellow "Check if dde update is available"
         git fetch || true # allow offline usage
-        touch ${DATA_DIR}/.dde_update_check
+        touch ${DDE_DATA_HOME}/.dde_update_check
     fi
 
     local upstream=${1:-'@{u}'}

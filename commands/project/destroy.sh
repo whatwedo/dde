@@ -14,7 +14,7 @@ function project:destroy() {
 
     for vhost in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.VIRTUAL_HOST | select(length>0)'); do
         _logYellow "Delete certs for ${vhost}"
-        rm -f ${CERT_DIR}/${vhost}.*
+        rm -f ${DDE_CERT_PATH}/${vhost}.*
     done
 
     if [ "${SYNC_MODE}" = "mutagen" ]; then
@@ -31,4 +31,3 @@ function project:destroy() {
 function destroy() {
     project:destroy
 }
-

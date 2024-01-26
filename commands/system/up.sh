@@ -21,15 +21,15 @@ function system:up() {
     fi
 
     _logYellow "Creating CA cert if required"
-    mkdir -p ${CERT_DIR}
-    cd ${CERT_DIR}
+    mkdir -p ${DDE_CERT_PATH}
+    cd ${DDE_CERT_PATH}
     if [ ! -f ca.pem ]; then
         openssl genrsa -out ca.key 2048
         openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 -subj "/C=CH/ST=Bern/L=Bern/O=dde/CN=dde" -out ca.pem
     fi
 
     _logYellow "Creating certs used by system services"
-    ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} mailhog.test
+    ${HELPER_DIR}/generate-vhost-cert.sh ${DDE_CERT_PATH} mailhog.test
 
     _logYellow "Starting containers"
     cd ${ROOT_DIR}
@@ -44,4 +44,3 @@ function system:up() {
 function system-up() {
     system:up
 }
-

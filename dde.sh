@@ -11,6 +11,10 @@ HELP_DIR=${ROOT_DIR}/help
 HELPER_DIR=${ROOT_DIR}/helper
 NETWORK_NAME=dde
 DOCKER_BUILDKIT=1
+
+
+DDE_DATA_HOME="$HOME/.dde"
+DDE_CERT_PATH="$DDE_DATA_HOME/data/reverseproxy/etc/nginx/certs"
 DDE_UID=$(id -u)
 DDE_GID=$(id -g)
 DDE_BROWSER=
@@ -18,6 +22,8 @@ DDE_CONTAINER_SHELL=sh
 export DDE_UID
 export DDE_GID
 export DDE_CONTAINER_SHELL
+export DDE_DATA_HOME
+
 # If we're running in CI we need to disable TTY allocation for docker-compose
 # commands that enable it by default, such as exec and run.
 TTY=""
