@@ -190,6 +190,26 @@ if you use `volume` you must expose the volume in the `docker-compose.override.y
 
 The environment variables `DDE_DNS_FORWARD_1` and `DDE_DNS_FORWARD_2` allow for setting custom DNS servers in the Docker Development Environment (DDE). This is useful when local Internet DNS servers are to be used.
 
+### Configuring a Custom Shell
+
+To configure a custom shell in whatwedo/dde using the .dde.yml configuration file, specify your preferred shell with the container.shell key. This setting instructs whatwedo/dde to use the specified shell within the container. For instance, to utilize zsh as the container shell, your configuration would appear as follows:
+
+```yml
+version: "1"
+
+container:
+  shell: zsh
+```
+
+And in your docker-compose.yml file, add the corresponding environment variable:
+
+```yml
+environment:
+  - DDE_CONTAINER_SHELL: ${DDE_CONTAINER_SHELL}
+```
+
+This ensures that the custom shell setting is effectively utilized within the container.
+
 #### Instructions
 
 1. Set `DDE_DNS_FORWARD_1` and `DDE_DNS_FORWARD_2` to the IP addresses of your preferred DNS servers.
