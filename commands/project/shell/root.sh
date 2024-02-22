@@ -27,10 +27,10 @@ function project:shell:root() {
     ${DOCKER_COMPOSE} exec ${service} /bin/sh -c "sh"
 }
 
-function p:e:r() {
+function p:s:r() {
     project:shell:root
 }
 
-function shell-root() {
+function shell:root() {
     project:shell:root
 }
