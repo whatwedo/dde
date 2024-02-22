@@ -8,14 +8,15 @@ set -ex
 # Check if necessary environment variables are set
 [ -z "$DDE_UID" ] && echo "DDE_UID is not set" && exit 1
 [ -z "$DDE_GID" ] && echo "DDE_GID is not set" && exit 1
+[ -z "$DDE_CONTAINER_SHELL" ] && echo "DDE_CONTAINER_SHELL is not set" && exit 1
 
 # Function to check if a command exists in the PATH
 commandExists() {
   command -v "$1" >/dev/null 2>&1
 }
 
-DEFAULT_SHELL="sb"
-# Set default shell to /bin/sb, can be overridden by setting DDE_SHELL
+DEFAULT_SHELL="sh"
+# Set default shell to /bin/sh, can be overridden by setting DDE_SHELL
 SHELL_TO_INSTALL="/bin/${DDE_CONTAINER_SHELL:-$DEFAULT_SHELL}"
 # Determine the package manager to use based on the available commands
 if commandExists apt-get; then
@@ -27,16 +28,24 @@ else
     exit 1
 fi
 
+# Determine additional dependencies based on the value of DDE_CONTAINER_SHELL
+if [ "$DDE_CONTAINER_SHELL" = "zsh" ]; then
+    ADDITIONAL_DEPS="$DDE_CONTAINER_SHELL"
+else
+    ADDITIONAL_DEPS=""
+fi
+
 # Install dependencies using the determined package manager
 case "$PACKAGE_MANAGER" in
     apt-get)
+        # Update package lists
         apt-get update
-        apt-get install -qq curl
-        [ "$SHELL_TO_INSTALL" = "/bin/zsh" ] && apt-get install -y zsh
+        # Install curl and any additional dependencies, if specified
+        apt-get install -qq curl $ADDITIONAL_DEPS
         ;;
     apk)
-        apk add --update-cache --upgrade --virtual .temp-dde-deps curl shadow
-        [ "$SHELL_TO_INSTALL" = "/bin/zsh" ] && apk add zsh
+        # Add curl and shadow, along with any additional dependencies, if specified
+        apk add --update-cache --upgrade --virtual .temp-dde-deps curl shadow $ADDITIONAL_DEPS
         ;;
 esac
 
@@ -48,13 +57,8 @@ if [ ! -x /usr/local/bin/gosu ]; then
 fi
 
 # Create a group and user for dde with specified IDs
-groupadd -g $DDE_GID -o dde || true
-useradd -d /home/dde -u $DDE_UID -g $DDE_GID -c "dde" -s "$SHELL_TO_INSTALL" -N -o -m dde -r || true
-
-# Install oh-my-zsh for the dde user if zsh is the selected shell
-if [ "$SHELL_TO_INSTALL" = "/bin/zsh" ] && which zsh > /dev/null 2>&1; then
-    doas -u dde sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-fi
+groupadd -g $DDE_GID -o dde
+useradd -d /home/dde -u $DDE_UID -g $DDE_GID -c "dde" -s "$SHELL_TO_INSTALL" -N -o -m dde -r
 
 # Add dde user to www-data if exists
 if [ $(getent group www-data) ]; then
@@ -99,7 +103,7 @@ case "$PACKAGE_MANAGER" in
         rm -rf /var/lib/apt/lists/*
         ;;
     apk)
-        apk del --no-cache .temp-dde-deps
+        rm -rf /var/cache/apk/*
         ;;
 esac
 rm -- "$0"  # Remove the script itself after execution
