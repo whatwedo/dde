@@ -1,4 +1,4 @@
-## Executes commands as 'dde' in a given or the first docker-compose.yml service container.
+## Executes commands as 'root' in a given or the first docker-compose.yml service container.
 #
 #
 # Command
@@ -25,14 +25,14 @@ function project:exec() {
     cmd=$(printf "%q " "$@")
 
     # Execute the command in the service container
-    ${DOCKER_COMPOSE} exec ${service} /bin/sh -c "doas -u dde ${cmd}"
+    ${DOCKER_COMPOSE} exec ${service} /bin/sh -c "${cmd}"
 
 }
 
-function p:e() {
-    project:exec ${@}
+function p:e:r() {
+    project:exec:root
 }
 
-function exec() {
-    project:exec ${@}
+function exec-root() {
+    project:exec:root
 }
