@@ -14,9 +14,10 @@ DOCKER_BUILDKIT=1
 DDE_UID=$(id -u)
 DDE_GID=$(id -g)
 DDE_BROWSER=
+DDE_CONTAINER_SHELL=sh
 export DDE_UID
 export DDE_GID
-
+export DDE_CONTAINER_SHELL
 # If we're running in CI we need to disable TTY allocation for docker-compose
 # commands that enable it by default, such as exec and run.
 TTY=""
