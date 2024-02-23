@@ -28,9 +28,9 @@ function project:shell:root() {
 }
 
 function p:s:r() {
-    project:shell:root
+    project:shell:root ${1}
 }
 
 function shell:root() {
-    project:shell:root
+    project:shell:root ${1}
 }
