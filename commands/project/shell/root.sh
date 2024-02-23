@@ -24,7 +24,7 @@ function project:shell:root() {
         project:up
     fi
 
-    ${DOCKER_COMPOSE} exec ${service} /bin/sh -c "sh"
+    ${DOCKER_COMPOSE} exec ${service} /bin/${DDE_CONTAINER_SHELL} -c "sh"
 }
 
 function p:s:r() {

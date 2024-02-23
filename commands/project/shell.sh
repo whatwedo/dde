@@ -26,7 +26,7 @@ function project:shell() {
         project:up
     fi
 
-    ${DOCKER_COMPOSE} exec ${service} /bin/sh -c "if [ -f /usr/bin/doas ]; then doas -u dde sh; else gosu dde sh; fi"
+    ${DOCKER_COMPOSE} exec ${service} /bin/${DDE_CONTAINER_SHELL} -c "if [ -f /usr/bin/doas ]; then doas -u dde sh; else gosu dde sh; fi"
 }
 
 function p:s() {
