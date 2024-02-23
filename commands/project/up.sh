@@ -11,6 +11,7 @@
 
 function project:up() {
     _checkProject
+    _loadProjectDotdde
 
     _logYellow "Generating SSL cert"
     for vhost in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.VIRTUAL_HOST | select(length>0)'); do
