@@ -8,7 +8,6 @@ set -ex
 # Check if necessary environment variables are set
 [ -z "$DDE_UID" ] && echo "DDE_UID is not set" && exit 1
 [ -z "$DDE_GID" ] && echo "DDE_GID is not set" && exit 1
-[ -z "$DDE_CONTAINER_SHELL" ] && echo "DDE_CONTAINER_SHELL is not set" && exit 1
 
 # Function to check if a command exists in the PATH
 commandExists() {
