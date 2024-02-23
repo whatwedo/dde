@@ -25,14 +25,14 @@ function project:exec() {
     cmd=$(printf "%q " "$@")
 
     # Execute the command in the service container
-    ${DOCKER_COMPOSE} exec ${service} /bin/sh -c "${cmd}"
+    ${DOCKER_COMPOSE} exec ${service} /bin/${DDE_CONTAINER_SHELL} -c "${cmd}"
 
 }
 
 function p:e:r() {
-    project:exec:root
+    project:exec:root ${@}
 }
 
 function exec-root() {
-    project:exec:root
+    project:exec:root ${@}
 }

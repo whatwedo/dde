@@ -25,7 +25,7 @@ function project:exec() {
     cmd=$(printf "%q " "$@")
 
     # Execute the command in the service container
-    ${DOCKER_COMPOSE} exec ${service} /bin/sh -c "doas -u dde ${cmd}"
+    ${DOCKER_COMPOSE} exec ${service} /bin/${DDE_CONTAINER_SHELL} -c "doas -u dde ${cmd}"
 
 }
 
