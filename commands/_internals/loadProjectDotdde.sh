@@ -4,9 +4,24 @@ function _version_gte() {
     local version1=$(echo "$1" | awk -F. '{printf "%d.%d.%d", $1, $2+0, $3+0}')
     local version2=$(echo "$2" | awk -F. '{printf "%d.%d.%d", $1, $2+0, $3+0}')
 
-    # Perform the comparison using the normalized versions
-    printf '%s\n%s' "$version2" "$version1" | sort -V -C 2> /dev/null
+    # Extract the MAJOR version numbers
+    local major1=$(echo "$version1" | cut -d. -f1)
+    local major2=$(echo "$version2" | cut -d. -f1)
+
+    # Check if the MAJOR versions are equal
+    if [ "$major1" -eq "$major2" ]; then
+        # Perform the comparison using the normalized versions if MAJOR versions are equal
+        if printf '%s\n%s' "$version2" "$version1" | sort -V -C 2> /dev/null; then
+            return 0 # Version1 is greater than or equal to Version2
+        else
+            return 1 # Version1 is less than Version2
+        fi
+    else
+        # The MAJOR versions are not equal, implying Version1 is not greater than or equal to Version2
+        return 1
+    fi
 }
+
 
 # Loads the project's .dde.yml file if present
 function _loadProjectDotdde() {
