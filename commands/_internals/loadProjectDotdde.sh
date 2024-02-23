@@ -33,8 +33,7 @@ function _loadProjectDotdde() {
         _logYellow "File $DDE_FILE not found. Continuing without loading .dde.yml."
     else
         # Read the version number from the .dde.yml file
-        local DDE_VERSION
-        DDE_VERSION=$(_yq_stdin e '.version' < "$DDE_FILE")
+        local DDE_VERSION=$(_yq_stdin e '.version' < "$DDE_FILE")
 
         # Check if the version is compatible
         if _version_gte "$DDE_VERSION" "1.0.0"; then
