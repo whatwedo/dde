@@ -186,9 +186,9 @@ if you use `volume` you must expose the volume in the `docker-compose.override.y
 
 ## Tip and Tricks
 
-### Configuring a Custom Shell
+### Configuring a Custom Shell using `.dde.yml`
 
-To configure a custom shell in whatwedo/dde using the .dde.yml configuration file, specify your preferred shell with the container.shell key. This setting instructs whatwedo/dde to use the specified shell within the container. For instance, to utilize zsh as the container shell, your configuration would appear as follows:
+To configure a custom shell in whatwedo/dde using the `.dde.yml` configuration file, specify your preferred shell with the container.shell key. This setting instructs whatwedo/dde to use the specified shell within the container. For instance, to utilize zsh as the container shell, your configuration would appear as follows:
 
 ```yml
 version: "1"
