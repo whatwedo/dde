@@ -75,7 +75,7 @@ services:
 
 networks:
     default:
-        name: "dde"
+        name: dde
         external: true
 
 volumes:
