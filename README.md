@@ -24,7 +24,7 @@ Features include:
 
 ## Requirements
 
-* macOS, Ubuntu or Windows (WSL 2)
+* macOS, Linux or Windows (WSL 2)
 * [Docker 17.09.0+](https://docs.docker.com/)
 * [docker-compose 1.22+](https://docs.docker.com/compose/)
 * [docker-sync 0.5+](http://docker-sync.io/) 
@@ -106,7 +106,7 @@ Trust the newly generated Root-CA found here:
 ~/dde/data/reverseproxy/etc/nginx/certs/ca.pem
 ```
 
-##### Ubuntu
+##### Linux
 
 1. **Convert PEM to CRT and Add Globally:**
 
