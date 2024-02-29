@@ -1,13 +1,5 @@
 _serviceExists() {
-    local inArrayFound=1
-    for service in $(${DOCKER_COMPOSE} ps --services)
-    do
-        if [[ "${1}" == "${service}" ]]; then
-            inArrayFound=0
-        fi
-    done
-
-    return ${inArrayFound}
+    ${DOCKER_COMPOSE} ps --services | grep -q "^${1}$" && return 0 || return 1
 }
 
 _existingServices() {
