@@ -10,6 +10,11 @@ function system:update() {
 
     _logYellow "Updating dde repository"
     cd ${ROOT_DIR}
+    branch=$(git rev-parse --abbrev-ref HEAD)
+    if [ $branch != 'master' ] && [ $branch != 'main' ]
+    then
+        _logYellow "Be careful! You have not checked out the stable branch for dde. You're currently on: $branch"
+    fi
     git pull
 
     _logYellow "Updating docker images"
