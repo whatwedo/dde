@@ -54,12 +54,12 @@
         <switch>
             <foreignObject style="overflow:visible;" pointer-events="all" width="42" height="26" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
                 <div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; white-space: nowrap; text-align: center;">
-                    <div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">mailhog <br />
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">mailcrab <br />
                         <br />
                     </div>
                 </div>
             </foreignObject>
-            <text x="21" y="19" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">mailhog&lt;br&gt;&lt;br&gt;</text>
+            <text x="21" y="19" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">mailcrab&lt;br&gt;&lt;br&gt;</text>
         </switch>
     </g>
     <path d="M 377 528.5 L 402 499 L 427 528.5 L 402 549 Z M 398.72 539 L 402 542.25 L 405.03 539 L 402.76 536.75 L 405.28 534.25 L 402.51 531.5 L 405.03 529 L 405.03 526.25 C 407.97 524.72 409.51 521.44 408.8 518.23 C 408.1 515.03 405.31 512.68 402 512.5 C 398.64 512.58 395.76 514.88 394.99 518.12 C 394.22 521.35 395.75 524.7 398.72 526.25 Z M 399.47 517.75 C 399.47 518.64 399.96 519.47 400.74 519.92 C 401.52 520.36 402.48 520.36 403.26 519.92 C 404.04 519.47 404.53 518.64 404.53 517.75 C 404.53 516.65 403.39 515.75 402 515.75 C 400.61 515.75 399.47 516.65 399.47 517.75" fill="#455ae4" stroke="none" pointer-events="none" />
@@ -92,10 +92,10 @@
         <switch>
             <foreignObject style="overflow:visible;" pointer-events="all" width="66" height="11" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
                 <div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 11px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; white-space: nowrap; text-align: center;">
-                    <div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;background-color:#ffffff;">mailhog:1025 </div>
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;background-color:#ffffff;">mailcrab:1025 </div>
                 </div>
             </foreignObject>
-            <text x="33" y="11" fill="#000000" text-anchor="middle" font-size="11px" font-family="Helvetica">mailhog:1025</text>
+            <text x="33" y="11" fill="#000000" text-anchor="middle" font-size="11px" font-family="Helvetica">mailcrab:1025</text>
         </switch>
     </g>
     <path d="M 737 346 L 432.48 525.76" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none" />
@@ -179,7 +179,7 @@
             <foreignObject style="overflow:visible;" pointer-events="all" width="92" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
                 <div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; white-space: nowrap; text-align: center;">
                     <div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;background-color:#ffffff;">
-                        <font style="font-size: 11px">https://mailhog.test</font>
+                        <font style="font-size: 11px">https://mailcrab.test</font>
                     </div>
                 </div>
             </foreignObject>
