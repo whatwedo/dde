@@ -24,6 +24,7 @@ function system:update() {
     ${DOCKER_COMPOSE} build --pull
 
     _logYellow "Starting dde (system)"
+    _createDataHome
     system:up
 
     _logGreen "Finished update successfully"

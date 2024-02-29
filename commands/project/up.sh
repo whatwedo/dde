@@ -15,7 +15,7 @@ function project:up() {
 
     _logYellow "Generating SSL cert"
     for vhost in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.VIRTUAL_HOST | select(length>0)'); do
-        ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} ${vhost}
+        ${HELPER_DIR}/generate-vhost-cert.sh ${DDE_CERT_PATH} ${vhost}
     done
 
     if [ "${SYNC_MODE}" = "docker-sync" ]; then
