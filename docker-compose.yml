@@ -44,20 +44,17 @@ services:
         domainname: test
         container_name: dde_mariadb
 
-    mailhog:
-        image: mailhog/mailhog
+    mailcrab:
+        image: marlonb/mailcrab:latest
         restart: unless-stopped
-        command: -storage=maildir -maildir-path=/var/lib/mailhog
         environment:
-            - VIRTUAL_HOST=mailhog.test
-            - VIRTUAL_PORT=8025
-        volumes:
-            - ./data/mailhog/var/lib/mailhog:/var/lib/mailhog:delegated
+            - VIRTUAL_HOST=mailcrab.test
+            - VIRTUAL_PORT=1080
         ports:
             - "127.0.0.1:1025:1025"
-        hostname: mailhog
+        hostname: mailcrab
         domainname: test
-        container_name: dde_mailhog
+        container_name: dde_mailcrab
 
     ssh-agent:
         build:
