@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+    mailcrab:
+        image: marlonb/mailcrab:latest
+        restart: unless-stopped
+        environment:
+            - VIRTUAL_HOST=mailcrab.test
+            - VIRTUAL_PORT=1080
+        ports:
+            - "127.0.0.1:1025:1025"
+        hostname: mailcrab
+        domainname: test
+        container_name: dde_mailcrab
+
+networks:
+    default:
+        name: dde
+        external: true
+
+volumes:
+    ssh-agent_socket-dir:
+        name: dde_ssh-agent_socket-dir
+
+
