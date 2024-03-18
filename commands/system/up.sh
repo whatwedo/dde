@@ -29,7 +29,7 @@ function system:up() {
     fi
 
     _logYellow "Creating certs used by system services"
-    ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} mailhog.test
+    ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} mailcrab.test
 
     _logYellow "Starting containers"
     cd ${ROOT_DIR}
@@ -44,4 +44,3 @@ function system:up() {
 function system-up() {
     system:up
 }
-
