@@ -10,6 +10,19 @@ function system:destroy() {
     cd ${ROOT_DIR}
     ${DOCKER_COMPOSE} down --remove-orphans
 
+    cd services/conf.d
+
+    for f in *; do
+        if [ -f ${ROOT_DIR}/services/${f}/docker-compose.yml ]; then
+            _logGreen "Starting service ${f}"
+            cd ${ROOT_DIR}/services/${f}
+            ${DOCKER_COMPOSE} down --remove-orphans
+        fi
+    done
+
+    cd ${ROOT_DIR}
+
+
     _logRed "Removing network if created"
     if [ "$(docker network ls --filter=name=${NETWORK_NAME} -q)" != "" ]; then
         _logRed "Remove network ${NETWORK_NAME}"

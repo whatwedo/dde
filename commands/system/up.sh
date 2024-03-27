@@ -7,12 +7,7 @@
 function system:up() {
     _ddeCheckUpdate
 
-    _logYellow "Creating network if required"
-    local networks=$(docker network inspect dde)
-    if [ "$(docker network ls --filter=name=${NETWORK_NAME} -q)" == "" ]; then
-        _logGreen "Create network ${NETWORK_NAME}"
-        docker network create ${NETWORK_NAME}
-    fi
+    _ddeCheckNetwork
 
     _logYellow "Creating default docker config.json"
     if [ ! -f ~/.docker/config.json ]; then
@@ -35,6 +30,16 @@ function system:up() {
     cd ${ROOT_DIR}
 
     ${DOCKER_COMPOSE} up -d
+
+    cd services/conf.d
+
+    for f in *; do
+        if [ -f ${ROOT_DIR}/services/${f}/docker-compose.yml ]; then
+            _logGreen "Starting service ${f}"
+            cd ${ROOT_DIR}/services/${f}
+            ${DOCKER_COMPOSE} up -d || true
+        fi
+    done
 
     _addSshKey
 
