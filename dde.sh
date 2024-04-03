@@ -13,13 +13,11 @@ NETWORK_NAME=dde
 DOCKER_BUILDKIT=1
 DDE_UID=$(id -u)
 DDE_GID=$(id -g)
-DOCKER_DEFAULT_PLATFORM=$(uname -m | sed 's/x86_64/linux\/amd64/; s/arm64/linux\/arm64/')
 DDE_BROWSER=
 DDE_CONTAINER_SHELL=sh
 export DDE_UID
 export DDE_GID
 export DDE_CONTAINER_SHELL
-export DOCKER_DEFAULT_PLATFORM
 
 # If we're running in CI we need to disable TTY allocation for docker-compose
 # commands that enable it by default, such as exec and run.
