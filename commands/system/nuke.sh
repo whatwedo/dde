@@ -9,8 +9,7 @@ function system:nuke() {
     system:destroy
 
     _logRed "Removing data"
-    cd ${ROOT_DIR}
-    sudo find ./data/* -maxdepth 1 -not -name .gitkeep -exec rm -rf {} ';'
+    sudo rm -rf ${DATA_DIR}/*
 
     _logGreen "Finished nuking successfully"
 }

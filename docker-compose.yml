@@ -26,7 +26,7 @@ services:
             - /var/run/docker.sock:/tmp/docker.sock:ro
             - ./data/reverseproxy/etc/nginx/certs:/etc/nginx/certs:ro
             - ./data/reverseproxy/etc/nginx/vhost.d:/etc/nginx/vhost.d:ro
-            - ./data/reverseproxy/etc/nginx/conf.d/dde.conf:/etc/nginx/conf.d/dde.conf:ro
+            - ./config/reverseproxy/etc/nginx/conf.d/dde.conf:/etc/nginx/conf.d/dde.conf:ro
         hostname: reverseproxy
         domainname: test
         container_name: dde_reverseproxy
