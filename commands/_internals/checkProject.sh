@@ -8,6 +8,11 @@ function _checkProject() {
         _logRed "docker-compose.yml not found"
         exit 1
     fi
+    if [ -z $(docker network ls --filter=name=${NETWORK_NAME} -q) ]; then
+        _logRed "dde network not created. Please run dde system:up"
+        exit 1
+    fi
+
     mkdir -p .dde
     cp -R ${ROOT_DIR}/helper/configure-image.sh .dde/configure-image.sh
 }

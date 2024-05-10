@@ -8,9 +8,13 @@ function system:nuke() {
     _logRed "Removing dde sytem"
     system:destroy
 
+    if [ -z ${DATA_DIR} ]; then
+        _logRed "DATA_DIR is not defined"
+        exit 1
+    fi
+
     _logRed "Removing data"
-    cd ${ROOT_DIR}
-    sudo find ./data/* -maxdepth 1 -not -name .gitkeep -exec rm -rf {} ';'
+    sudo rm -rf ${DATA_DIR}/*
 
     _logGreen "Finished nuking successfully"
 }
