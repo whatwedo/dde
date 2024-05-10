@@ -6,6 +6,7 @@ DIR=$1
 VHOST=$2
 
 # Generate
+mkdir -p $DIR
 cd $DIR
 if [ ! -f $VHOST.crt ]; then \
     openssl genrsa -out $VHOST.key 2048 && \
