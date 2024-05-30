@@ -11,8 +11,6 @@
 function project:open() {
     _checkProject
 
-    _serviceExists web
-
     for openUrl in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.OPEN_URL | select(length>0)'); do
         _logGreen "open ${openUrl}"
         echo "DDE_BROWSER ${DDE_BROWSER}"
@@ -29,12 +27,3 @@ function project:open() {
 open() {
     project:open
 }
-
-
-
-
-
-
-
-
-
