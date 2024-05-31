@@ -1,0 +1,25 @@
+# Create tag, version file, changelog and GitHub release based
+# conventional commits, via release-please
+# More information: https://github.com/google-github-actions/release-please-action
+
+on:
+    push:
+        branches:
+            - master
+
+permissions:
+    contents: write
+    pull-requests: write
+
+name: release-please
+
+jobs:
+    release-please:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: google-github-actions/release-please-action@v4
+              with:
+                  # TODO: Personal access token with whatwedo account
+                  # TODO: You may also need to set "Allow GitHub Actions to create and approve pull requests" under repository Settings > Actions > General.
+                  token: ${{ secrets.RELEASE_TOKEN }}
+                  release-type: simple
