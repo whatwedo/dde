@@ -16,7 +16,7 @@ services:
             - ./../../data/samba/share:/samba
         environment:
             - "TZ=Europe/Paris"
-            - "SAMBA_LOG_LEVEL=0"
+            - "SAMBA_LOG_LEVEL=3"
         restart: always
         hostname: samba
         domainname: test

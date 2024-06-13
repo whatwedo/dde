@@ -5,10 +5,9 @@
 
 function system:services:enabled() {
     cd ${ROOT_DIR}
-    _logGreen "Enabled System services: ${1}"
-    cd services/conf.d
+    _logGreen "Enabled System services:"
 
-    for f in *; do
-        echo "${f}"
+    for enabledSerice in services/conf.d/*; do
+        echo "${enabledSerice#services/conf.d/}"
     done
 }
