@@ -6,14 +6,11 @@
 function system:services:available() {
     cd ${ROOT_DIR}
     _logGreen "Available System services:"
-    cd services
 
-    for f in *; do
-    if [ -d "$f" ]; then
-        # Will not run if no directories are available
-        if [ -f "${f}/docker-compose.yml" ]; then
-            echo "$f"
-        fi
-    fi
-done
+    declare -a allServices
+
+    _getServices allServices
+    for service in "${allServices[@]}"; do
+        echo "$service"
+    done
 }
