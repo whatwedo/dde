@@ -15,5 +15,5 @@ function system:services:enable() {
     _logYellow "Enable System services: ${1}"
 
     touch services/conf.d/${1}
-    ${DOCKER_COMPOSE} -f services/${1}/docker-compose.yml up -d
+#    ${DOCKER_COMPOSE} -f services/${1}/docker-compose.yml up -d
 }

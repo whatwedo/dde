@@ -3,7 +3,7 @@
 # Command
 #    system:services:start <service>
 
-function system:services:enable() {
+function system:services:start() {
     cd ${ROOT_DIR}
 
     if _serviceExists ${1}; then
