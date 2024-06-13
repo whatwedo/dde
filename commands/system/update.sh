@@ -24,29 +24,20 @@ function system:update() {
     ${DOCKER_COMPOSE} build --pull
 
 
-    cd services/conf.d
 
-    for f in *; do
-        if [ -f ${ROOT_DIR}/services/${f}/docker-compose.yml ]; then
-            _logYellow "Update service ${f}"
-            cd ${ROOT_DIR}/services/${f}
-            ${DOCKER_COMPOSE} pull
-            ${DOCKER_COMPOSE} build --pull
-        fi
+    _getServices allServices
+    for service in "${allServices[@]}"; do
+       if _serviceEnabled ${service}; then
+           _logYellow "Update system service ${service}"
+            ${DOCKER_COMPOSE} -f services/${service}/docker-compose.yml pull
+            ${DOCKER_COMPOSE} -f services/${service}/docker-compose.yml build --pull
+       fi
+        echo "$service"
     done
 
     cd ${ROOT_DIR}
 
     _ddeCheckNetwork
-
-    system:services:update dnsmasq
-    system:services:enable dnsmasq
-    system:services:update mailcrab
-    system:services:enable mailcrad
-    system:services:update mariadb
-    system:services:enable mariadb
-    system:services:update reverseproxy
-    system:services:enable reverseproxy
 
     _logYellow "Starting dde (system)"
     system:up

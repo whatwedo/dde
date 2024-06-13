@@ -27,3 +27,16 @@ _serviceExists() {
 
     return ${exists}
 }
+
+_serviceEnabled() {
+    local enabled=0
+
+    if [ -f services/conf.d/${1} ]
+    then
+      enabled=1
+    else
+      enabled=0
+    fi
+
+    return ${enabled}
+}
