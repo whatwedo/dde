@@ -23,8 +23,6 @@ function system:update() {
     docker pull mikefarah/yq
     ${DOCKER_COMPOSE} build --pull
 
-
-
     _getServices allServices
     for service in "${allServices[@]}"; do
        if _serviceEnabled ${service}; then
