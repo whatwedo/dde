@@ -23,6 +23,20 @@ function system:update() {
     docker pull mikefarah/yq
     ${DOCKER_COMPOSE} build --pull
 
+    _getServices allServices
+    for service in "${allServices[@]}"; do
+       if _serviceEnabled ${service}; then
+           _logYellow "Update system service ${service}"
+            ${DOCKER_COMPOSE} -f services/${service}/docker-compose.yml pull
+            ${DOCKER_COMPOSE} -f services/${service}/docker-compose.yml build --pull
+       fi
+        echo "$service"
+    done
+
+    cd ${ROOT_DIR}
+
+    _ddeCheckNetwork
+
     _logYellow "Starting dde (system)"
     system:up
 

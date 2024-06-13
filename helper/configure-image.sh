@@ -82,7 +82,9 @@ fi
 if [ -d /var/lib/nginx/tmp ]; then
     chown -R dde:dde /var/lib/nginx/tmp
 fi
+ls -la /var/www
 if [ -d /var/www ]; then
+    echo 'chown -R dde:dde /var/www'
     chown -R dde:dde /var/www
 fi
 
