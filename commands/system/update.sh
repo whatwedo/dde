@@ -41,8 +41,8 @@ function system:update() {
 
     system:services:update dnsmasq
     system:services:enable dnsmasq
-    system:services:update mailhog
-    system:services:enable mailhog
+    system:services:update mailcrab
+    system:services:enable mailcrad
     system:services:update mariadb
     system:services:enable mariadb
     system:services:update reverseproxy
