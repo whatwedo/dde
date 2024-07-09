@@ -14,5 +14,4 @@ function _checkDdeConfig() {
 
     _logRed "dde.yml does not exists!"
     exit 1
-
 }

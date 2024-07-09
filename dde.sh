@@ -29,7 +29,7 @@ if [[ ! -t 1 ]]; then
     TTY="-T"
 fi
 
-
+_checkDdeConfig
 
 for commandFile in $(find ${ROOT_DIR}/commands -type f -name "*.sh"); do
     if [[ ${commandFile} != "local.sh" ]]; then
@@ -58,6 +58,7 @@ fi
 _parse_args "${@}"
 
 _checkCommand "${@}"
+
 
 # This idea is heavily inspired by: https://github.com/adriancooney/Taskfile
 "${@:-help}"

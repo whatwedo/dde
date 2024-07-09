@@ -6,7 +6,5 @@
 function system:services:enabled() {
     cd ${ROOT_DIR}
     _logGreen "Enabled System services:"
-    _checkDdeConfig
-
     _getYamlServices
 }
