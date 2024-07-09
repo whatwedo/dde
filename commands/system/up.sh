@@ -30,21 +30,18 @@ function system:up() {
     _logYellow "Creating certs used by system services"
     ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} mailcrab.test
 
-    _logYellow "Starting containers"
+    _logYellow "Starting DDE root containers"
     cd ${ROOT_DIR}
-
     ${DOCKER_COMPOSE} up -d
-
-    cd services/conf.d
 
     _logGreen "Test"
 
-
-    for f in *; do
-        if [ -f "${ROOT_DIR}/services/${f}/docker-compose.yml" ]; then
-            _logGreen "Starting service ${f}"
-            cd ${ROOT_DIR}/services/${f}
-            ${DOCKER_COMPOSE} up -d || true
+    for service in $(_getYamlServices); do
+        if [ -f "${ROOT_DIR}/services/${service}/docker-compose.yml" ]; then
+            _logGreen "Starting service ${service}"
+            ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${service} up -d || true
+        else
+            _logRed "docker-compose.yml for Service ${service} not found"
         fi
     done
 

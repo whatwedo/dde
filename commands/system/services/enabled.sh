@@ -6,8 +6,7 @@
 function system:services:enabled() {
     cd ${ROOT_DIR}
     _logGreen "Enabled System services:"
+    _checkDdeConfig
 
-    for enabledSerice in services/conf.d/*; do
-        echo "${enabledSerice#services/conf.d/}"
-    done
+    _getYamlServices
 }

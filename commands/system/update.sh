@@ -17,7 +17,7 @@ function system:update() {
     fi
     git pull
 
-    _logYellow "Updating docker images"
+    _logYellow "Updating DDE-Root docker images"
     cd ${ROOT_DIR}
     ${DOCKER_COMPOSE} pull
     docker pull mikefarah/yq
@@ -26,7 +26,7 @@ function system:update() {
     _getServices allServices
     for service in "${allServices[@]}"; do
        if _serviceEnabled ${service}; then
-           _logYellow "Update system service ${service}"
+           _logYellow "Update service docker image ${service}"
             ${DOCKER_COMPOSE} -f services/${service}/docker-compose.yml pull
             ${DOCKER_COMPOSE} -f services/${service}/docker-compose.yml build --pull
        fi

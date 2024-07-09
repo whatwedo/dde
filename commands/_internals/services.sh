@@ -40,3 +40,19 @@ _serviceEnabled() {
 
     return ${enabled}
 }
+
+_addYamlService()  {
+    docker run --rm -i -v ${DATA_DIR}:/workdir mikefarah/yq -i ".services += \"${1}\"" ${DDE_CONFIG_FILE}
+}
+
+_getYamlServices()  {
+    docker run --rm -i -v ${DATA_DIR}:/workdir mikefarah/yq e '.services[]' ${DDE_CONFIG_FILE}
+}
+
+_removeYamlService() {
+    docker run --rm -i -v ${DATA_DIR}:/workdir mikefarah/yq -i "del(.services[] | select(. == \"${1}\"))" ${DDE_CONFIG_FILE}
+}
+
+_existsYamlService() {
+    docker run --rm -i -v ${DATA_DIR}:/workdir mikefarah/yq e "contains({\"services\": \"${1}\"})" ${DDE_CONFIG_FILE}
+}

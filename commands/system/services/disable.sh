@@ -6,6 +6,7 @@
 function system:services:disable() {
     cd ${ROOT_DIR}
 
+
     if _serviceExists ${1}; then
         _logGreen "System service: ${1} found"
     else
@@ -13,7 +14,13 @@ function system:services:disable() {
         return
     fi
 
-    _logYellow "Disable System services: ${1}"
-    rm -f services/conf.d/${1}
-    ${DOCKER_COMPOSE} -f services/${1}/docker-compose.yml stop
+
+    if [ $(_existsYamlService ${1}) == "true" ]; then
+        _logYellow "Disable System service: ${1}"
+        _removeYamlService ${1}
+        ${DOCKER_COMPOSE} -f services/${1}/docker-compose.yml stop
+    else
+        _logYellow "Service not persent in ${DDE_CONFIG_FILE}: ${1}"
+    fi
+
 }

@@ -6,6 +6,11 @@
 function system:services:enable() {
     cd ${ROOT_DIR}
 
+    _checkDdeConfig
+
+    # docker run --rm -i -v /home/mauri/dev/dde/data:/workdir mikefarah/yq -i '.services += "new_service"' dde.yml
+
+
     if _serviceExists ${1}; then
         _logGreen "System service: ${1} found"
     else
@@ -14,6 +19,5 @@ function system:services:enable() {
     fi
     _logYellow "Enable System services: ${1}"
 
-    touch services/conf.d/${1}
-#    ${DOCKER_COMPOSE} -f services/${1}/docker-compose.yml up -d
+    _addYamlService ${1}
 }

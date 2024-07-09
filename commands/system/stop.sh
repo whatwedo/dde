@@ -7,20 +7,19 @@
 function system:stop() {
     cd ${ROOT_DIR}
 
-    cd services
+    _logGreen "Stopping System services"
 
-    for f in *; do
-    if [ -d "$f" ]; then
-        # Will not run if no directories are available
-        if [ -f "${f}/docker-compose.yml" ]; then
-            cd ${ROOT_DIR}/services/${f}
-            ${DOCKER_COMPOSE} stop
-            cd ${ROOT_DIR}/services
+    for service in $(_getYamlServices); do
+        if [ -d "$service" ]; then
+            # Will not run if no directories are available
+            if [ -f "${ROOT_DIR}/${service}/docker-compose.yml" ]; then
+                _logGreen "Stopping service ${service}"
+                ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${service} stop
+            else
+                _logRed "docker-compose.yml for Service ${service} not found"
+            fi
         fi
-    fi
     done
-
-    ${DOCKER_COMPOSE} stop
 }
 
 function system-stop() {

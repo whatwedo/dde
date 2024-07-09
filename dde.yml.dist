@@ -1,0 +1,7 @@
+verssion: 1
+
+services:
+    - dnsmasq
+    - mailcrab
+    - mariadb
+    - reverseproxy
