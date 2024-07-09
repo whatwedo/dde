@@ -15,9 +15,9 @@ function system:services:update() {
 
     _logYellow "Enable System services: ${1}"
 
-    ${DOCKER_COMPOSE} -f services/${1}/docker-compose.yml stop
-    ${DOCKER_COMPOSE} -f services/${1}/docker-compose.yml pull
-    ${DOCKER_COMPOSE} -f services/${1}/docker-compose.yml up -d
+    ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${1} stop
+    ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${1} pull
+    ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${1} up -d
 
 
 }

@@ -29,14 +29,13 @@ if [[ ! -t 1 ]]; then
     TTY="-T"
 fi
 
-_checkDdeConfig
-
 for commandFile in $(find ${ROOT_DIR}/commands -type f -name "*.sh"); do
     if [[ ${commandFile} != "local.sh" ]]; then
         source ${commandFile}
     fi
 done
 
+_checkDdeConfig
 _syncMode
 
 

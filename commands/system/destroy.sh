@@ -17,8 +17,8 @@ function system:destroy() {
 
     _getServices allServices
     for service in "${allServices[@]}"; do
-            _logGreen "Removing service ${service}"
-            ${DOCKER_COMPOSE} -f ${ROOT_DIR}/services/${service}/docker-compose.yml down --remove-orphans
+        _logGreen "Removing service ${service}"
+        ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${service} down --remove-orphans
     done
 
     ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR} down --remove-orphans

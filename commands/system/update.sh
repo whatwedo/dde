@@ -27,8 +27,8 @@ function system:update() {
     for service in "${allServices[@]}"; do
        if _serviceEnabled ${service}; then
            _logYellow "Update service docker image ${service}"
-            ${DOCKER_COMPOSE} -f services/${service}/docker-compose.yml pull
-            ${DOCKER_COMPOSE} -f services/${service}/docker-compose.yml build --pull
+            ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${service} pull
+            ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${service} build --pull
        fi
         echo "$service"
     done

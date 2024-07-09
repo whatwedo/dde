@@ -10,10 +10,11 @@ function system:status() {
 
     cd services/conf.d
 
-    for f in *; do
-        if [ -f "${ROOT_DIR}/services/${f}/docker-compose.yml" ]; then
-            _logGreen "Status of service ${f}"
-            ${DOCKER_COMPOSE} -f ${ROOT_DIR}/services/${f}/docker-compose.yml ps
+    _getServices allServices
+    for service in "${allServices[@]}"; do
+        if [ -d "${ROOT_DIR}/services/${service}" ]; then
+            _logGreen "Status of service ${service}"
+            ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${service} ps
         fi
     done
 }

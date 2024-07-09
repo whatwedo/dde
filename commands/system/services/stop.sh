@@ -15,5 +15,5 @@ function system:services:stop() {
 
     _logYellow "Enable System services: ${1}"
 
-    ${DOCKER_COMPOSE} -f services/${1}/docker-compose.yml stop
+    ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${1} stop
 }

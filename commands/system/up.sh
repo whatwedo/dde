@@ -37,7 +37,7 @@ function system:up() {
     _logGreen "Test"
 
     for service in $(_getYamlServices); do
-        if [ -f "${ROOT_DIR}/services/${service}/docker-compose.yml" ]; then
+        if [ -d "${ROOT_DIR}/services/${service}" ]; then
             _logGreen "Starting service ${service}"
             ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${service} up -d || true
         else
