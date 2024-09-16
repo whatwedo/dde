@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+    mysql:
+        image: mysql:8.0.32
+        restart: unless-stopped
+        ports:
+            - "127.0.0.1:3307:3306"
+        environment:
+            - MYSQL_ROOT_PASSWORD=root
+        volumes:
+            - ./../../data/mysql/var/lib/mysql:/var/lib/mysql:delegated
+        hostname: mysql
+        domainname: test
+        container_name: dde_mysql
+
+
+networks:
+    default:
+        name: dde
+        external: true
+
+volumes:
+    ssh-agent_socket-dir:
+        name: dde_ssh-agent_socket-dir
+
