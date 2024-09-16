@@ -8,10 +8,7 @@
 function system:status() {
     cd ${ROOT_DIR}
 
-    cd services/conf.d
-
-    _getServices allServices
-    for service in "${allServices[@]}"; do
+    for service in $(_getYamlServices); do
         if [ -d "${ROOT_DIR}/services/${service}" ]; then
             _logGreen "Status of service ${service}"
             ${DOCKER_COMPOSE} --project-directory ${ROOT_DIR}/services/${service} ps
