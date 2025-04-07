@@ -13,7 +13,7 @@ function project:exec() {
 
     _checkProject
     # Determine the first service from docker-compose.yml
-    service=$(docker run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//')
+    service=$(_yq eval '.services | keys | .[0]' docker-compose.yml)
 
     # Check if the provided service exists
     if _serviceExists "${1}"; then

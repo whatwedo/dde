@@ -8,7 +8,7 @@
 function project:shell:root() {
     _checkProject
     _loadProjectDotdde
-    local service=$(docker run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//')
+    local service=$(_yq eval '.services | keys | .[]' docker-compose.yml | head -n1 | sed 's/.*\.//')
 
     if [[ "${1}" != "" ]]; then
         if _serviceExists ${1}; then
