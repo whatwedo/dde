@@ -14,9 +14,6 @@ Features include:
     * [MariaDB](https://mariadb.org/) ([MySQL](https://www.mysql.com/) alternative)
     * [MailCrab](https://github.com/tweedegolf/mailcrab) (SMTP testing server)
     * [ssh-agent](https://www.ssh.com/ssh/agent) used for sharing your SSH key without adding it to your project Docker containers.
-* Choose you preferred file sharing
-    * docker volume export
-    * [Mutagen](https://mutagen.io/)
 
 **Note:** dde is currently under heavy development and we don't offer any backward compatibility. However we use it at [whatwedo](https://www.whatwedo.ch/) on daily bases and it's safe to use it in your development environment.
 
@@ -26,7 +23,6 @@ Features include:
 * macOS, Linux or Windows (WSL 2)
 * [Docker 17.09.0+](https://docs.docker.com/)
 * [docker-compose 1.22+](https://docs.docker.com/compose/)
-* [Mutagen v0.10.0+](https://mutagen.io/)
 * [Bash](https://www.gnu.org/software/bash/)
 * [openssl](https://www.openssl.org/)
 * No other services listening localhost on:
@@ -145,36 +141,7 @@ nameserver 1.1.1.1
 
 ## File-Sync
 
-File-sync can be done by mutagen or by native docker volumes. 
-
-### Mutagen
-
-put the `mutagen.yml` file in the project root directory see [mutagen-example](example/with-mutagen).
-
-In the `docker-compose.yml` the volume is not exposed.
-
-### native Docker
-
 define in your `docker-compose.yml` or `docker-compose.override.yml` the exposed volumes.
-
-### override the sync Settings
-
-If you have project where the file-sync done by mutagen. you are able to override
-the setting in a `docker-compose.override.yml` file.
-
-copy sample `docker-compose.override.yml`:
-
-```
-$ dde project:docker-override
-```
-
-this command copies [docker-compose.override.yml](example/docker-compose.override.yml) to your project directory.
-
-edit the file. With the custom-tag  `x-dde-sync` you can now choose you preferred syncing mode. 
-
-valid values are `mutagen` or `volume`
-
-if you use `volume` you must expose the volume in the `docker-compose.override.yml` file. 
 
 ## Tip and Tricks
 
@@ -363,7 +330,7 @@ function _local_someGlobalHelperFunction() {
 
 
 # overwrite a variable
-SYNC_MODE=volume
+NETWORK_NAME=test
 
 
 # overwrite a function/command

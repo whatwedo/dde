@@ -21,9 +21,6 @@ function project:up() {
     _logYellow "Starting containers"
     ${DOCKER_COMPOSE} up -d
 
-    if [ "${SYNC_MODE}" = "mutagen" ]; then
-        _startOrResumeMutagen
-    fi
     _logGreen "Finished startup successfully"
 
     _openUrl

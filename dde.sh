@@ -34,7 +34,6 @@ for commandFile in $(find ${ROOT_DIR}/commands -type f -name "*.sh"); do
     fi
 done
 
-_syncMode
 
 
 if [[ -f  ${ROOT_DIR}/commands/local.sh ]]; then
