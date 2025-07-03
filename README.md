@@ -342,9 +342,7 @@ function project:env() {
 ```
 
 ## Example
-Under the `example/` directory you can find some example configurations for dde projects.
-
-You may switch into one of those example directories and run the environment with `dde` like so:
+Under the `example/` directory you can find an example configurations for dde projects.
 
 ![Demo](assets/gif/demo.gif)
 

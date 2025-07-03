@@ -15,22 +15,17 @@ Set FontSize 32
 Set Width 1600
 Set Height 800
 
-Type "cd with-mutagen"
-Sleep 500ms
-Enter
-Sleep 2s
-
 Type "dde up"
-Sleep 500ms
 Enter
-Sleep 6s
-
-Type "dde exec"
-Sleep 500ms
+Sleep 1.5s
+Type "dde shell"
 Enter
-Sleep 4s
-
-Type "echo 'Dev-Environment successfully started 🤓 '"
+Sleep 1.5s
+Ctrl+D
+Sleep 1.5s
+Type "dde stop"
+Enter
+Type "echo 'Dev-Environment successfully started and stopped 🤓 '"
 Sleep 500ms
 Enter
 
