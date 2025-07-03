@@ -9,10 +9,6 @@ function project:stop() {
 
     _logYellow "Stopping docker containers"
     ${DOCKER_COMPOSE} stop
-
-    if [ "${SYNC_MODE}" = "mutagen" ]; then
-        _pauseMutagen
-    fi
 }
 
 function stop() {

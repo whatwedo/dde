@@ -17,10 +17,6 @@ function project:destroy() {
         rm -f ${CERT_DIR}/${vhost}.*
     done
 
-    if [ "${SYNC_MODE}" = "mutagen" ]; then
-        _terminateMutagen
-    fi
-
     _logGreen "Finished destroying successfully"
 }
 

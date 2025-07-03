@@ -1,6 +1,0 @@
-#services:
-#    web: # Example web service
-#        volumes:
-#            - ./:/var/www
-#
-#x-dde-sync: volume
