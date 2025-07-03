@@ -13,10 +13,6 @@ function project:stop() {
     if [ "${SYNC_MODE}" = "mutagen" ]; then
         _pauseMutagen
     fi
-
-    if [ "${SYNC_MODE}" = "docker-sync" ]; then
-        _stopDockerSync
-    fi
 }
 
 function stop() {

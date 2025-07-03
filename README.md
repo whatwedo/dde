@@ -16,7 +16,6 @@ Features include:
     * [ssh-agent](https://www.ssh.com/ssh/agent) used for sharing your SSH key without adding it to your project Docker containers.
 * Choose you preferred file sharing
     * docker volume export
-    * Performance optimized file sharing based on [docker-sync](http://docker-sync.io/) 
     * [Mutagen](https://mutagen.io/)
 
 **Note:** dde is currently under heavy development and we don't offer any backward compatibility. However we use it at [whatwedo](https://www.whatwedo.ch/) on daily bases and it's safe to use it in your development environment.
@@ -27,7 +26,6 @@ Features include:
 * macOS, Linux or Windows (WSL 2)
 * [Docker 17.09.0+](https://docs.docker.com/)
 * [docker-compose 1.22+](https://docs.docker.com/compose/)
-* [docker-sync 0.5+](http://docker-sync.io/) 
 * [Mutagen v0.10.0+](https://mutagen.io/)
 * [Bash](https://www.gnu.org/software/bash/)
 * [openssl](https://www.openssl.org/)
@@ -147,17 +145,11 @@ nameserver 1.1.1.1
 
 ## File-Sync
 
-File-sync can be done by mutagen, docker-sync or by native docker volumes. 
+File-sync can be done by mutagen or by native docker volumes. 
 
 ### Mutagen
 
 put the `mutagen.yml` file in the project root directory see [mutagen-example](example/with-mutagen).
-
-In the `docker-compose.yml` the volume is not exposed.
-
-### Docker-Sync
-
-put the `docker-sync.yml` file in the project root directory see [docker-sync-example](example/with-dockersync).
 
 In the `docker-compose.yml` the volume is not exposed.
 
@@ -167,7 +159,7 @@ define in your `docker-compose.yml` or `docker-compose.override.yml` the exposed
 
 ### override the sync Settings
 
-If you have project where the file-sync done by mutagen or docker-sync. you are able to override
+If you have project where the file-sync done by mutagen. you are able to override
 the setting in a `docker-compose.override.yml` file.
 
 copy sample `docker-compose.override.yml`:
@@ -180,7 +172,7 @@ this command copies [docker-compose.override.yml](example/docker-compose.overrid
 
 edit the file. With the custom-tag  `x-dde-sync` you can now choose you preferred syncing mode. 
 
-valid values are `docker-sync`, `mutagen` or `volume`
+valid values are `mutagen` or `volume`
 
 if you use `volume` you must expose the volume in the `docker-compose.override.yml` file. 
 
@@ -394,8 +386,6 @@ networks:
 ```
 
 ## Known problems
-
-* Files of filesystem mapped with docker-sync will get group id `0`.
 
 ## Bugs and Issues
 
