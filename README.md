@@ -141,7 +141,7 @@ nameserver 1.1.1.1
 
 ## File-Sync
 
-define in your `docker-compose.yml` or `docker-compose.override.yml` the exposed volumes.
+Define the exposed volumes in your compose file or compose override file the exposed volumes.
 
 ## Tip and Tricks
 
@@ -156,7 +156,7 @@ container:
   shell: zsh
 ```
 
-And in your docker-compose.yml file, add the corresponding environment variable:
+And in your composer file, add the corresponding environment variable:
 
 ```yml
 environment:
@@ -229,7 +229,7 @@ in the container and `chown {yourLocalUser}:{yourLocalGroup}` in the local host.
 
 ### OPEN_URL & DDE_BROWSER
 
-Add `OPEN_URL` in the `environment` array of your `docker-compose.yml`.
+Add `OPEN_URL` in the `environment` array of your compose file.
 
 On the `project:up` or `project:open` command the website(s) will be opened in your standard browser.
 
@@ -348,7 +348,7 @@ Under the `example/` directory you can find an example configurations for dde pr
 
 ## Known solutions
 * **failed to remove network dde**  
-If you get this error it means your project `docker-compose.yml` is wrongly configured.
+If you get this error, it means your project composer file is wrongly configured.
 Be sure to mark the `dde` network as external, like in our examples:
 ```yml
 networks:

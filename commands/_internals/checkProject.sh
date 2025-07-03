@@ -4,10 +4,20 @@ function _checkProject() {
         _logRed "dde root is not a valid project directory"
         exit 1
     fi
-    if [ ! -f docker-compose.yml ]; then
-        _logRed "docker-compose.yml not found"
+
+    if [ -f docker-compose.yml ]; then
+        COMPOSE_FILE='docker-compose.yml'
+    elif [ -f docker-compose.yaml ]; then
+        COMPOSE_FILE='docker-compose.yaml'
+    elif [ -f compose.yml ]; then
+        COMPOSE_FILE='compose.yml'
+    elif [ -f compose.yaml ]; then
+        COMPOSE_FILE='compose.yaml'
+    else
+        _logRed "no composer file found"
         exit 1
     fi
+
     if [ -z $(docker network ls --filter=name=${NETWORK_NAME} -q) ]; then
         _logRed "dde network not created. Please run dde system:up"
         exit 1
