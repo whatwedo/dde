@@ -21,10 +21,6 @@ function project:destroy() {
         _terminateMutagen
     fi
 
-    if [ "${SYNC_MODE}" = "docker-sync" ]; then
-        _cleanDockerSync
-    fi
-
     _logGreen "Finished destroying successfully"
 }
 
