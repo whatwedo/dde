@@ -15,6 +15,7 @@ DDE_UID=$(id -u)
 DDE_GID=$(id -g)
 DDE_BROWSER=
 DDE_CONTAINER_SHELL=sh
+DOCKER_BIN='docker'
 export DDE_UID
 export DDE_GID
 export DDE_CONTAINER_SHELL
