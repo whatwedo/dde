@@ -20,7 +20,7 @@ function system:update() {
     _logYellow "Updating docker images"
     cd ${ROOT_DIR}
     ${DOCKER_COMPOSE} pull
-    docker pull mikefarah/yq
+    ${DOCKER_BIN} pull mikefarah/yq
     ${DOCKER_COMPOSE} build --pull
 
     _logYellow "Starting dde (system)"

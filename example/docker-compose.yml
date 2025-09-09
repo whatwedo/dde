@@ -1,4 +1,3 @@
-version: '3.4' # Minimal docker-compose.yml compatibility
 services:
     web: # Example web service
         build:
@@ -11,20 +10,17 @@ services:
             - VIRTUAL_HOST=example.test # Virtual host domain
             - SSH_AUTH_SOCK=/tmp/ssh-agent/socket # Optional: Use shared ssh-agent
         volumes:
-            - sync:/var/www:nocopy # Share project directory (nocopy is important)
+            - ./:/var/www # Map project directory as volume
             - ssh-agent_socket-dir:/tmp/ssh-agent:ro # Optional: Use shared ssh-agent
         hostname: example # Optional: Set hostname identical to VHOST configuration
         domainname: test # Optional: Set domain identical to VHOST configuration
 
 networks: # Attach dde network
     default:
-        external:
-            name: "dde"
+        name: "dde"
+        external: true
 
 volumes:
     ssh-agent_socket-dir: # Optional: Use shared ssh-agent
-        external:
-            name: dde_ssh-agent_socket-dir
-    sync: # Mount docker-sync volume
-        external:
-            name: example_sync  # Use value configured in docker-sync.yml
+        name: dde_ssh-agent_socket-dir
+        external: true

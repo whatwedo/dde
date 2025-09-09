@@ -18,17 +18,9 @@ function project:up() {
         ${HELPER_DIR}/generate-vhost-cert.sh ${CERT_DIR} ${vhost}
     done
 
-    if [ "${SYNC_MODE}" = "docker-sync" ]; then
-        _logYellow "Skipping docker-sync because Mutagen config exists"
-        _startDockerSync
-    fi
-
     _logYellow "Starting containers"
     ${DOCKER_COMPOSE} up -d
 
-    if [ "${SYNC_MODE}" = "mutagen" ]; then
-        _startOrResumeMutagen
-    fi
     _logGreen "Finished startup successfully"
 
     _openUrl

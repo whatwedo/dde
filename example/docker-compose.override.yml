@@ -1,7 +1,0 @@
-version: '3.4' # Minimal docker-compose.yml compatibility
-#services:
-#    web: # Example web service
-#        volumes:
-#            - ./:/var/www
-#
-#x-dde-sync: volume

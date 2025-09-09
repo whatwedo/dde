@@ -15,6 +15,7 @@ DDE_UID=$(id -u)
 DDE_GID=$(id -g)
 DDE_BROWSER=
 DDE_CONTAINER_SHELL=sh
+DOCKER_BIN='docker'
 export DDE_UID
 export DDE_GID
 export DDE_CONTAINER_SHELL
@@ -34,7 +35,6 @@ for commandFile in $(find ${ROOT_DIR}/commands -type f -name "*.sh"); do
     fi
 done
 
-_syncMode
 
 
 if [[ -f  ${ROOT_DIR}/commands/local.sh ]]; then
