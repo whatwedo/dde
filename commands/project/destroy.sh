@@ -17,14 +17,6 @@ function project:destroy() {
         rm -f ${CERT_DIR}/${vhost}.*
     done
 
-    if [ "${SYNC_MODE}" = "mutagen" ]; then
-        _terminateMutagen
-    fi
-
-    if [ "${SYNC_MODE}" = "docker-sync" ]; then
-        _cleanDockerSync
-    fi
-
     _logGreen "Finished destroying successfully"
 }
 

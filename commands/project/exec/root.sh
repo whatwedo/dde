@@ -1,4 +1,4 @@
-## Executes commands as 'root' in a given or the first docker-compose.yml service container.
+## Executes commands as 'root' in a given or the first composer file service container.
 #
 #
 # Command
@@ -12,8 +12,8 @@ function project:exec() {
     _logYellow "Please note that the command exec has been renamed to 'shell' in the script."
 
     _checkProject
-    # Determine the first service from docker-compose.yml
-    service=$(docker run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p docker-compose.yml 'services.*' | head -n1 | sed 's/.*\.//')
+    # Determine the first service from composer file
+    service=$(${DOCKER_BIN} run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p ${COMPOSE_FILE} 'services.*' | head -n1 | sed 's/.*\.//')
 
     # Check if the provided service exists
     if _serviceExists "${1}"; then

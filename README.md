@@ -14,10 +14,6 @@ Features include:
     * [MariaDB](https://mariadb.org/) ([MySQL](https://www.mysql.com/) alternative)
     * [MailCrab](https://github.com/tweedegolf/mailcrab) (SMTP testing server)
     * [ssh-agent](https://www.ssh.com/ssh/agent) used for sharing your SSH key without adding it to your project Docker containers.
-* Choose you preferred file sharing
-    * docker volume export
-    * Performance optimized file sharing based on [docker-sync](http://docker-sync.io/) 
-    * [Mutagen](https://mutagen.io/)
 
 **Note:** dde is currently under heavy development and we don't offer any backward compatibility. However we use it at [whatwedo](https://www.whatwedo.ch/) on daily bases and it's safe to use it in your development environment.
 
@@ -27,8 +23,6 @@ Features include:
 * macOS, Linux or Windows (WSL 2)
 * [Docker 17.09.0+](https://docs.docker.com/)
 * [docker-compose 1.22+](https://docs.docker.com/compose/)
-* [docker-sync 0.5+](http://docker-sync.io/) 
-* [Mutagen v0.10.0+](https://mutagen.io/)
 * [Bash](https://www.gnu.org/software/bash/)
 * [openssl](https://www.openssl.org/)
 * No other services listening localhost on:
@@ -147,42 +141,7 @@ nameserver 1.1.1.1
 
 ## File-Sync
 
-File-sync can be done by mutagen, docker-sync or by native docker volumes. 
-
-### Mutagen
-
-put the `mutagen.yml` file in the project root directory see [mutagen-example](example/with-mutagen).
-
-In the `docker-compose.yml` the volume is not exposed.
-
-### Docker-Sync
-
-put the `docker-sync.yml` file in the project root directory see [docker-sync-example](example/with-dockersync).
-
-In the `docker-compose.yml` the volume is not exposed.
-
-### native Docker
-
-define in your `docker-compose.yml` or `docker-compose.override.yml` the exposed volumes.
-
-### override the sync Settings
-
-If you have project where the file-sync done by mutagen or docker-sync. you are able to override
-the setting in a `docker-compose.override.yml` file.
-
-copy sample `docker-compose.override.yml`:
-
-```
-$ dde project:docker-override
-```
-
-this command copies [docker-compose.override.yml](example/docker-compose.override.yml) to your project directory.
-
-edit the file. With the custom-tag  `x-dde-sync` you can now choose you preferred syncing mode. 
-
-valid values are `docker-sync`, `mutagen` or `volume`
-
-if you use `volume` you must expose the volume in the `docker-compose.override.yml` file. 
+Define the exposed volumes in your compose file or compose override file the exposed volumes.
 
 ## Tip and Tricks
 
@@ -197,7 +156,7 @@ container:
   shell: zsh
 ```
 
-And in your docker-compose.yml file, add the corresponding environment variable:
+And in your composer file, add the corresponding environment variable:
 
 ```yml
 environment:
@@ -270,7 +229,7 @@ in the container and `chown {yourLocalUser}:{yourLocalGroup}` in the local host.
 
 ### OPEN_URL & DDE_BROWSER
 
-Add `OPEN_URL` in the `environment` array of your `docker-compose.yml`.
+Add `OPEN_URL` in the `environment` array of your compose file.
 
 On the `project:up` or `project:open` command the website(s) will be opened in your standard browser.
 
@@ -371,7 +330,7 @@ function _local_someGlobalHelperFunction() {
 
 
 # overwrite a variable
-SYNC_MODE=volume
+NETWORK_NAME=test
 
 
 # overwrite a function/command
@@ -382,9 +341,14 @@ function project:env() {
 
 ```
 
+## Example
+Under the `example/` directory you can find an example configurations for dde projects.
+
+![Demo](assets/gif/demo.gif)
+
 ## Known solutions
 * **failed to remove network dde**  
-If you get this error it means your project `docker-compose.yml` is wrongly configured.
+If you get this error, it means your project composer file is wrongly configured.
 Be sure to mark the `dde` network as external, like in our examples:
 ```yml
 networks:
@@ -394,8 +358,6 @@ networks:
 ```
 
 ## Known problems
-
-* Files of filesystem mapped with docker-sync will get group id `0`.
 
 ## Bugs and Issues
 
