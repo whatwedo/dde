@@ -5,7 +5,7 @@
 #    system-destroy
 
 function system:destroy() {
-    if [ -z $(${DOCKER_BIN} network ls --filter=name=${NETWORK_NAME} -q) ]; then
+    if [ -z "$(${DOCKER_BIN} network ls --filter=name=^${NETWORK_NAME}$ -q)" ]; then
         _logRed "Already destroyed"
         return 0
     fi

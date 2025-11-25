@@ -18,7 +18,7 @@ function _checkProject() {
         exit 1
     fi
 
-    if [ -z "$(${DOCKER_BIN} network ls --filter=name=${NETWORK_NAME} -q)" ]; then
+    if [ -z "$(${DOCKER_BIN} network ls --filter=name=^${NETWORK_NAME}$ -q)" ]; then
         _logRed "dde network not created. Please run dde system:up"
         exit 1
     fi
