@@ -14,9 +14,21 @@ commandExists() {
   command -v "$1" >/dev/null 2>&1
 }
 
-DEFAULT_SHELL="sh"
-# Set default shell to /bin/sh, can be overridden by setting DDE_SHELL
-SHELL_TO_INSTALL="/bin/${DDE_CONTAINER_SHELL:-$DEFAULT_SHELL}"
+# Set shell for dde user - if DDE_CONTAINER_SHELL is set, use it; otherwise use root user's shell
+if [ -n "$DDE_CONTAINER_SHELL" ]; then
+    SHELL_TO_INSTALL="/bin/${DDE_CONTAINER_SHELL}"
+    # Determine if we need to install the specified shell
+    if [ "$DDE_CONTAINER_SHELL" = "zsh" ] || [ "$DDE_CONTAINER_SHELL" = "bash" ]; then
+        ADDITIONAL_DEPS="$DDE_CONTAINER_SHELL"
+    else
+        ADDITIONAL_DEPS=""
+    fi
+else
+    # Use root user's shell as default
+    SHELL_TO_INSTALL=$(getent passwd root | cut -d: -f7)
+    ADDITIONAL_DEPS=""
+fi
+
 # Determine the package manager to use based on the available commands
 if commandExists apt-get; then
     PACKAGE_MANAGER="apt-get"
@@ -25,13 +37,6 @@ elif commandExists apk; then
 else
     echo "Not supported package manager"
     exit 1
-fi
-
-# Determine additional dependencies based on the value of DDE_CONTAINER_SHELL
-if [ "$DDE_CONTAINER_SHELL" = "zsh" ]; then
-    ADDITIONAL_DEPS="$DDE_CONTAINER_SHELL"
-else
-    ADDITIONAL_DEPS=""
 fi
 
 # Install dependencies using the determined package manager
