@@ -25,7 +25,8 @@ function project:shell:root() {
         project:up
     fi
 
-    ${DOCKER_COMPOSE} exec ${service} /bin/${DDE_CONTAINER_SHELL}
+    local container_shell=$(_getContainerShell ${service} root)
+    ${DOCKER_COMPOSE} exec --user root ${service} ${container_shell}
 }
 
 function p:s:r() {
