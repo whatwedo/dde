@@ -13,8 +13,11 @@ function project:destroy() {
     _logYellow "Deleting SSL certs"
 
     for vhost in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.VIRTUAL_HOST | select(length>0)'); do
-        _logYellow "Delete certs for ${vhost}"
-        rm -f ${CERT_DIR}/${vhost}.*
+        IFS=',' read -ra hosts <<< "$vhost"
+        for host in "${hosts[@]}"; do
+            _logYellow "Delete certs for ${host}"
+            rm -f ${CERT_DIR}/${host}.*
+        done
     done
 
     _logGreen "Finished destroying successfully"
