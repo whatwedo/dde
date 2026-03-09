@@ -2,13 +2,13 @@
 #
 #
 # Command
-#    project:exec
-#    p:e
-#    exec
+#    project:exec:root
+#    p:e:r
+#    exec-root
 
 # Arguments
 #    service       optional, open shell of service, default open first container
-function project:exec() {
+function project:exec:root() {
     _logYellow "Please note that the command exec has been renamed to 'shell' in the script."
 
     _checkProject
