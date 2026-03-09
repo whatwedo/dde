@@ -13,7 +13,6 @@ function project:open() {
 
     for openUrl in $(${DOCKER_COMPOSE} config | _yq_stdin e '.services.*.environment.OPEN_URL | select(length>0)'); do
         _logGreen "open ${openUrl}"
-        echo "DDE_BROWSER ${DDE_BROWSER}"
         if [[ "${DDE_BROWSER}" != "" ]]; then
           ${DDE_BROWSER} "${openUrl}" &
         elif [[ "${OSTYPE}" == "linux-gnu" ]]; then
