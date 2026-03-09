@@ -6,11 +6,15 @@
 
 
 function system:cleanup() {
-    _logYellow "Running docker-gc"
-    ${DOCKER_BIN} run --rm -v /var/run/docker.sock:/var/run/docker.sock -e REMOVE_VOLUMES=1 spotify/docker-gc sh -c "/docker-gc || true"
+    _logYellow "Pruning unused docker resources"
+    ${DOCKER_BIN} system prune -f --volumes
 
-    _logYellow "Shrinking down docker data"
-    ${DOCKER_BIN} run --rm -it --privileged --pid=host walkerlee/nsenter -t 1 -m -u -i -n fstrim /var/lib/docker
+    if [[ "$(uname)" == "Linux" ]]; then
+        _logYellow "Shrinking down docker data"
+        ${DOCKER_BIN} run --rm -it --privileged --pid=host walkerlee/nsenter -t 1 -m -u -i -n fstrim /var/lib/docker
+    else
+        _logYellow "Skipping fstrim (Linux only)"
+    fi
 
     _logGreen "Finished system cleanup"
 }
