@@ -18,7 +18,7 @@ function project:open() {
         elif [[ "${OSTYPE}" == "linux-gnu" ]]; then
             xdg-open "${openUrl}"
         elif [[ "${OSTYPE}" == "darwin" ]]; then
-           open "${openUrl}"
+           command open "${openUrl}"
         fi
     done
 }
