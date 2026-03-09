@@ -14,7 +14,8 @@
 function project:fix-permissions() {
     _checkProject
 
-    local container=$(${DOCKER_BIN} run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p ${COMPOSE_FILE} 'services.*' | head -n1 | sed 's/.*\.//')
+    local container
+    container="$(${DOCKER_COMPOSE} config | _yq_stdin e '.services | keys | .[0]')"
     local permission="dde:dde"
     local path="/var/www"
     local user=$(id -u)

@@ -13,7 +13,7 @@ function project:exec() {
 
     _checkProject
     # Determine the first service from composer file
-    service=$(${DOCKER_BIN} run --rm -v $(pwd):/workdir mikefarah/yq:3 yq r --printMode p ${COMPOSE_FILE} 'services.*' | head -n1 | sed 's/.*\.//')
+    service="$(${DOCKER_COMPOSE} config | _yq_stdin e '.services | keys | .[0]')"
 
     # Check if the provided service exists
     if _serviceExists "${1}"; then
