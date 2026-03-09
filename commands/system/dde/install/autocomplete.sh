@@ -12,7 +12,7 @@ function system:dde:install:autocomplete() {
     fi
 
     if [[ "${_rcFile}" == "" ]]; then
-        _logRed "unkown shell ${SHELL}"
+        _logRed "unknown shell ${SHELL}"
         exit 1
     fi
 
