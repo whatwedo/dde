@@ -1,0 +1,6 @@
+framework:
+    secret: dde-cli-no-secret-needed
+
+when@test:
+    framework:
+        test: true

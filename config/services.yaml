@@ -1,0 +1,37 @@
+parameters:
+    env(DDE_UID): ''
+    env(DDE_GID): ''
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        bind:
+            string $dataDir: '%env(DDE_DATA_DIR)%'
+            string $configDir: '%env(DDE_CONFIG_DIR)%'
+            string $projectDir: '%kernel.project_dir%'
+            string $resourcesDir: '%kernel.project_dir%/resources'
+            string $userHomeDir: '%env(HOME)%'
+            string $uid: '%env(DDE_UID)%'
+            string $gid: '%env(DDE_GID)%'
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            - '../src/Plugin/PluginDefinition.php'
+            - '../src/Plugin/PluginProxyCommand.php'
+
+    # Remove Symfony's built-in about command so dde's own takes precedence
+    console.command.about:
+        alias: App\Command\AboutCommand
+
+    App\Command\AboutCommand:
+        public: true
+
+    # Clock interface binding
+    Psr\Clock\ClockInterface:
+        class: Symfony\Component\Clock\NativeClock
+
+    App\Plugin\PluginCommandLoader:
+        public: true

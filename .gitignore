@@ -1,26 +1,17 @@
-/commands/local.sh
-/commands/local
-!/commands/local/command.sh.dist
+/vendor/
+/var/
+/.env
+/.env.local
+/.phpunit.cache/
+/.phpunit.result.cache
+/config/reference.php
 
-./docker-compose.override.yml
+# Build artifacts
+/bin/dde
+/bin/dde.phar
+/box.phar
 
-
-
-# Data directory
-/data/*
-!/data/.gitkeep
-!/data/reverseproxy
-/data/reverseproxy/*
-!/data/reverseproxy/etc
-/data/reverseproxy/etc/*
-!/data/reverseproxy/etc/nginx
-/data/reverseproxy/etc/nginx/*
-!/data/reverseproxy/etc/nginx/conf.d
-/data/reverseproxy/etc/nginx/conf.d/*
-!/data/reverseproxy/etc/nginx/vhost.d
-/data/reverseproxy/etc/nginx/vhost.d/*
-!/data/reverseproxy/etc/nginx/conf.d/dde.conf
-
-# Vagrant
-.vagrant
-ubuntu*.log
+# IDE and local tooling
+/.claude/
+/.idea/
+/.worktrees/

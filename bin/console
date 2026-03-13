@@ -1,0 +1,30 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use App\Application;
+use App\Kernel;
+
+// When running as PHAR, set default env vars to avoid Dotenv trying to read .env from inside the archive
+if (str_starts_with(__DIR__, 'phar://')) {
+    $home = $_SERVER['HOME'] ?? $_ENV['HOME'] ?? getenv('HOME') ?: '/tmp';
+    $_SERVER['APP_ENV'] = $_ENV['APP_ENV'] = $_SERVER['APP_ENV'] ?? $_ENV['APP_ENV'] ?? 'prod';
+    $_SERVER['APP_DEBUG'] = $_ENV['APP_DEBUG'] = $_SERVER['APP_DEBUG'] ?? $_ENV['APP_DEBUG'] ?? '0';
+    $_SERVER['DDE_CONFIG_DIR'] = $_ENV['DDE_CONFIG_DIR'] = $_SERVER['DDE_CONFIG_DIR'] ?? $_ENV['DDE_CONFIG_DIR'] ?? $home . '/.dde';
+    $_SERVER['DDE_DATA_DIR'] = $_ENV['DDE_DATA_DIR'] = $_SERVER['DDE_DATA_DIR'] ?? $_ENV['DDE_DATA_DIR'] ?? $home . '/.dde/data';
+    $_SERVER['APP_RUNTIME_OPTIONS'] = $_SERVER['APP_RUNTIME_OPTIONS'] ?? [];
+    $_SERVER['APP_RUNTIME_OPTIONS']['disable_dotenv'] = true;
+}
+
+if (!is_file(dirname(__DIR__) . '/vendor/autoload_runtime.php')) {
+    throw new LogicException('Symfony Runtime is missing. Try running "composer require symfony/runtime".');
+}
+
+require_once dirname(__DIR__) . '/vendor/autoload_runtime.php';
+
+return function (array $context) {
+    $kernel = new Kernel($context['APP_ENV'], (bool) $context['APP_DEBUG']);
+
+    return new Application($kernel);
+};
