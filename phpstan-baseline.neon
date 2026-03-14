@@ -1,0 +1,85 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Parameter \#2 \$haystack of method PHPUnit\\Framework\\Assert\:\:assertStringContainsString\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/E2E/DatabaseCommandsTest.php
+
+		-
+			message: '#^Parameter \#2 \$haystack of method PHPUnit\\Framework\\Assert\:\:assertStringContainsString\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/E2E/PostgresDatabaseCommandsTest.php
+
+		-
+			message: '#^Call to an undefined method App\\Command\\AbstractBaseCommand\:\:callResolveFormatter\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Unit/Command/AbstractBaseCommandTest.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: tests/Unit/Command/System/SystemRestartCommandTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertNotNull\(\) with Symfony\\Component\\DependencyInjection\\ContainerInterface will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/KernelTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsString\(\) with string will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 2
+			path: tests/Unit/Manager/CompletionManagerTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with array\<array\{ID\: string, Repository\: string, Tag\: string, Size\: string\}\> will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/Manager/DockerManagerTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with array\<array\{Name\: string, Labels\: string\}\> will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/Manager/DockerManagerTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with list\<array\{name\: string, version\: string, status\: string\}\> will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/Manager/ProjectLifecycleManagerTest.php
+
+		-
+			message: '#^Property Tests\\Unit\\Manager\\ProjectLifecycleManagerTest\:\:\$certificateManager has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: tests/Unit/Manager/ProjectLifecycleManagerTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertNull\(\) with null will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/Model/ServiceStartStatusTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertNull\(\) with null will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/Output/OutputFormatTest.php
+
+		-
+			message: '#^Property Tests\\Unit\\Parser\\DockerfileParserTest\:\:\$tempFiles \(list\<string\>\) does not accept non\-empty\-list\<string\|false\>\.$#'
+			identifier: assign.propertyType
+			count: 2
+			path: tests/Unit/Parser/DockerfileParserTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with array\<string\> will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/Service/SshAgentServiceTest.php
