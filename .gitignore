@@ -1,17 +1,18 @@
-/vendor/
-/var/
-/.env
-/.env.local
-/.phpunit.cache/
-/.phpunit.result.cache
-/config/reference.php
+vendor/
+var/
+.env
+.env.local
+.phpunit.cache/
+.phpunit.result.cache
+config/reference.php
 
 # Build artifacts
-/bin/dde
-/bin/dde.phar
-/box.phar
+bin/dde
+bin/dde.phar
+box.phar
 
 # IDE and local tooling
-/.claude/
-/.idea/
-/.worktrees/
+.claude/settings.local.json
+.claude/worktrees/
+.idea/
+.worktrees/
