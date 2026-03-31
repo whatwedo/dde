@@ -234,6 +234,175 @@ final class DockerComposeManagerTest extends TestCase
         unlink($overridePath);
     }
 
+    public function testGenerateOverridePreservesComposeCommandWithImageEntrypoint(): void
+    {
+        $this->createComposeFile([
+            'storage' => [
+                'image' => 'minio/minio',
+                'command' => 'server /data --console-address :9001',
+            ],
+        ]);
+
+        // Simulate image with entrypoint ["minio"]
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(true);
+        $dockerManager->method('inspectImage')->willReturnCallback(
+            static fn (string $image, string $format): string => match ($format) {
+                '{{json .Config.Entrypoint}}' => '["minio"]',
+                '{{json .Config.Cmd}}' => 'null',
+                default => '',
+            },
+        );
+
+        $manager = $this->createManagerWithDockerManager($dockerManager);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        $this->assertSame(['minio', 'server', '/data', '--console-address', ':9001'], $data['services']['storage']['command']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverridePreservesComposeCommandAsList(): void
+    {
+        $this->createComposeFile([
+            'storage' => [
+                'image' => 'minio/minio',
+                'command' => ['server', '/data'],
+            ],
+        ]);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        $this->assertSame(['server', '/data'], $data['services']['storage']['command']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverridePreservesComposeEntrypoint(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'entrypoint' => ['/custom-entrypoint.sh'],
+                'command' => ['nginx', '-g', 'daemon off;'],
+            ],
+        ]);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        $this->assertSame(['/custom-entrypoint.sh', 'nginx', '-g', 'daemon off;'], $data['services']['web']['command']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideEscapesDollarSignsInImageCmd(): void
+    {
+        $this->createComposeFile([
+            'guacd' => [
+                'image' => 'guacd:1.5.3',
+            ],
+        ]);
+
+        // Image CMD contains $GUACD_LOG_LEVEL meant for shell expansion at runtime
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(true);
+        $dockerManager->method('inspectImage')->willReturnCallback(
+            static fn (string $image, string $format): string => match ($format) {
+                '{{json .Config.Entrypoint}}' => 'null',
+                '{{json .Config.Cmd}}' => '["/bin/sh","-c","/opt/guacamole/sbin/guacd -b 0.0.0.0 -L $GUACD_LOG_LEVEL -f"]',
+                default => '',
+            },
+        );
+
+        $manager = $this->createManagerWithDockerManager($dockerManager);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        // $ must be escaped to $$ so Docker Compose does not interpolate it
+        $this->assertSame(
+            ['/bin/sh', '-c', '/opt/guacamole/sbin/guacd -b 0.0.0.0 -L $$GUACD_LOG_LEVEL -f'],
+            $data['services']['guacd']['command'],
+        );
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideSkipsEntrypointForShellLessImage(): void
+    {
+        $this->createComposeFile([
+            'mercure' => [
+                'image' => 'dunglas/mercure',
+            ],
+        ]);
+
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(false);
+
+        $manager = $this->createManagerWithDockerManager($dockerManager);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        // Should only have labels, no entrypoint/volumes/environment
+        $this->assertArrayHasKey('mercure', $data['services']);
+        $this->assertArrayNotHasKey('entrypoint', $data['services']['mercure']);
+        $this->assertArrayNotHasKey('volumes', $data['services']['mercure']);
+        $this->assertArrayNotHasKey('environment', $data['services']['mercure']);
+        $this->assertContains('dde.managed=true', $data['services']['mercure']['labels']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideMixesShellAndShellLessServices(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+            'mercure' => [
+                'image' => 'dunglas/mercure',
+            ],
+        ]);
+
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturnCallback(
+            static fn (string $image): bool => $image !== 'dunglas/mercure',
+        );
+        $dockerManager->method('inspectImage')->willReturn('null');
+
+        $manager = $this->createManagerWithDockerManager($dockerManager);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        // web gets full override
+        $this->assertArrayHasKey('entrypoint', $data['services']['web']);
+        $this->assertArrayHasKey('volumes', $data['services']['web']);
+
+        // mercure gets labels only
+        $this->assertArrayNotHasKey('entrypoint', $data['services']['mercure']);
+        $this->assertArrayNotHasKey('volumes', $data['services']['mercure']);
+
+        unlink($overridePath);
+    }
+
     public function testGenerateOverrideThrowsWhenNoServicesFound(): void
     {
         // empty temp dir with no compose file
@@ -510,21 +679,28 @@ final class DockerComposeManagerTest extends TestCase
         file_put_contents($this->tempDir.'/docker-compose.yml', Yaml::dump($composeData, 4, 2));
     }
 
-    protected function setUp(): void
+    private function createManagerWithDockerManager(DockerManager $dockerManager): DockerComposeManager
     {
-        $this->tempDir = sys_get_temp_dir().'/dde-test-'.bin2hex(random_bytes(8));
-        mkdir($this->tempDir, 0o755, true);
-
         $resourcesDir = dirname(__DIR__, 3).'/resources';
         $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
-        $dockerManager = $this->createStub(DockerManager::class);
         $configManager = $this->createStub(ConfigManager::class);
         $traefikService = new TraefikService(
             dockerManager: $dockerManager,
             filesystem: new \Symfony\Component\Filesystem\Filesystem(),
             dataDir: $this->tempDir,
         );
-        $this->manager = new DockerComposeManager($adapterRegistry, $configManager, $dockerManager, $traefikService, new UserContext());
+
+        return new DockerComposeManager($adapterRegistry, $configManager, $dockerManager, $traefikService, new UserContext());
+    }
+
+    protected function setUp(): void
+    {
+        $this->tempDir = sys_get_temp_dir().'/dde-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir, 0o755, true);
+
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(true);
+        $this->manager = $this->createManagerWithDockerManager($dockerManager);
     }
 
     protected function tearDown(): void

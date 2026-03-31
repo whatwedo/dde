@@ -288,6 +288,33 @@ final class DockerManagerTest extends TestCase
         $this->assertSame([], $result);
     }
 
+    // --- imageHasShell ---
+
+    public function testImageHasShellReturnsTrueWhenShellProbeSucceeds(): void
+    {
+        $manager = $this->createManagerWithShellProbeResult(true);
+
+        $this->assertTrue($manager->imageHasShell('nginx:latest'));
+    }
+
+    public function testImageHasShellReturnsFalseWhenShellProbeFails(): void
+    {
+        $manager = $this->createManagerWithShellProbeResult(false);
+
+        $this->assertFalse($manager->imageHasShell('dunglas/mercure'));
+    }
+
+    private function createManagerWithShellProbeResult(bool $successful): DockerManager
+    {
+        $process = $this->createStub(\Symfony\Component\Process\Process::class);
+        $process->method('isSuccessful')->willReturn($successful);
+
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturn($process);
+
+        return new DockerManager($processFactory);
+    }
+
     protected function setUp(): void
     {
         $this->manager = new DockerManager(new ProcessFactory());

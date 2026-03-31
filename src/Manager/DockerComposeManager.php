@@ -273,6 +273,8 @@ readonly class DockerComposeManager
         $adaptersDir = $this->adapterRegistry->getBuiltinAdaptersDir();
 
         foreach ($composeServices as $serviceName => $serviceConfig) {
+            $imageName = $this->resolveServiceImage($serviceName, $serviceConfig, $projectDir);
+
             $labels = ['dde.managed=true'];
             $worktreeHostname = null;
             $projectHostname = $config->projectName.'.test';
@@ -280,6 +282,15 @@ readonly class DockerComposeManager
             if ($worktreeInfo instanceof WorktreeInfo) {
                 $worktreeHostname = $this->configManager->resolveProjectHostname($config->projectName, $worktreeInfo);
                 $labels = array_merge($labels, $this->overrideTraefikLabels($serviceConfig['labels'] ?? [], $projectHostname, $worktreeHostname, $serviceName));
+            }
+
+            // Skip entrypoint override for shell-less images (scratch, single-binary)
+            if (! $this->dockerManager->imageHasShell($imageName)) {
+                $overrideServices[$serviceName] = [
+                    'labels' => $labels,
+                ];
+
+                continue;
             }
 
             $environment = [
@@ -314,10 +325,25 @@ readonly class DockerComposeManager
             ];
 
             // Preserve original entrypoint + CMD when overriding entrypoint
-            $imageName = $this->resolveServiceImage($serviceName, $serviceConfig, $projectDir);
-            $originalEntrypoint = $this->getImageEntrypoint($imageName);
-            $originalCmd = $this->getImageCmd($imageName);
-            $command = array_merge($originalEntrypoint ?? [], $originalCmd ?? []);
+            // Mirror Docker's behavior:
+            //   - compose entrypoint overrides image ENTRYPOINT and resets CMD
+            //   - compose command overrides image CMD but preserves image ENTRYPOINT
+            $composeEntrypoint = $this->parseComposeStringOrList($serviceConfig['entrypoint'] ?? null);
+            $composeCommand = $this->parseComposeStringOrList($serviceConfig['command'] ?? null);
+
+            if ($composeEntrypoint !== null) {
+                // Compose entrypoint overrides image entrypoint; CMD only if compose also sets it
+                $resolvedEntrypoint = $composeEntrypoint;
+                $resolvedCmd = $composeCommand ?? [];
+            } else {
+                // No compose entrypoint — use image entrypoint.
+                // Values from image inspect must have $ escaped to $$ so Docker Compose
+                // does not interpolate shell variables that are meant for container runtime.
+                $resolvedEntrypoint = $this->escapeComposeVariables($this->getImageEntrypoint($imageName) ?? []);
+                $resolvedCmd = $composeCommand ?? $this->escapeComposeVariables($this->getImageCmd($imageName) ?? []);
+            }
+
+            $command = array_merge($resolvedEntrypoint, $resolvedCmd);
 
             if ($command !== []) {
                 $serviceOverride['command'] = $command;
@@ -527,6 +553,44 @@ readonly class DockerComposeManager
         }
 
         return is_array($cmd) ? $cmd : null;
+    }
+
+    /**
+     * Parses a compose entrypoint or command value (string or list) into a list of strings.
+     *
+     * @return list<string>|null
+     */
+    private function parseComposeStringOrList(mixed $value): ?array
+    {
+        if (is_string($value)) {
+            // Shell-form: "server /data --console-address :9001"
+            $parts = preg_split('/\s+/', trim($value), -1, PREG_SPLIT_NO_EMPTY);
+
+            return $parts !== false && $parts !== [] ? $parts : null;
+        }
+
+        if (is_array($value) && $value !== []) {
+            /** @var list<string> */
+            return array_values(array_map(strval(...), $value));
+        }
+
+        return null;
+    }
+
+    /**
+     * Escapes $ to $$ in values extracted from Docker image metadata so that
+     * Docker Compose does not interpolate shell variables meant for container runtime.
+     *
+     * @param list<string> $values
+     *
+     * @return list<string>
+     */
+    private function escapeComposeVariables(array $values): array
+    {
+        return array_map(
+            static fn (string $v): string => str_replace('$', '$$', $v),
+            $values,
+        );
     }
 
     /**

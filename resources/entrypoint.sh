@@ -9,60 +9,64 @@ DDE_UID="${DDE_UID:-1000}"
 DDE_GID="${DDE_GID:-1000}"
 
 # 1. Ensure dde group and user exist, then remap UID/GID
-if ! id dde >/dev/null 2>&1; then
-    # Create group: try dedicated group first, fall back to reusing existing GID
-    if ! getent group dde >/dev/null 2>&1; then
-        addgroup -g "$DDE_GID" dde 2>/dev/null || addgroup dde 2>/dev/null || true
-    fi
-
-    # Determine group name for user creation
-    DDE_GROUP="dde"
-    if ! getent group dde >/dev/null 2>&1; then
-        DDE_GROUP=$(getent group "$DDE_GID" 2>/dev/null | cut -d: -f1)
-        DDE_GROUP="${DDE_GROUP:-nogroup}"
-    fi
-
-    # Create user
-    if command -v adduser >/dev/null 2>&1; then
-        adduser -u "$DDE_UID" -G "$DDE_GROUP" -D -h /home/dde -s /bin/sh dde 2>/dev/null || true
-    elif command -v useradd >/dev/null 2>&1; then
-        useradd -u "$DDE_UID" -g "$DDE_GROUP" -m -d /home/dde -s /bin/sh dde 2>/dev/null || true
-    fi
-
-    # Fallback: if user still doesn't exist, create manually
+# Skip entirely when not running as root or when essential tools are missing (minimal images)
+if command -v id >/dev/null 2>&1 && [ "$(id -u)" = "0" ]; then
     if ! id dde >/dev/null 2>&1; then
-        echo "dde:x:${DDE_UID}:${DDE_GID}:dde:/home/dde:/bin/sh" >> /etc/passwd
-        mkdir -p /home/dde
-        chown "$DDE_UID:$DDE_GID" /home/dde
-    fi
-elif [ "$(id -u dde 2>/dev/null)" != "$DDE_UID" ]; then
-    # User exists but UID/GID differs — remap
-    if command -v usermod >/dev/null 2>&1; then
-        groupmod -o -g "$DDE_GID" dde 2>/dev/null || true
-        usermod -o -u "$DDE_UID" -g "$DDE_GID" dde 2>/dev/null || true
-    else
-        sed -i "s/^dde:x:[0-9]*:[0-9]*/dde:x:${DDE_UID}:${DDE_GID}/" /etc/passwd
-        sed -i "s/^dde:x:[0-9]*/dde:x:${DDE_GID}/" /etc/group
-    fi
-    chown -R "$DDE_UID:$DDE_GID" /home/dde 2>/dev/null || true
-fi
+        # Create group: try dedicated group first, fall back to reusing existing GID
+        if command -v getent >/dev/null 2>&1 && ! getent group dde >/dev/null 2>&1; then
+            addgroup -g "$DDE_GID" dde 2>/dev/null || addgroup dde 2>/dev/null || true
+        fi
 
-# 2. Shell detection
-if [ -n "$DDE_SHELL" ]; then
-    USER_SHELL="/bin/$DDE_SHELL"
-elif [ -x /bin/zsh ]; then
-    USER_SHELL="/bin/zsh"
-elif [ -x /bin/bash ]; then
-    USER_SHELL="/bin/bash"
-else
-    USER_SHELL="/bin/sh"
-fi
+        # Determine group name for user creation
+        DDE_GROUP="dde"
+        if command -v getent >/dev/null 2>&1 && ! getent group dde >/dev/null 2>&1; then
+            DDE_GROUP=$(getent group "$DDE_GID" 2>/dev/null | cut -d: -f1)
+            DDE_GROUP="${DDE_GROUP:-nogroup}"
+        fi
 
-# Set login shell for dde user
-if command -v usermod >/dev/null 2>&1; then
-    usermod -s "$USER_SHELL" dde 2>/dev/null || true
-else
-    sed -i "s|dde:.*:/home/dde:.*|dde:x:${DDE_UID}:${DDE_GID}:dde:/home/dde:${USER_SHELL}|" /etc/passwd 2>/dev/null || true
+        # Create user
+        if command -v adduser >/dev/null 2>&1; then
+            adduser -u "$DDE_UID" -G "$DDE_GROUP" -D -h /home/dde -s /bin/sh dde 2>/dev/null || true
+        elif command -v useradd >/dev/null 2>&1; then
+            useradd -u "$DDE_UID" -g "$DDE_GROUP" -m -d /home/dde -s /bin/sh dde 2>/dev/null || true
+        fi
+
+        # Fallback: if user still doesn't exist, create manually
+        if ! id dde >/dev/null 2>&1 && [ -w /etc/passwd ]; then
+            echo "dde:x:${DDE_UID}:${DDE_GID}:dde:/home/dde:/bin/sh" >> /etc/passwd
+            mkdir -p /home/dde 2>/dev/null || true
+            chown "$DDE_UID:$DDE_GID" /home/dde 2>/dev/null || true
+        fi
+    elif [ "$(id -u dde 2>/dev/null)" != "$DDE_UID" ]; then
+        # User exists but UID/GID differs — remap
+        if command -v usermod >/dev/null 2>&1; then
+            groupmod -o -g "$DDE_GID" dde 2>/dev/null || true
+            usermod -o -u "$DDE_UID" -g "$DDE_GID" dde 2>/dev/null || true
+        elif [ -w /etc/passwd ]; then
+            sed -i "s/^dde:x:[0-9]*:[0-9]*/dde:x:${DDE_UID}:${DDE_GID}/" /etc/passwd 2>/dev/null || true
+            sed -i "s/^dde:x:[0-9]*/dde:x:${DDE_GID}/" /etc/group 2>/dev/null || true
+        fi
+        chown -R "$DDE_UID:$DDE_GID" /home/dde 2>/dev/null || true
+    fi
+
+    # 2. Shell detection and login shell
+    if id dde >/dev/null 2>&1; then
+        if [ -n "$DDE_SHELL" ]; then
+            USER_SHELL="/bin/$DDE_SHELL"
+        elif [ -x /bin/zsh ]; then
+            USER_SHELL="/bin/zsh"
+        elif [ -x /bin/bash ]; then
+            USER_SHELL="/bin/bash"
+        else
+            USER_SHELL="/bin/sh"
+        fi
+
+        if command -v usermod >/dev/null 2>&1; then
+            usermod -s "$USER_SHELL" dde 2>/dev/null || true
+        elif [ -w /etc/passwd ]; then
+            sed -i "s|dde:.*:/home/dde:.*|dde:x:${DDE_UID}:${DDE_GID}:dde:/home/dde:${USER_SHELL}|" /etc/passwd 2>/dev/null || true
+        fi
+    fi
 fi
 
 # 3. Run built-in service adapters

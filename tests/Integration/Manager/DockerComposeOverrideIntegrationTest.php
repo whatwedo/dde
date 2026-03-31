@@ -238,6 +238,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $userContext = new UserContext('1000', '1000');
 
         $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(true);
         $dockerManager->method('inspectImage')->willReturn('null');
 
         $traefikService = new TraefikService(

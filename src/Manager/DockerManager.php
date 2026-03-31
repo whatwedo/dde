@@ -289,6 +289,26 @@ readonly class DockerManager
         return $process;
     }
 
+    /**
+     * Checks whether an image has a usable shell (/bin/sh).
+     *
+     * Scratch-based and single-binary images have no userland tools, so
+     * the dde entrypoint script cannot run inside them. We probe by
+     * attempting to run /bin/sh inside the image — this is the only
+     * reliable method since some minimal images ship a PATH that
+     * references /bin even though /bin/sh does not exist.
+     */
+    public function imageHasShell(string $image): bool
+    {
+        $process = $this->processFactory->create(
+            ['docker', 'run', '--rm', '--entrypoint', '/bin/sh', $image, '-c', 'exit 0'],
+        );
+        $process->setTimeout(30);
+        $process->run();
+
+        return $process->isSuccessful();
+    }
+
     public function inspectImage(string $image, string $format): string
     {
         $process = $this->processFactory->create(['docker', 'image', 'inspect', '--format', $format, $image], null, null);
