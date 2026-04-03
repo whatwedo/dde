@@ -821,6 +821,39 @@ final class DockerComposeModifierTest extends TestCase
         $this->assertStringContainsString("    web:\n        image: nginx", $content);
     }
 
+    public function testRemoveContainerNameRemovesProperty(): void
+    {
+        $config = [
+            'services' => [
+                'web' => [
+                    'image' => 'nginx',
+                    'container_name' => 'my-web',
+                ],
+            ],
+        ];
+
+        $changed = $this->modifier->removeContainerName($config, 'web');
+
+        $this->assertTrue($changed);
+        $this->assertArrayNotHasKey('container_name', $config['services']['web']);
+        $this->assertSame('nginx', $config['services']['web']['image']);
+    }
+
+    public function testRemoveContainerNameReturnsFalseWhenNotSet(): void
+    {
+        $config = [
+            'services' => [
+                'web' => [
+                    'image' => 'nginx',
+                ],
+            ],
+        ];
+
+        $changed = $this->modifier->removeContainerName($config, 'web');
+
+        $this->assertFalse($changed);
+    }
+
     public function testServiceHasOldSshAgentVolumeReturnsTrueForOldFormat(): void
     {
         $config = [

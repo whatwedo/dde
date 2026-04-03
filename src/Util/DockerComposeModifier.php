@@ -342,6 +342,23 @@ readonly class DockerComposeModifier
     }
 
     /**
+     * Removes the container_name property from a service.
+     * Fixed container names prevent running multiple instances (e.g. worktrees).
+     *
+     * @param array<string, mixed> $config
+     */
+    public function removeContainerName(array &$config, string $serviceName): bool
+    {
+        if (! isset($config['services'][$serviceName]['container_name'])) {
+            return false;
+        }
+
+        unset($config['services'][$serviceName]['container_name']);
+
+        return true;
+    }
+
+    /**
      * Returns true if the service has an SSH-Agent volume mount that is not yet
      * in the canonical dde_ssh-agent_socket-dir format and needs to be migrated.
      *

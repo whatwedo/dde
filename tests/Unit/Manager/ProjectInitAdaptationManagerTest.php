@@ -93,6 +93,49 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $this->assertSame('dde', $result['config']['networks']['default']['name']);
     }
 
+    public function testAdaptComposeRemovesContainerName(): void
+    {
+        $composeContent = <<<'YAML'
+            services:
+                web:
+                    container_name: my-web
+                    image: nginx
+                    labels:
+                        - 'traefik.enable=true'
+                        - 'traefik.http.routers.web.rule=Host(`test-project.test`)'
+                        - 'traefik.http.routers.web.tls=true'
+                    volumes:
+                        - 'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro'
+                guacd:
+                    container_name: my-guacd
+                    image: guacd:1.5.3
+            networks:
+                default:
+                    name: dde
+                    external: true
+            volumes:
+                dde_ssh-agent_socket-dir:
+                    external: true
+            YAML;
+        $composePath = $this->tempDir.'/docker-compose.yml';
+        file_put_contents($composePath, $composeContent);
+
+        $result = $this->manager->adaptCompose($composePath, 'test-project', 'web');
+
+        $this->assertNotNull($result);
+        $this->assertNotEmpty($result['changes']);
+
+        // container_name should be removed from both services
+        $this->assertArrayNotHasKey('container_name', $result['config']['services']['web']);
+        $this->assertArrayNotHasKey('container_name', $result['config']['services']['guacd']);
+
+        $containerNameChanges = array_filter(
+            $result['changes'],
+            static fn (string $c): bool => str_contains($c, 'container_name'),
+        );
+        $this->assertCount(2, $containerNameChanges);
+    }
+
     public function testAdaptComposeReturnsEmptyWhenNoChanges(): void
     {
         $composeContent = <<<'YAML'

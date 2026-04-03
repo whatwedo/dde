@@ -247,6 +247,15 @@ readonly class ProjectInitAdaptationManager
             }
         }
 
+        // Remove container_name — fixed names prevent worktree support
+        if (isset($config['services']) && is_array($config['services'])) {
+            foreach (array_keys($config['services']) as $svcName) {
+                if (is_string($svcName) && $this->dockerComposeModifier->removeContainerName($config, $svcName)) {
+                    $changes[] = sprintf('Removed container_name from service "%s"', $svcName);
+                }
+            }
+        }
+
         // Remove legacy DDE_CONTAINER_SHELL environment variable
         if (isset($config['services']) && is_array($config['services'])) {
             foreach (array_keys($config['services']) as $svcName) {
