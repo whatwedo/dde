@@ -72,8 +72,8 @@ EOF
 } >> Release)
 
 (cd "${REPO}/dists/stable" && \
-    gpg --batch --yes --pinentry-mode loopback --passphrase "${APT_GPG_PASSPHRASE:-}" --armor --detach-sign -o Release.gpg Release && \
-    gpg --batch --yes --pinentry-mode loopback --passphrase "${APT_GPG_PASSPHRASE:-}" --armor --clearsign -o InRelease Release)
+    gpg --batch --yes --pinentry-mode loopback --passphrase "${GPG_PASSPHRASE:-}" --armor --detach-sign -o Release.gpg Release && \
+    gpg --batch --yes --pinentry-mode loopback --passphrase "${GPG_PASSPHRASE:-}" --armor --clearsign -o InRelease Release)
 
 gpg --armor --export > "${REPO}/key.gpg"
 aws s3 sync "${REPO}/" "s3://${S3_BUCKET}/apt/" --delete

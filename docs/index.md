@@ -48,6 +48,14 @@ echo "https://packages.dde.sh/alpine/main" >> /etc/apk/repositories
 apk add dde
 ```
 
+**Arch Linux**
+```bash
+echo -e '\n[dde]\nServer = https://packages.dde.sh/arch/$arch\nSigLevel = Required DatabaseOptional' | sudo tee -a /etc/pacman.conf
+curl -fsSL https://packages.dde.sh/arch/key.gpg | sudo pacman-key --add -
+sudo pacman-key --lsign-key "$(curl -fsSL https://packages.dde.sh/arch/key.gpg | gpg --with-colons --import-options show-only --import 2>/dev/null | awk -F: '/^fpr/{print $10; exit}')"
+sudo pacman -Sy dde
+```
+
 Then set up the system and initialize your first project:
 
 ```bash
