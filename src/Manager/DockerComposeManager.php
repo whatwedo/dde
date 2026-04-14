@@ -198,6 +198,32 @@ readonly class DockerComposeManager
     }
 
     /**
+     * Returns true if any image-based service in the compose file has an image that is not yet present locally.
+     * Build-only services (using `build:` without `image:`) are excluded.
+     * Services with both `build:` and `image:` are also excluded (built locally, not pulled).
+     */
+    public function needsPull(string $projectDir): bool
+    {
+        $services = $this->discoverComposeServicesWithConfig($projectDir);
+
+        foreach ($services as $serviceConfig) {
+            if (! is_string($serviceConfig['image'] ?? null)) {
+                continue;
+            }
+
+            if (isset($serviceConfig['build'])) {
+                continue;
+            }
+
+            if (! $this->dockerManager->imageExists($serviceConfig['image'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param array{composeFiles?: list<string>} $options
      *
      * @throws \RuntimeException

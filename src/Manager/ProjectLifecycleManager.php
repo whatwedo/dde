@@ -57,10 +57,15 @@ readonly class ProjectLifecycleManager
         // 4. Pre-build compose images
         $this->dockerComposeManager->build($projectDir, [], $output);
 
-        // 5. Generate override (pass worktreeInfo to avoid duplicate detection)
+        // 5. Pull missing images silently — avoids flooding the GUI with pull/extract spam
+        if ($this->dockerComposeManager->needsPull($projectDir)) {
+            $this->dockerComposeManager->pull($projectDir);
+        }
+
+        // 6. Generate override (pass worktreeInfo to avoid duplicate detection)
         $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo);
 
-        // 6. Docker compose up
+        // 7. Docker compose up
         $composeFiles = [$composeFile, $overrideFile];
 
         try {
