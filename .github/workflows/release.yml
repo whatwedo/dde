@@ -182,7 +182,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           for bin in dist/dde-darwin-* dist/dde-linux-*; do
             [ -f "$bin" ] || continue
-            aws s3 cp "$bin" "s3://packages.dde.sh/bin/${VERSION}/$(basename "$bin")"
+            aws s3 cp "$bin" "s3://packages.dde.sh/homebrew/${VERSION}/$(basename "$bin")"
           done
 
   homebrew:

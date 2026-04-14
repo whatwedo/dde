@@ -25,22 +25,22 @@ class Dde < Formula
 
   on_macos do
     on_arm do
-      url "https://packages.dde.sh/bin/${VERSION_CLEAN}/dde-darwin-arm64"
+      url "https://packages.dde.sh/homebrew/${VERSION_CLEAN}/dde-darwin-arm64"
       sha256 "${sha_darwin_arm64}"
     end
     on_intel do
-      url "https://packages.dde.sh/bin/${VERSION_CLEAN}/dde-darwin-amd64"
+      url "https://packages.dde.sh/homebrew/${VERSION_CLEAN}/dde-darwin-amd64"
       sha256 "${sha_darwin_amd64}"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://packages.dde.sh/bin/${VERSION_CLEAN}/dde-linux-arm64"
+      url "https://packages.dde.sh/homebrew/${VERSION_CLEAN}/dde-linux-arm64"
       sha256 "${sha_linux_arm64}"
     end
     on_intel do
-      url "https://packages.dde.sh/bin/${VERSION_CLEAN}/dde-linux-amd64"
+      url "https://packages.dde.sh/homebrew/${VERSION_CLEAN}/dde-linux-amd64"
       sha256 "${sha_linux_amd64}"
     end
   end
