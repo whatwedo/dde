@@ -1,0 +1,42 @@
+@import '@fontsource/inclusive-sans/400.css';
+@import '@fontsource/inclusive-sans/400-italic.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/400-italic.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/600.css';
+@import '@fontsource/jetbrains-mono/700.css';
+
+:root {
+    --sl-font: 'Inclusive Sans', sans-serif;
+    --sl-font-mono: 'JetBrains Mono', monospace;
+}
+
+:root[data-theme='dark'] {
+    --sl-color-accent-low:  #0a1828;
+    --sl-color-accent:      #00C0FF;
+    --sl-color-accent-high: #7de8ff;
+
+    --sl-color-white:  #e8edf5;
+    --sl-color-gray-1: #c8cdd8;
+    --sl-color-gray-2: #9ca3af;
+    --sl-color-gray-3: #6b7280;
+    --sl-color-gray-4: #374151;
+    --sl-color-gray-5: #1f2533;
+    --sl-color-gray-6: #131720;
+    --sl-color-black:  #0a0b0d;
+}
+
+:root[data-theme='light'] {
+    --sl-color-accent-low:  #dde0ff;
+    --sl-color-accent:      #5558FF;
+    --sl-color-accent-high: #2224cc;
+
+    --sl-color-white:  #12143a;
+    --sl-color-gray-1: #1e2152;
+    --sl-color-gray-2: #4a4e80;
+    --sl-color-gray-3: #7e82b0;
+    --sl-color-gray-4: #c2c5e8;
+    --sl-color-gray-5: #e2e4f6;
+    --sl-color-gray-6: #eef0fb;
+    --sl-color-black:  #f5f6ff;
+}
