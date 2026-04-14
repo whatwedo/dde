@@ -1,0 +1,19 @@
+{
+    "alias": "dde.phar",
+    "output": "bin/dde.phar",
+    "main": "bin/console",
+    "force-autodiscovery": true,
+    "check-requirements": false,
+    "directories": [
+        "src",
+        "config",
+        "resources",
+        "skills",
+        "var/cache/prod"
+    ],
+    "exclude-composer-files": false,
+    "compactors": [
+        "KevinGH\\Box\\Compactor\\Php"
+    ],
+    "compression": "GZ"
+}

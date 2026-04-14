@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [v2]
+  pull_request:
+    branches: [v2]
+  workflow_call:
+
+jobs:
+  php-version:
+    name: Read PHP version
+    runs-on: ubuntu-latest
+    outputs:
+      minor: ${{ steps.php.outputs.minor }}
+      full: ${{ steps.php.outputs.full }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: php
+        run: |
+          FULL=$(grep '"php":' composer.json | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+          echo "full=$FULL" >> "$GITHUB_OUTPUT"
+          echo "minor=$(echo "$FULL" | cut -d. -f1,2)" >> "$GITHUB_OUTPUT"
+
+  lint:
+    name: ECS
+    needs: php-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ needs.php-version.outputs.minor }}
+          extensions: yaml, mbstring, json, phar
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-progress
+
+      - run: vendor/bin/ecs check
+
+  analyse:
+    name: PHPStan
+    needs: php-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ needs.php-version.outputs.minor }}
+          extensions: yaml, mbstring, json, phar
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-progress
+
+      - name: Warm Symfony cache for PHPStan container analysis
+        run: php bin/console cache:warmup --env=dev
+
+      - run: vendor/bin/phpstan analyse --memory-limit=512M
+
+  rector:
+    name: Rector
+    needs: php-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ needs.php-version.outputs.minor }}
+          extensions: yaml, mbstring, json, phar
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-progress
+
+      - run: vendor/bin/rector --dry-run
+
+  test:
+    name: PHPUnit
+    needs: php-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ needs.php-version.outputs.minor }}
+          extensions: yaml, mbstring, json, phar, pcntl, posix
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-progress
+
+      - run: vendor/bin/phpunit --exclude-group=e2e
