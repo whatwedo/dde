@@ -42,7 +42,8 @@ final readonly class ProjectInitManager
     }
 
     /**
-     * @param list<string> $services
+     * @param list<string|array{name: string, version: string}> $services Bare strings use the service's default version;
+     *                                                                    `{name, version}` entries pin a specific version.
      *
      * @return array{created: list<string>, skipped: list<string>}
      */
@@ -133,7 +134,7 @@ final readonly class ProjectInitManager
     }
 
     /**
-     * @param list<string> $services
+     * @param list<string|array{name: string, version: string}> $services
      */
     public function buildConfigYaml(string $name, array $services, string $container, ?string $shell): string
     {
