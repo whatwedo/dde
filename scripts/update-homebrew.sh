@@ -49,8 +49,11 @@ class Dde < Formula
     bin.install version.to_s => "dde"
   end
 
-  def post_install
-    system "#{bin}/dde", "system:install", "--no-interaction"
+  def caveats
+    <<~EOS
+      To finish installing dde, run:
+        dde system:install
+    EOS
   end
 
   test do
