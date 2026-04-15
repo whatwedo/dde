@@ -20,27 +20,35 @@ dde v2 is a complete rewrite. v1 and v2 cannot run side by side — you must ful
 
 ## Step-by-step migration
 
-### 1. Stop and remove all dde v1 projects
+### 1. Stop and remove all dde v1 projects and system services
 
-Stop every running dde project. To remove only dde-managed containers:
+Stop every running dde project, then remove all dde v1 containers and system services. You have two options:
 
-```bash
-docker rm -f $(docker ps -a --filter "name=dde-" -q)
-```
-
-> **Warning:** Do not use `docker rm -f $(docker ps -aq)` as this removes **all** containers on your machine, including those unrelated to dde.
-
-### 2. Destroy v1 system services
+**Option A — Use the dde v1 command (recommended):**
 
 ```bash
 dde system:destroy
 ```
 
-### 3. Clean up shell configuration
+This stops and removes all dde v1 projects and system services in one step.
+
+**Option B — Use docker directly:**
+
+If `dde system:destroy` no longer works (for example, because dde v1 is already partially uninstalled), or if you want to be extra sure all dde-managed containers are gone, run:
+
+```bash
+docker rm -f $(docker ps -a --filter "name=dde-" -q)
+```
+
+You can also run both commands in sequence — first `dde system:destroy`, then the `docker rm` command as a safety net. Note that `docker rm -f` will exit with an error if no matching containers exist (which is expected after `dde system:destroy` has already removed them).
+
+> **Warning:** Do not use `docker rm -f $(docker ps -aq)` as this removes **all** containers on your machine, including those unrelated to dde.
+
+### 2. Clean up shell configuration
 
 Remove the dde v1 aliases and autocomplete from your `~/.zshrc` or `~/.bashrc`.
 
-### 4. Optionally remove v1 data
+### 3. Optionally remove v1 data
 
 ```bash
 rm -rf ~/dde
@@ -48,7 +56,7 @@ rm -rf ~/dde
 
 > **Warning:** This deletes all database contents managed by v1. Make backups first if needed.
 
-### 5. Install dde v2
+### 4. Install dde v2
 
 Install the v2 binary following the [installation guide](../getting-started/installation.md), then run the system setup:
 
@@ -56,7 +64,7 @@ Install the v2 binary following the [installation guide](../getting-started/inst
 dde system:install
 ```
 
-### 6. Initialize your projects
+### 5. Initialize your projects
 
 Navigate to each project and initialize it for v2:
 
