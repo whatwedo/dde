@@ -110,6 +110,28 @@ final class ServiceRegistryTest extends TestCase
         $this->assertSame('latest', $this->registry->getServiceVersion('unknown'));
     }
 
+    public function testGetKnownVersionsIncludesDefault(): void
+    {
+        $this->assertContains('11.8', $this->registry->getKnownVersions('mariadb'));
+        $this->assertContains('18.3', $this->registry->getKnownVersions('postgres'));
+        $this->assertContains('9', $this->registry->getKnownVersions('valkey'));
+    }
+
+    public function testGetKnownVersionsEmptyForServicesWithoutVersionChoice(): void
+    {
+        $this->assertSame([], $this->registry->getKnownVersions('mailpit'));
+        $this->assertSame([], $this->registry->getKnownVersions('unknown'));
+    }
+
+    public function testSupportsVersionChoice(): void
+    {
+        $this->assertTrue($this->registry->supportsVersionChoice('mariadb'));
+        $this->assertTrue($this->registry->supportsVersionChoice('postgres'));
+        $this->assertTrue($this->registry->supportsVersionChoice('valkey'));
+        $this->assertFalse($this->registry->supportsVersionChoice('mailpit'));
+        $this->assertFalse($this->registry->supportsVersionChoice('unknown'));
+    }
+
     public function testIsDatabaseServiceReturnsTrueForDatabaseServices(): void
     {
         $this->assertTrue($this->registry->isDatabaseService('mariadb'));

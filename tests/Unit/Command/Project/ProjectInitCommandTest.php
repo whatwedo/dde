@@ -15,6 +15,7 @@ use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
 use App\Parser\DockerComposeParser;
 use App\Parser\DockerfileParser;
+use App\Service\ServiceRegistry;
 use App\Service\TraefikService;
 use App\Util\DockerComposeModifier;
 use PHPUnit\Framework\TestCase;
@@ -316,6 +317,102 @@ final class ProjectInitCommandTest extends TestCase
         $this->assertStringContainsString('traefik.enable=true', $content);
     }
 
+    public function testExecuteWithPinnedServicesCsvWritesMixedYaml(): void
+    {
+        $this->commandTester->execute([
+            '--name' => 'test-project',
+            '--services' => 'mariadb:11.4,valkey,postgres:16',
+            '--container' => 'app',
+            '--no-docker' => true,
+        ], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $content = file_get_contents($this->tempDir.'/.dde/config.yml');
+        $this->assertIsString($content);
+        $this->assertStringContainsString('name: mariadb', $content);
+        $this->assertStringContainsString("version: '11.4'", $content);
+        $this->assertStringContainsString('name: postgres', $content);
+        $this->assertStringContainsString("version: '16'", $content);
+        // valkey has no version pin, stays as bare string
+        $this->assertStringContainsString('- valkey', $content);
+    }
+
+    public function testInteractiveFlowUsesMultiSelectAndConfirmsDefaultVersion(): void
+    {
+        // Multi-select: pick mariadb and valkey (indices 0, 2 in the registry)
+        // Then for each versioned service: confirm default = yes (empty input = default yes)
+        $this->commandTester->setInputs([
+            'test-project',   // project name
+            '0,2',             // multi-select: mariadb + valkey
+            'yes',             // mariadb: use default 11.8
+            'yes',             // valkey: use default 9
+            'web',             // container name
+        ]);
+
+        $this->commandTester->execute([
+            '--no-docker' => true,
+        ], [
+            'interactive' => true,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $content = file_get_contents($this->tempDir.'/.dde/config.yml');
+        $this->assertIsString($content);
+        $this->assertStringContainsString('- mariadb', $content);
+        $this->assertStringContainsString('- valkey', $content);
+        $this->assertStringNotContainsString('version:', $content);
+    }
+
+    public function testInteractiveFlowAllowsPinningVersionFromKnownList(): void
+    {
+        $this->commandTester->setInputs([
+            'test-project',
+            '0',     // only mariadb
+            'no',    // reject default
+            '10.11', // pick from curated list
+            'web',
+        ]);
+
+        $this->commandTester->execute([
+            '--no-docker' => true,
+        ], [
+            'interactive' => true,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $content = file_get_contents($this->tempDir.'/.dde/config.yml');
+        $this->assertIsString($content);
+        $this->assertStringContainsString('name: mariadb', $content);
+        $this->assertStringContainsString("version: '10.11'", $content);
+    }
+
+    public function testInteractiveFlowSkipsVersionPromptForServicesWithoutChoice(): void
+    {
+        // mailpit has knownVersions = [] → no version prompt
+        $this->commandTester->setInputs([
+            'test-project',
+            '3',   // only mailpit
+            'web',
+        ]);
+
+        $this->commandTester->execute([
+            '--no-docker' => true,
+        ], [
+            'interactive' => true,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $content = file_get_contents($this->tempDir.'/.dde/config.yml');
+        $this->assertIsString($content);
+        $this->assertStringContainsString('- mailpit', $content);
+        $this->assertStringNotContainsString('version:', $content);
+        // No "Use default version" prompt should have been shown for mailpit
+        $display = $this->commandTester->getDisplay();
+        $this->assertStringNotContainsString('Use default version', $display);
+    }
+
     public function testExecuteWithNoServicesProducesConfigWithoutServices(): void
     {
         $this->commandTester->execute([
@@ -446,11 +543,20 @@ final class ProjectInitCommandTest extends TestCase
             $dockerfileParser,
         );
 
+        $serviceRegistry = new ServiceRegistry(
+            [$traefikService],
+            new \App\Database\DatabaseAdapterRegistry([
+                new \App\Database\MariaDbAdapter(),
+                new \App\Database\PostgresAdapter(),
+            ]),
+        );
+
         $command = new ProjectInitCommand(
             $configManager,
             new ProjectInitManager(new Filesystem()),
             $adaptationManager,
             $dockerComposeManager,
+            $serviceRegistry,
             new FormatterResolver(new TextFormatter(), new JsonFormatter()),
         );
 

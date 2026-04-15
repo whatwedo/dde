@@ -5,16 +5,19 @@ declare(strict_types=1);
 namespace App\Command\Project;
 
 use App\Command\AbstractProjectCommand;
-use App\Config\Definition\ProjectConfigDefinition;
 use App\Manager\DockerComposeManager;
 use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectInitAdaptationManager;
 use App\Manager\ProjectInitManager;
 use App\Output\FormatterResolver;
+use App\Service\ServiceRegistry;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -29,6 +32,7 @@ final class ProjectInitCommand extends AbstractProjectCommand
         private readonly ProjectInitManager $projectInitManager,
         private readonly ProjectInitAdaptationManager $adaptationManager,
         private readonly DockerComposeManager $dockerComposeManager,
+        private readonly ServiceRegistry $serviceRegistry,
         FormatterResolver $formatterResolver,
         private readonly Filesystem $filesystem = new Filesystem(),
     ) {
@@ -39,7 +43,7 @@ final class ProjectInitCommand extends AbstractProjectCommand
     {
         $this
             ->addOption('name', null, InputOption::VALUE_REQUIRED, 'Project name')
-            ->addOption('services', null, InputOption::VALUE_REQUIRED, 'Comma-separated list of services')
+            ->addOption('services', null, InputOption::VALUE_REQUIRED, 'Comma-separated list of services, each optionally pinned with ":version" (e.g. "mariadb:11.4,valkey,postgres:16")')
             ->addOption('container', null, InputOption::VALUE_REQUIRED, 'Main container name')
             ->addOption('shell', null, InputOption::VALUE_REQUIRED, 'Shell for the container')
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Skip all confirmations')
@@ -94,7 +98,7 @@ final class ProjectInitCommand extends AbstractProjectCommand
 
         // Resolve user input
         $name = $this->resolveProjectName($input, $io, $projectDir, $suppressInteractive);
-        $services = $this->resolveServices($input, $io, $suppressInteractive);
+        $services = $this->resolveServices($input, $output, $io, $suppressInteractive);
         $container = $this->resolveContainer($input, $io, $suppressInteractive, $firstComposeService);
         $shell = $this->resolveShell($input);
 
@@ -114,7 +118,7 @@ final class ProjectInitCommand extends AbstractProjectCommand
 
         // Adapt MAILER_DSN if mailpit is enabled
         if (! $isDryRun) {
-            $mailerChange = $this->adaptationManager->adaptMailerDsn($projectDir, $container, $services);
+            $mailerChange = $this->adaptationManager->adaptMailerDsn($projectDir, $container, $this->serviceNames($services));
 
             if ($mailerChange !== null && $formatter->isInteractive()) {
                 $io->writeln(sprintf('  <info>%s</info>', $mailerChange));
@@ -144,31 +148,168 @@ final class ProjectInitCommand extends AbstractProjectCommand
     }
 
     /**
-     * @return list<string>
+     * @return list<string|array{name: string, version: string}>
      */
-    private function resolveServices(InputInterface $input, SymfonyStyle $io, bool $useDefaults): array
+    private function resolveServices(InputInterface $input, OutputInterface $output, SymfonyStyle $io, bool $useDefaults): array
     {
         $servicesOption = $input->getOption('services');
 
         if (is_string($servicesOption) && $servicesOption !== '') {
-            return array_map(trim(...), explode(',', $servicesOption));
+            return $this->parseServicesOption($servicesOption);
         }
 
         if ($useDefaults) {
             return [];
         }
 
-        $io->writeln('  <info>Available services:</info> '.implode(', ', ProjectConfigDefinition::SUPPORTED_SERVICES));
-        $answer = $io->ask('Which services do you need? (comma-separated, empty for none)');
+        $io->section('Services');
 
-        if (! is_string($answer) || trim($answer) === '') {
+        $available = $this->serviceRegistry->getAllServiceTypes();
+        $question = new ChoiceQuestion(
+            'Which services do you need? (comma-separated, empty for none)',
+            $available,
+            '',
+        );
+        $question->setMultiselect(true);
+        $question->setErrorMessage('Service "%s" is not available.');
+
+        $selected = $this->questionHelper()->ask($input, $output, $question);
+
+        /** @var list<string> $selected */
+        $selected = is_array($selected) ? array_values(array_filter($selected, static fn (mixed $v): bool => is_string($v) && $v !== '')) : [];
+
+        if ($selected === []) {
             return [];
         }
 
-        return array_values(array_filter(
-            array_map(trim(...), explode(',', $answer)),
-            static fn (string $s): bool => $s !== '',
-        ));
+        $io->listing($selected);
+
+        $resolved = [];
+
+        foreach ($selected as $service) {
+            $version = $this->resolveServiceVersion($service, $input, $output, $io);
+
+            $resolved[] = $version === null
+                ? $service
+                : [
+                    'name' => $service,
+                    'version' => $version,
+                ];
+
+            $io->newLine();
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Returns the pinned version, or null to signal "use the service's default".
+     */
+    private function resolveServiceVersion(string $service, InputInterface $input, OutputInterface $output, SymfonyStyle $io): ?string
+    {
+        if (! $this->serviceRegistry->supportsVersionChoice($service)) {
+            return null;
+        }
+
+        $default = $this->serviceRegistry->getServiceVersion($service);
+
+        if ($io->confirm(sprintf('[%s] Use default version %s?', $service, $default), true)) {
+            return null;
+        }
+
+        $knownVersions = $this->serviceRegistry->getKnownVersions($service);
+        $customLabel = 'custom…';
+
+        $choice = new ChoiceQuestion(
+            sprintf('[%s] Select version', $service),
+            [...$knownVersions, $customLabel],
+            $default,
+        );
+        $choice->setErrorMessage('Version "%s" is not available.');
+
+        $picked = $this->questionHelper()->ask($input, $output, $choice);
+
+        if (! is_string($picked)) {
+            return null;
+        }
+
+        if ($picked !== $customLabel) {
+            return $picked;
+        }
+
+        $customQuestion = new Question(sprintf('[%s] Version', $service));
+        $customQuestion->setValidator(static function (mixed $value): string {
+            if (! is_string($value) || trim($value) === '') {
+                throw new \InvalidArgumentException('Version must not be empty.');
+            }
+
+            return trim($value);
+        });
+
+        $custom = $this->questionHelper()->ask($input, $output, $customQuestion);
+
+        return is_string($custom) && $custom !== '' ? $custom : null;
+    }
+
+    private function questionHelper(): QuestionHelper
+    {
+        $helper = $this->getHelper('question');
+        \assert($helper instanceof QuestionHelper);
+
+        return $helper;
+    }
+
+    /**
+     * Parses --services CSV into a mixed list. Entries without ":version" stay
+     * as bare strings; entries like "mariadb:11.4" become `{name, version}`.
+     *
+     * @return list<string|array{name: string, version: string}>
+     */
+    private function parseServicesOption(string $value): array
+    {
+        $out = [];
+
+        foreach (explode(',', $value) as $entry) {
+            $entry = trim($entry);
+
+            if ($entry === '') {
+                continue;
+            }
+
+            if (! str_contains($entry, ':')) {
+                $out[] = $entry;
+
+                continue;
+            }
+
+            [$name, $version] = explode(':', $entry, 2);
+            $name = trim($name);
+            $version = trim($version);
+
+            if ($name === '' || $version === '') {
+                continue;
+            }
+
+            $out[] = [
+                'name' => $name,
+                'version' => $version,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param list<string|array{name: string, version: string}> $services
+     *
+     * @return list<string>
+     */
+    private function serviceNames(array $services): array
+    {
+        return array_map(
+            static fn (string|array $s): string => is_string($s) ? $s : $s['name'],
+            $services,
+        );
     }
 
     private function resolveContainer(InputInterface $input, SymfonyStyle $io, bool $useDefaults, ?string $detectedDefault = null): string

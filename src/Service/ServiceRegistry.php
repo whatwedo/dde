@@ -11,12 +11,13 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 final readonly class ServiceRegistry
 {
     /**
-     * @var array<string, array{image: string, defaultVersion: string, defaultPort: int, dataPath: string, dataMount: string, environment: array<string, string>}>
+     * @var array<string, array{image: string, defaultVersion: string, knownVersions: list<string>, defaultPort: int, dataPath: string, dataMount: string, environment: array<string, string>}>
      */
     private const array SERVICE_TYPES = [
         'mariadb' => [
             'image' => 'mariadb',
             'defaultVersion' => '11.8',
+            'knownVersions' => ['10.6', '10.11', '11.4', '11.8'],
             'defaultPort' => 3306,
             'dataPath' => 'mysql',
             'dataMount' => '/var/lib/mysql',
@@ -27,6 +28,7 @@ final readonly class ServiceRegistry
         'postgres' => [
             'image' => 'postgres',
             'defaultVersion' => '18.3',
+            'knownVersions' => ['15', '16', '17', '18.3'],
             'defaultPort' => 5432,
             'dataPath' => 'pgdata',
             'dataMount' => '/var/lib/postgresql',
@@ -38,6 +40,7 @@ final readonly class ServiceRegistry
         'valkey' => [
             'image' => 'valkey/valkey',
             'defaultVersion' => '9',
+            'knownVersions' => ['7.2', '8.0', '9'],
             'defaultPort' => 6379,
             'dataPath' => 'data',
             'dataMount' => '/data',
@@ -46,6 +49,7 @@ final readonly class ServiceRegistry
         'mailpit' => [
             'image' => 'axllent/mailpit',
             'defaultVersion' => 'latest',
+            'knownVersions' => [],
             'defaultPort' => 8025,
             'dataPath' => 'data',
             'dataMount' => '/data',
@@ -134,6 +138,23 @@ final readonly class ServiceRegistry
     public function getServiceVersion(string $name): string
     {
         return self::SERVICE_TYPES[$name]['defaultVersion'] ?? 'latest';
+    }
+
+    /**
+     * Curated list of versions offered by the interactive version chooser.
+     * An empty list means the service has no meaningful version choice
+     * (e.g., mailpit always tracks latest) and the chooser is skipped.
+     *
+     * @return list<string>
+     */
+    public function getKnownVersions(string $name): array
+    {
+        return self::SERVICE_TYPES[$name]['knownVersions'] ?? [];
+    }
+
+    public function supportsVersionChoice(string $name): bool
+    {
+        return $this->getKnownVersions($name) !== [];
     }
 
     /**

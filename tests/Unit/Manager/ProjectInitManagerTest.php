@@ -107,6 +107,42 @@ final class ProjectInitManagerTest extends TestCase
         $this->assertStringNotContainsString('shell:', $yaml);
     }
 
+    public function testBuildConfigYamlEmitsBareStringsForDefaults(): void
+    {
+        $yaml = $this->service->buildConfigYaml('my-project', ['mariadb', 'valkey'], 'web', null);
+
+        $this->assertStringContainsString('- mariadb', $yaml);
+        $this->assertStringContainsString('- valkey', $yaml);
+        $this->assertStringNotContainsString('version:', $yaml);
+    }
+
+    public function testBuildConfigYamlEmitsMappingForPinnedServices(): void
+    {
+        $yaml = $this->service->buildConfigYaml(
+            'my-project',
+            [
+                [
+                    'name' => 'mariadb',
+                    'version' => '11.4',
+                ],
+                'valkey',
+                [
+                    'name' => 'postgres',
+                    'version' => '16',
+                ],
+            ],
+            'web',
+            null,
+        );
+
+        $this->assertStringContainsString('name: mariadb', $yaml);
+        $this->assertStringContainsString("version: '11.4'", $yaml);
+        $this->assertStringContainsString('name: postgres', $yaml);
+        $this->assertStringContainsString("version: '16'", $yaml);
+        // valkey stays as a bare string
+        $this->assertStringContainsString('- valkey', $yaml);
+    }
+
     public function testCreateDirectoryStructureRemovesDdeFromGitignore(): void
     {
         $gitignorePath = $this->tempDir.'/.gitignore';
