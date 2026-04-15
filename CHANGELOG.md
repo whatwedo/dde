@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.0.0] - 2026-03-20
+## [2.0.0-alpha.2] - 2026-04-15
+
+### Added
+- RPM distribution for Fedora, RHEL, Rocky Linux, and AlmaLinux via DNF repository
+
+## [2.0.0-alpha.1] - 2026-04-15
 
 dde v2 is a complete rewrite of the Docker Development Environment. The previous
 Bash-based solution has been replaced with a PHP binary built as a standalone

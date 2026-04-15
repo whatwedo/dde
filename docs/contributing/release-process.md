@@ -57,4 +57,4 @@ The `scripts/build.sh` script automates the binary creation:
 
 ## Installation
 
-Users install or update via the package managers listed in the [installation documentation](../getting-started/installation.md) (Homebrew, APT, Alpine).
+Users install or update via the package managers listed in the [installation documentation](../getting-started/installation.md) (Homebrew, APT, Alpine, Arch Linux, RPM).

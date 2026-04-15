@@ -48,6 +48,14 @@ sudo pacman -Sy dde
 dde system:install
 ```
 
+### Fedora / RHEL / Rocky Linux / AlmaLinux
+
+```bash
+sudo curl -fsSL https://packages.dde.sh/rpm/dde.repo -o /etc/yum.repos.d/dde.repo
+sudo dnf install dde
+dde system:install
+```
+
 ## What system:install configures
 
 The `system:install` command sets up all system-level components that dde needs:

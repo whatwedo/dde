@@ -214,6 +214,35 @@ jobs:
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
+  rpm:
+    name: Publish RPM repo
+    needs: [release]
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: eu-central-1
+    steps:
+      - name: Install dependencies
+        run: dnf install -y git awscli2 gnupg2 rpm-build rpm-sign createrepo_c
+
+      - uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Import GPG key
+        run: echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+
+      - name: Publish RPM repo
+        run: ./scripts/publish-rpm.sh "${{ github.ref_name }}" dist packages.dde.sh
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
   homebrew:
     name: Update Homebrew formula
     needs: [packages]
