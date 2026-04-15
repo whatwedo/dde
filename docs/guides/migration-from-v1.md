@@ -70,6 +70,15 @@ dde project:up
 
 Open `https://my-app.test` in your browser to verify.
 
+#### Remove dde user from existing Dockerfiles
+
+If the existing `dev` stage of a Dockerfile references the `dde` user (e.g. in `chown` instructions), those references must be removed. v2 no longer has a `dde` user available during the docker bild.
+
+Any customisations that previously relied on the `dde` user can be implemented using **hooks** or **service adapters** instead:
+
+- **Hooks** (`.dde/hooks/`): shell scripts executed at defined lifecycle points (e.g. `post-up`).
+- **Service adapters** (`.dde/adapters/`): allow project-specific configuration of services such as nginx or php-fpm.
+
 ## Breaking changes
 
 | v1 command/feature             | v2 equivalent                    | Notes                                    |
