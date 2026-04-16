@@ -17,8 +17,7 @@ use App\Manager\MkcertManager;
 use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
 use App\Manager\SystemServiceManager;
-use App\Model\ContainerInfo;
-use App\Model\ContainerStatus;
+use App\Model\ContainerConfig;
 use App\Model\ServiceDefinition;
 use App\Service\AbstractSystemService;
 use App\Service\ServiceRegistry;
@@ -79,7 +78,7 @@ final class ProjectLifecycleManagerTest extends TestCase
 
         $this->dockerComposeManager->expects($this->once())
             ->method('generateOverride')
-            ->with($config, $projectDir)
+            ->with($config, $projectDir, null, 'dde-services-test-project')
             ->willReturn('/tmp/override.yml');
 
         $this->dockerComposeManager->expects($this->once())
@@ -130,6 +129,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $this->imageManager,
             $this->certificateManager,
             $serviceRegistry,
+            $this->dockerManager,
             $this->filesystem,
         );
 
@@ -247,10 +247,35 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerManager->method('isContainerRunning')
             ->willReturn(false);
 
-        $this->dockerManager->method('getContainersByLabel')
-            ->willReturn([]);
-
         $this->systemFilesystem->method('mkdir');
+
+        $result = $this->manager->ensureServices($config);
+
+        $this->assertSame('started', $result[0]['status']);
+    }
+
+    public function testEnsureServicesPassesNonDefaultFlagForNonDefaultVersion(): void
+    {
+        // mariadb default is 11.8; requesting 10.6 must receive isDefault=false
+        // so it gets a dynamic host port and not port 3306.
+        $config = new ResolvedConfig(
+            globalConfig: new GlobalConfig(),
+            projectConfig: new ProjectConfig(name: 'test-project', services: [
+                new ServiceDefinition(name: 'mariadb', version: '10.6'),
+            ]),
+            serviceVersions: ['mariadb' => '11.8'],
+        );
+
+        $this->dockerManager->method('isContainerRunning')->willReturn(false);
+        $this->systemFilesystem->method('mkdir');
+
+        $this->dockerManager->expects($this->once())
+            ->method('run')
+            ->with($this->callback(function (ContainerConfig $containerConfig): bool {
+                // Port must be dynamic (>= 10000), never 3306
+                return str_contains($containerConfig->ports[0] ?? '', ':10000:')
+                    || (! str_contains($containerConfig->ports[0] ?? '', ':3306:'));
+            }));
 
         $result = $this->manager->ensureServices($config);
 
@@ -349,23 +374,160 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->manager->up($config, $projectDir, true);
     }
 
-    public function testEnsureServicesSkipsWhenServiceAlreadyRunningUnderDifferentName(): void
+    public function testUpCreatesPerProjectNetworkAndConnectsServices(): void
     {
         $config = $this->createConfig([
-            new ServiceDefinition(name: 'mariadb', version: '11.8'),
+            new ServiceDefinition(name: 'mariadb', version: '10.6'),
         ]);
+        $projectDir = '/tmp/test-project';
 
-        $this->dockerManager->method('isContainerRunning')
+        $this->dockerManager->method('isContainerRunning')->willReturn(false);
+        $this->systemFilesystem->method('mkdir');
+
+        $this->dockerManager->expects($this->once())
+            ->method('networkExists')
+            ->with('dde-services-test-project')
             ->willReturn(false);
 
-        $this->dockerManager->method('getContainersByLabel')
-            ->willReturn([
-                new ContainerInfo(name: 'dde-mariadb-10', status: ContainerStatus::RUNNING, image: 'mariadb:10'),
-            ]);
+        $this->dockerManager->expects($this->once())
+            ->method('createNetwork')
+            ->with('dde-services-test-project');
 
-        $result = $this->manager->ensureServices($config);
+        $this->dockerManager->expects($this->once())
+            ->method('connectContainerToNetwork')
+            ->with('dde-mariadb-10.6', 'dde-services-test-project', ['mariadb']);
 
-        $this->assertIsArray($result);
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $this->manager->up($config, $projectDir, false);
+    }
+
+    public function testUpSkipsNetworkCreationWhenAlreadyExists(): void
+    {
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'mariadb', version: '10.6'),
+        ]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->method('isContainerRunning')->willReturn(true);
+        $this->dockerManager->expects($this->once())
+            ->method('networkExists')
+            ->with('dde-services-test-project')
+            ->willReturn(true);
+
+        $this->dockerManager->expects($this->never())
+            ->method('createNetwork');
+
+        $this->dockerManager->expects($this->once())
+            ->method('connectContainerToNetwork')
+            ->with('dde-mariadb-10.6', 'dde-services-test-project', ['mariadb']);
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $this->manager->up($config, $projectDir, false);
+    }
+
+    public function testDownDisconnectsServicesAndRemovesNetwork(): void
+    {
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'mariadb', version: '10.6'),
+        ]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->expects($this->once())
+            ->method('disconnectContainerFromNetwork')
+            ->with('dde-mariadb-10.6', 'dde-services-test-project');
+
+        $this->dockerManager->expects($this->once())
+            ->method('networkExists')
+            ->with('dde-services-test-project')
+            ->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('removeNetwork')
+            ->with('dde-services-test-project');
+
+        $this->dockerComposeManager->expects($this->once())
+            ->method('down');
+
+        $this->manager->down($config, $projectDir);
+    }
+
+    public function testDownSkipsNetworkRemovalWhenNotExists(): void
+    {
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'mariadb', version: '10.6'),
+        ]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->expects($this->once())
+            ->method('disconnectContainerFromNetwork')
+            ->with('dde-mariadb-10.6', 'dde-services-test-project');
+
+        $this->dockerManager->expects($this->once())
+            ->method('networkExists')
+            ->with('dde-services-test-project')
+            ->willReturn(false);
+
+        $this->dockerManager->expects($this->never())
+            ->method('removeNetwork');
+
+        $this->dockerComposeManager->method('down');
+
+        $this->manager->down($config, $projectDir);
+    }
+
+    /**
+     * Verifies generateOverride receives the per-project network name as 4th argument
+     * when services are configured, and null when no services are configured.
+     */
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpCallsGenerateOverrideWithNetworkWhenServicesConfigured(): void
+    {
+        $config = $this->createConfig([new ServiceDefinition(name: 'mariadb', version: '10.6')]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->method('isContainerRunning')->willReturn(true);
+        $this->dockerManager->method('networkExists')->willReturn(true);
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+
+        $this->dockerComposeManager->expects($this->once())
+            ->method('generateOverride')
+            ->with(
+                $config,
+                $projectDir,
+                null,
+                'dde-services-test-project',
+            )
+            ->willReturn('/tmp/override.yml');
+
+        $this->manager->up($config, $projectDir, false);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpCallsGenerateOverrideWithNullNetworkWhenNoServices(): void
+    {
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+
+        $this->dockerComposeManager->expects($this->once())
+            ->method('generateOverride')
+            ->with($config, $projectDir, null, null)
+            ->willReturn('/tmp/override.yml');
+
+        $this->manager->up($config, $projectDir, false);
     }
 
     /**
@@ -397,6 +559,9 @@ final class ProjectLifecycleManagerTest extends TestCase
 
         $this->certificateManager = $this->createStub(MkcertManager::class);
 
+        // networkExists returns false by default (PHPUnit mock default for bool return),
+        // so removeNetwork is never called unless a test explicitly stubs networkExists to true.
+
         $configManager = $this->createStub(ProjectConfigManager::class);
         $this->manager = new ProjectLifecycleManager(
             $configManager,
@@ -405,6 +570,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $this->imageManager,
             $this->certificateManager,
             $serviceRegistry,
+            $this->dockerManager,
             $this->filesystem,
         );
     }

@@ -19,14 +19,12 @@ readonly class ProjectLifecycleManager
         private ImageManager $imageManager,
         private MkcertManager $mkcertManager,
         private ServiceRegistry $serviceRegistry,
+        private DockerManager $dockerManager,
         private Filesystem $filesystem = new Filesystem(),
     ) {
     }
 
     /**
-     * Performs the full "up" sequence: ensure services, build dev layers,
-     * compose build, generate override, compose up, cleanup override.
-     *
      * @return array{serviceResults: list<array{name: string, version: string, status: string}>, devLayerResult: array{serviceName: string, imageTag: string}|null}
      */
     public function up(ResolvedConfig $config, string $projectDir, bool $build, ?OutputInterface $output = null): array
@@ -37,12 +35,18 @@ readonly class ProjectLifecycleManager
         // 1. Ensure declared services are running
         $serviceResults = $this->ensureServices($config);
 
-        // 2. Ensure TLS certificates for project domains
+        // 2. Ensure per-project network exists and connect services to it
+        //    Use null when no services are configured so generateOverride does not inject
+        //    a non-existent external network reference.
+        $projectNetwork = $config->services !== [] ? self::buildProjectNetworkName($config->projectName) : null;
+        $this->ensureProjectNetwork($config, $projectNetwork);
+
+        // 3. Ensure TLS certificates for project domains
         $composeFile = $this->dockerComposeManager->findComposeFile($projectDir);
         $projectName = $config->projectName;
         $this->mkcertManager->ensureForComposeFile($projectName, $composeFile);
 
-        // 2b. Ensure TLS certificates for worktree domains
+        // 3b. Ensure TLS certificates for worktree domains
         $worktreeInfo = $this->configManager->detectWorktree($projectDir);
 
         if ($worktreeInfo instanceof WorktreeInfo) {
@@ -51,21 +55,21 @@ readonly class ProjectLifecycleManager
             $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, [$worktreeHostname]);
         }
 
-        // 3. Image layer check — build dev layer for project containers
+        // 4. Image layer check — build dev layer for project containers
         $devLayerResult = $this->imageManager->ensureDevLayers($config, $composeFile, $output);
 
-        // 4. Pre-build compose images
+        // 5. Pre-build compose images
         $this->dockerComposeManager->build($projectDir, [], $output);
 
-        // 5. Pull missing images silently — avoids flooding the GUI with pull/extract spam
+        // 6. Pull missing images silently — avoids flooding the GUI with pull/extract spam
         if ($this->dockerComposeManager->needsPull($projectDir)) {
             $this->dockerComposeManager->pull($projectDir);
         }
 
-        // 6. Generate override (pass worktreeInfo to avoid duplicate detection)
-        $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo);
+        // 7. Generate override (inject worktree info + per-project network)
+        $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork);
 
-        // 7. Docker compose up
+        // 8. Docker compose up
         $composeFiles = [$composeFile, $overrideFile];
 
         try {
@@ -84,14 +88,33 @@ readonly class ProjectLifecycleManager
     }
 
     /**
-     * Performs the full "down" sequence: compose down only.
+     * Performs the full "down" sequence: compose down, then remove per-project network.
      * Services are shared infrastructure managed by system:up/system:down and must not be stopped here.
+     *
+     * compose down must run first so project containers are removed and automatically disconnected
+     * from the per-project network before we attempt to remove it.
      */
     public function down(ResolvedConfig $config, string $projectDir, bool $removeOrphans = false): void
     {
+        // 1. Compose down first — stops/removes project containers, which disconnects them
+        //    from the per-project network automatically.
         $this->dockerComposeManager->down($projectDir, [
             'removeOrphans' => $removeOrphans,
         ]);
+
+        $projectNetwork = self::buildProjectNetworkName($config->projectName);
+
+        // 2. Disconnect service containers from the per-project network
+        foreach ($config->services as $service) {
+            $version = $config->getServiceVersion($service->name);
+            $containerName = ServiceRegistry::buildContainerName($service->name, $version);
+            $this->dockerManager->disconnectContainerFromNetwork($containerName, $projectNetwork);
+        }
+
+        // 3. Remove the per-project network if it exists
+        if ($this->dockerManager->networkExists($projectNetwork)) {
+            $this->dockerManager->removeNetwork($projectNetwork);
+        }
     }
 
     /**
@@ -117,9 +140,8 @@ readonly class ProjectLifecycleManager
 
         foreach ($config->services as $service) {
             $version = $config->getServiceVersion($service->name);
-            $isDefault = $config->isDefaultVersion($service->name, $version);
 
-            $status = $this->systemServiceManager->startService($service->name, $version, $isDefault);
+            $status = $this->systemServiceManager->startService($service->name, $version, $config->isDefaultVersion($service->name, $version));
 
             $serviceResults[] = [
                 'name' => $service->name,
@@ -129,6 +151,33 @@ readonly class ProjectLifecycleManager
         }
 
         return $serviceResults;
+    }
+
+    public static function buildProjectNetworkName(string $projectName): string
+    {
+        return 'dde-services-'.$projectName;
+    }
+
+    /**
+     * Creates the per-project network if it does not exist, then connects all
+     * configured service containers to it with their service name as alias.
+     * Receives null when no services are configured, in which case it is a no-op.
+     */
+    private function ensureProjectNetwork(ResolvedConfig $config, ?string $projectNetwork): void
+    {
+        if ($projectNetwork === null) {
+            return;
+        }
+
+        if (! $this->dockerManager->networkExists($projectNetwork)) {
+            $this->dockerManager->createNetwork($projectNetwork);
+        }
+
+        foreach ($config->services as $service) {
+            $version = $config->getServiceVersion($service->name);
+            $containerName = ServiceRegistry::buildContainerName($service->name, $version);
+            $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$service->name]);
+        }
     }
 
     /**
