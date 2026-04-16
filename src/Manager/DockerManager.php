@@ -130,6 +130,50 @@ readonly class DockerManager
         }
     }
 
+    /**
+     * Connects a container to a Docker network, optionally with aliases.
+     * Silently ignores "already connected" errors so re-up is idempotent.
+     *
+     * @param list<string> $aliases
+     *
+     * @throws ProcessFailedException
+     */
+    public function connectContainerToNetwork(string $containerName, string $networkName, array $aliases = []): void
+    {
+        $command = ['docker', 'network', 'connect'];
+
+        foreach ($aliases as $alias) {
+            $command[] = '--alias';
+            $command[] = $alias;
+        }
+
+        $command[] = $networkName;
+        $command[] = $containerName;
+
+        $process = $this->processFactory->create($command);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            // Ignore "already exists in network" — container was already connected (idempotent re-up)
+            if (str_contains($process->getErrorOutput(), 'already exists in network')) {
+                return;
+            }
+
+            throw new ProcessFailedException($process);
+        }
+    }
+
+    /**
+     * Disconnects a container from a Docker network.
+     * Silently ignores failures (container may already be stopped/removed).
+     */
+    public function disconnectContainerFromNetwork(string $containerName, string $networkName): void
+    {
+        $process = $this->processFactory->create(['docker', 'network', 'disconnect', $networkName, $containerName]);
+        $process->run();
+        // Failures are intentionally ignored — the container may already be stopped.
+    }
+
     public function run(ContainerConfig $config): void
     {
         $command = ['docker', 'run', '-d'];
@@ -198,6 +242,27 @@ readonly class DockerManager
         }
     }
 
+    /**
+     * Returns the IP address of a container on a specific Docker network, or null if unavailable.
+     */
+    public function getContainerNetworkIp(string $containerName, string $network = 'dde'): ?string
+    {
+        $process = $this->processFactory->create([
+            'docker', 'inspect',
+            '--format', sprintf('{{(index .NetworkSettings.Networks "%s").IPAddress}}', $network),
+            $containerName,
+        ]);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            return null;
+        }
+
+        $ip = trim($process->getOutput());
+
+        return $ip !== '' ? $ip : null;
+    }
+
     public function getContainerUptime(string $containerName): ?string
     {
         $process = $this->processFactory->create(['docker', 'inspect', '--format', '{{.State.StartedAt}}', $containerName]);
@@ -249,7 +314,7 @@ readonly class DockerManager
         $process = $this->processFactory->create(['docker', 'build', '--progress', 'plain', '-t', $tag, $contextDir], $contextDir, null);
 
         $outputBuffer = '';
-        $process->run(static function (string $type, string $buffer) use (&$outputBuffer): void {
+        $process->run(static function (string $_type, string $buffer) use (&$outputBuffer): void {
             $outputBuffer .= $buffer;
         });
 
