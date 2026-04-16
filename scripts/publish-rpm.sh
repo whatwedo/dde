@@ -89,10 +89,10 @@ gpg --armor --export > "${REPO}/key.gpg"
 cat > "${REPO}/dde.repo" <<'REPO'
 [dde]
 name=dde - Docker Development Environment
-baseurl=https://packages-test.dde.sh/rpm/$basearch
+baseurl=https://packages.dde.sh/rpm/$basearch
 enabled=1
 gpgcheck=1
-gpgkey=https://packages-test.dde.sh/rpm/key.gpg
+gpgkey=https://packages.dde.sh/rpm/key.gpg
 REPO
 
 aws s3 sync "${REPO}/" "s3://${S3_BUCKET}/rpm/" --delete --quiet
