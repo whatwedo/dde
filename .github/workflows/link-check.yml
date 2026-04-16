@@ -1,0 +1,76 @@
+name: Link Check
+
+on:
+  push:
+    branches: [v2]
+    paths:
+      - '**/*.md'
+      - '.github/workflows/link-check.yml'
+      - 'lychee.toml'
+  pull_request:
+    branches: [v2]
+    paths:
+      - '**/*.md'
+      - '.github/workflows/link-check.yml'
+      - 'lychee.toml'
+  schedule:
+    # Weekly on Mondays at 06:00 UTC to catch external links that have
+    # gone stale even when no markdown files have changed.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  # Fast offline check: validates that relative .md file references
+  # actually point to existing files. Runs on every push/PR so broken
+  # internal links are caught before merge.
+  internal-links:
+    name: Internal links
+    if: ${{ github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run lychee (offline)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --config lychee.toml --offline --no-progress './**/*.md'
+          fail: true
+
+  # Full check including external URLs. Only runs on schedule (weekly)
+  # and manual dispatch. Does not fail the workflow — opens an issue
+  # instead so external link rot is tracked without breaking CI.
+  external-links:
+    name: External links
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Restore lychee cache
+        uses: actions/cache@v5
+        with:
+          path: .lycheecache
+          key: lychee-${{ github.run_id }}
+          restore-keys: lychee-
+
+      - name: Run lychee
+        id: lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --config lychee.toml --no-progress './**/*.md'
+          fail: false
+          output: lychee-report.md
+
+      - name: Open issue on failure
+        if: ${{ steps.lychee.outputs.exit_code != 0 }}
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: 'Link Check: broken links detected'
+          content-filepath: lychee-report.md
+          labels: |
+            documentation
+            link-check
