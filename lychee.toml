@@ -1,0 +1,48 @@
+# Lychee link checker configuration
+# https://lychee.cli.rs/usage/config/
+
+# Output
+verbose = "info"
+no_progress = true
+
+# Cache to avoid hammering external hosts on every run
+cache = true
+max_cache_age = "7d"
+
+# Network behavior
+max_retries = 3
+retry_wait_time = 2
+timeout = 20
+max_concurrency = 16
+
+# Treat 429 (rate-limited) and common auth-required responses as success.
+# These mean the host is alive even though we cannot complete the request.
+accept = ["200..=299", "301", "302", "303", "304", "307", "308", "401", "403", "429"]
+
+# Skip mailto:, tel:, and similar; only check http(s) and local paths.
+include_verbatim = false
+
+exclude = [
+    # Auto-generated GitHub edit/preview URLs that depend on a branch
+    # which may not yet exist (e.g. for an in-flight PR).
+    '^https://github\.com/whatwedo/dde/edit/',
+    # Local development URLs used as examples in the docs
+    '^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?',
+    '^https?://[^/]+\.test(:\d+|/|$)',
+    # Example/placeholder hostnames
+    '^https?://(www\.)?example\.(com|org|net)',
+    # Anchor-only links — there is no separate file to fetch
+    '^#',
+]
+
+# Files and directories that are not part of the project documentation
+exclude_path = [
+    "node_modules",
+    "vendor",
+    "website/dist",
+    "website/node_modules",
+    "website/package-lock.json",
+    "composer.lock",
+    "phpstan-baseline.neon",
+    "CHANGELOG.md",
+]
