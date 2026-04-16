@@ -42,4 +42,4 @@ services:
     version: "8"
 ```
 
-See [custom-versions.md](custom-versions.md) for details on running non-default versions.
+See [Custom Versions](custom-versions.md) for details on running non-default versions.

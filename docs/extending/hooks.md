@@ -105,4 +105,4 @@ The `HookSubscriber` listens to these events and delegates to `HookRunner`, whic
 ## Related
 
 - [Plugins](plugins.md) -- extend dde with custom commands
-- [Project Lifecycle](../commands.md) -- commands that trigger hooks
+- [Project Lifecycle](../getting-started/commands.md) -- commands that trigger hooks
