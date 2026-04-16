@@ -49,12 +49,6 @@ parameters:
 			path: tests/Unit/Manager/DockerManagerTest.php
 
 		-
-			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with list\<array\{name\: string, version\: string, status\: string\}\> will always evaluate to true\.$#'
-			identifier: method.alreadyNarrowedType
-			count: 1
-			path: tests/Unit/Manager/ProjectLifecycleManagerTest.php
-
-		-
 			message: '#^Property Tests\\Unit\\Manager\\ProjectLifecycleManagerTest\:\:\$certificateManager has no type specified\.$#'
 			identifier: missingType.property
 			count: 1

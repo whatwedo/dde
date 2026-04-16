@@ -211,8 +211,9 @@ readonly class ProjectInitAdaptationManager
         $original = $config;
         $changes = [];
 
-        if ($this->dockerComposeModifier->addNetwork($config, 'dde')) {
-            $changes[] = 'Added external network "dde"';
+        // Remove dde network boilerplate (now injected by the dde overlay)
+        if ($this->dockerComposeModifier->removeDdeNetworkBoilerplate($config)) {
+            $changes[] = 'Removed external "dde" network (now injected by dde overlay)';
         }
 
         if (isset($config['services']) && is_array($config['services'])) {
@@ -223,18 +224,20 @@ readonly class ProjectInitAdaptationManager
             }
         }
 
-        if (isset($config['services'][$container]) && $this->dockerComposeModifier->addSshAgentVolume($config, $container)) {
-            $changes[] = sprintf('Added SSH-Agent volume to service "%s"', $container);
+        // Remove SSH-Agent boilerplate from primary container (now injected by dde overlay)
+        if (isset($config['services'][$container]) && $this->dockerComposeModifier->removeSshAgentBoilerplate($config, $container)) {
+            $changes[] = sprintf('Removed SSH-Agent volume from service "%s" (now injected by dde overlay)', $container);
         }
 
+        // Remove SSH-Agent boilerplate from all other services (now injected by dde overlay)
         if (isset($config['services']) && is_array($config['services'])) {
             foreach (array_keys($config['services']) as $svcName) {
                 if (! is_string($svcName) || $svcName === $container) {
                     continue;
                 }
 
-                if ($this->dockerComposeModifier->serviceHasOldSshAgentVolume($config, $svcName) && $this->dockerComposeModifier->addSshAgentVolume($config, $svcName)) {
-                    $changes[] = sprintf('Migrated SSH-Agent volume in service "%s"', $svcName);
+                if ($this->dockerComposeModifier->removeSshAgentBoilerplate($config, $svcName)) {
+                    $changes[] = sprintf('Removed SSH-Agent volume from service "%s" (now injected by dde overlay)', $svcName);
                 }
             }
         }
@@ -269,6 +272,23 @@ readonly class ProjectInitAdaptationManager
                     $this->dockerComposeModifier->removeEnvironmentVariable($svc, 'DDE_CONTAINER_SHELL');
                     $config['services'][$svcName] = $svc;
                     $changes[] = sprintf('Removed legacy DDE_CONTAINER_SHELL from service "%s"', $svcName);
+                }
+            }
+        }
+
+        // Remove OPEN_URL environment variable from all services (dde v1 remnant, no longer used)
+        if (isset($config['services']) && is_array($config['services'])) {
+            foreach (array_keys($config['services']) as $svcName) {
+                if (! is_string($svcName)) {
+                    continue;
+                }
+
+                $svc = $config['services'][$svcName] ?? [];
+
+                if (is_array($svc) && $this->dockerComposeModifier->extractEnvironmentVariable($svc, 'OPEN_URL') !== null) {
+                    $this->dockerComposeModifier->removeEnvironmentVariable($svc, 'OPEN_URL');
+                    $config['services'][$svcName] = $svc;
+                    $changes[] = sprintf('Removed legacy OPEN_URL from service "%s"', $svcName);
                 }
             }
         }

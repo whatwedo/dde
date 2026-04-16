@@ -52,7 +52,7 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function testAdaptComposeAddsNetworkAndLabels(): void
+    public function testAdaptComposeAddsTraefikLabelsAndRemovesDdeBoilerplate(): void
     {
         $composeContent = <<<'YAML'
             services:
@@ -60,6 +60,10 @@ final class ProjectInitAdaptationManagerTest extends TestCase
                     image: nginx
                     environment:
                         - VIRTUAL_HOST=example.test
+            networks:
+                default:
+                    name: dde
+                    external: true
             YAML;
         $composePath = $this->tempDir.'/docker-compose.yml';
         file_put_contents($composePath, $composeContent);
@@ -71,7 +75,7 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $this->assertNotEmpty($result['diff']);
         $this->assertSame($composePath, $result['composePath']);
 
-        // Verify network was added
+        // Verify network was removed (now injected by overlay)
         $hasNetworkChange = false;
         $hasTraefikChange = false;
 
@@ -88,9 +92,8 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $this->assertTrue($hasNetworkChange, 'Expected network change');
         $this->assertTrue($hasTraefikChange, 'Expected Traefik labels change');
 
-        // Verify the config has the network
-        $this->assertArrayHasKey('networks', $result['config']);
-        $this->assertSame('dde', $result['config']['networks']['default']['name']);
+        // Verify the dde network boilerplate has been removed from config
+        $this->assertArrayNotHasKey('networks', $result['config']);
     }
 
     public function testAdaptComposeRemovesContainerName(): void
@@ -136,8 +139,64 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $this->assertCount(2, $containerNameChanges);
     }
 
+    public function testAdaptComposeRemovesDdeNetworkBoilerplate(): void
+    {
+        $composePath = $this->createTempCompose(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            networks:
+              default:
+                name: dde
+                external: true
+            YAML);
+
+        $result = $this->manager->adaptCompose($composePath, 'myproject', 'web');
+
+        $this->assertNotNull($result);
+        $this->assertContains('Removed external "dde" network (now injected by dde overlay)', $result['changes']);
+    }
+
+    public function testAdaptComposeRemovesSshAgentBoilerplate(): void
+    {
+        $composePath = $this->createTempCompose(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+                volumes:
+                  - 'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro'
+                environment:
+                  - 'SSH_AUTH_SOCK=/tmp/ssh-agent/socket'
+            volumes:
+              dde_ssh-agent_socket-dir:
+                external: true
+            YAML);
+
+        $result = $this->manager->adaptCompose($composePath, 'myproject', 'web');
+
+        $this->assertNotNull($result);
+        $this->assertContains('Removed SSH-Agent volume from service "web" (now injected by dde overlay)', $result['changes']);
+    }
+
+    public function testAdaptComposeRemovesOpenUrlEnvVar(): void
+    {
+        $composePath = $this->createTempCompose(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+                environment:
+                  - 'OPEN_URL=https://myproject.test'
+            YAML);
+
+        $result = $this->manager->adaptCompose($composePath, 'myproject', 'web');
+
+        $this->assertNotNull($result);
+        $this->assertContains('Removed legacy OPEN_URL from service "web"', $result['changes']);
+    }
+
     public function testAdaptComposeReturnsEmptyWhenNoChanges(): void
     {
+        // A fully adapted compose file: no dde boilerplate, traefik labels already present
         $composeContent = <<<'YAML'
             services:
                 web:
@@ -146,15 +205,6 @@ final class ProjectInitAdaptationManagerTest extends TestCase
                         - 'traefik.enable=true'
                         - 'traefik.http.routers.web.rule=Host(`test-project.test`)'
                         - 'traefik.http.routers.web.tls=true'
-                    volumes:
-                        - 'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro'
-            networks:
-                default:
-                    name: dde
-                    external: true
-            volumes:
-                dde_ssh-agent_socket-dir:
-                    external: true
             YAML;
         $composePath = $this->tempDir.'/docker-compose.yml';
         file_put_contents($composePath, $composeContent);
@@ -231,6 +281,14 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $result = $this->manager->adaptDockerfile($this->tempDir.'/nonexistent/Dockerfile');
 
         $this->assertNull($result);
+    }
+
+    private function createTempCompose(string $yamlContent): string
+    {
+        $path = $this->tempDir.'/docker-compose-'.bin2hex(random_bytes(4)).'.yml';
+        file_put_contents($path, $yamlContent);
+
+        return $path;
     }
 
     protected function setUp(): void

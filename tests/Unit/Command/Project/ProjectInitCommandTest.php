@@ -451,7 +451,7 @@ final class ProjectInitCommandTest extends TestCase
         $this->assertSame(0, $this->commandTester->getStatusCode());
     }
 
-    public function testAdaptComposeFileMigratesSshAgentVolumeInOtherServices(): void
+    public function testAdaptComposeFileRemovesSshAgentBoilerplateFromOtherServices(): void
     {
         $composeContent = <<<'YAML'
             services:
@@ -480,8 +480,9 @@ final class ProjectInitCommandTest extends TestCase
         $this->assertSame(0, $this->commandTester->getStatusCode());
         $content = file_get_contents($this->tempDir.'/docker-compose.yml');
         $this->assertIsString($content);
-        $this->assertStringContainsString('dde_ssh-agent_socket-dir', $content);
-        $this->assertStringNotContainsString("'ssh-agent_socket-dir:/tmp/ssh-agent:ro'", $content);
+        // SSH-Agent boilerplate should be removed entirely (now injected by dde overlay)
+        $this->assertStringNotContainsString('ssh-agent', $content);
+        $this->assertStringNotContainsString('SSH_AUTH_SOCK', $content);
     }
 
     public function testAdaptComposeFileReturnsGracefullyOnInvalidFile(): void
