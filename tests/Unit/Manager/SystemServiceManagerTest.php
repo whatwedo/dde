@@ -8,8 +8,6 @@ use App\Database\DatabaseAdapterRegistry;
 use App\Manager\DockerManager;
 use App\Manager\SystemServiceManager;
 use App\Model\ContainerConfig;
-use App\Model\ContainerInfo;
-use App\Model\ContainerStatus;
 use App\Model\ServiceStartStatus;
 use App\Service\ServiceRegistry;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -43,7 +41,7 @@ final class SystemServiceManagerTest extends TestCase
         $this->assertSame('mariadb:11.8', $config->image);
         $this->assertSame('dde-mariadb-11.8', $config->containerName);
         $this->assertSame(['127.0.0.1:3306:3306'], $config->ports);
-        $this->assertSame(['mariadb'], $config->networkAliases);
+        $this->assertSame([], $config->networkAliases);
         $this->assertSame('true', $config->labels['dde.managed']);
         $this->assertSame('mariadb', $config->labels['dde.service']);
         $this->assertSame('11.8', $config->labels['dde.version']);
@@ -69,7 +67,7 @@ final class SystemServiceManagerTest extends TestCase
 
         $this->assertSame('postgres:18.3', $config->image);
         $this->assertSame(['127.0.0.1:5432:5432'], $config->ports);
-        $this->assertSame(['postgres'], $config->networkAliases);
+        $this->assertSame([], $config->networkAliases);
     }
 
     #[AllowMockObjectsWithoutExpectations]
@@ -167,17 +165,14 @@ final class SystemServiceManagerTest extends TestCase
         $this->assertSame(ServiceStartStatus::ALREADY_RUNNING, $result);
     }
 
-    public function testStartServiceUsesDynamicPortWhenOtherVersionRunning(): void
+    public function testStartServiceNonDefaultAlwaysGetsDynamicPort(): void
     {
+        // isDefault=false is always passed for non-default versions by the caller;
+        // port allocation must be dynamic regardless of what other containers are running.
         $this->dockerManager
             ->method('isContainerRunning')
             ->with('dde-mariadb-10.6')
             ->willReturn(false);
-
-        $this->dockerManager
-            ->method('getContainersByLabel')
-            ->with('dde.service', 'mariadb')
-            ->willReturn([new ContainerInfo('dde-mariadb-11.8', ContainerStatus::RUNNING, 'mariadb:11.8')]);
 
         $capturedConfig = null;
         $this->dockerManager
@@ -189,27 +184,22 @@ final class SystemServiceManagerTest extends TestCase
                 return true;
             }));
 
-        $result = $this->manager->startService('mariadb', '10.6', true);
+        $result = $this->manager->startService('mariadb', '10.6', false);
 
         $this->assertSame(ServiceStartStatus::STARTED, $result);
         $this->assertNotNull($capturedConfig);
-        // Must not use standard port 3306 to avoid conflict with running 11.8
         $this->assertNotSame('127.0.0.1:3306:3306', $capturedConfig->ports[0]);
-        // Must not get the mariadb alias (would conflict with running 11.8)
         $this->assertSame([], $capturedConfig->networkAliases);
     }
 
-    public function testStartServiceUsesDefaultPortWhenNoOtherVersionRunning(): void
+    public function testStartServiceDefaultAlwaysGetsStandardPort(): void
     {
+        // isDefault=true means this is the configured default version; it must
+        // always receive the standard port (3306) even when another version is running.
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mariadb-10.6')
+            ->with('dde-mariadb-11.8')
             ->willReturn(false);
-
-        $this->dockerManager
-            ->method('getContainersByLabel')
-            ->with('dde.service', 'mariadb')
-            ->willReturn([]);
 
         $capturedConfig = null;
         $this->dockerManager
@@ -221,44 +211,12 @@ final class SystemServiceManagerTest extends TestCase
                 return true;
             }));
 
-        $result = $this->manager->startService('mariadb', '10.6', true);
+        $result = $this->manager->startService('mariadb', '11.8', true);
 
         $this->assertSame(ServiceStartStatus::STARTED, $result);
         $this->assertNotNull($capturedConfig);
-        // No conflict — gets standard port and alias
         $this->assertSame('127.0.0.1:3306:3306', $capturedConfig->ports[0]);
-        $this->assertSame(['mariadb'], $capturedConfig->networkAliases);
-    }
-
-    public function testStartServiceIgnoresStoppedVersionsForPortConflictCheck(): void
-    {
-        $this->dockerManager
-            ->method('isContainerRunning')
-            ->with('dde-mariadb-10.6')
-            ->willReturn(false);
-
-        $this->dockerManager
-            ->method('getContainersByLabel')
-            ->with('dde.service', 'mariadb')
-            ->willReturn([new ContainerInfo('dde-mariadb-11.8', ContainerStatus::EXITED, 'mariadb:11.8')]);
-
-        $capturedConfig = null;
-        $this->dockerManager
-            ->expects($this->once())
-            ->method('run')
-            ->with($this->callback(static function (ContainerConfig $config) use (&$capturedConfig): bool {
-                $capturedConfig = $config;
-
-                return true;
-            }));
-
-        $result = $this->manager->startService('mariadb', '10.6', true);
-
-        $this->assertSame(ServiceStartStatus::STARTED, $result);
-        $this->assertNotNull($capturedConfig);
-        // Stopped container is ignored — gets standard port and alias
-        $this->assertSame('127.0.0.1:3306:3306', $capturedConfig->ports[0]);
-        $this->assertSame(['mariadb'], $capturedConfig->networkAliases);
+        $this->assertSame([], $capturedConfig->networkAliases);
     }
 
     public function testStopServiceCallsStopAndRemove(): void

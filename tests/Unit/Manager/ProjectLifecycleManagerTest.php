@@ -263,7 +263,9 @@ final class ProjectLifecycleManagerTest extends TestCase
             projectConfig: new ProjectConfig(name: 'test-project', services: [
                 new ServiceDefinition(name: 'mariadb', version: '10.6'),
             ]),
-            serviceVersions: ['mariadb' => '11.8'],
+            serviceVersions: [
+                'mariadb' => '11.8',
+            ],
         );
 
         $this->dockerManager->method('isContainerRunning')->willReturn(false);
