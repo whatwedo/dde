@@ -40,7 +40,7 @@ final class MailpitServiceTest extends TestCase
         $this->assertInstanceOf(ContainerConfig::class, $config);
         $this->assertSame('axllent/mailpit', $config->image);
         $this->assertSame('dde-mailpit', $config->containerName);
-        $this->assertSame(['127.0.0.1:8025:8025'], $config->ports);
+        $this->assertSame([], $config->ports);
         $this->assertSame('unless-stopped', $config->restartPolicy);
     }
 
