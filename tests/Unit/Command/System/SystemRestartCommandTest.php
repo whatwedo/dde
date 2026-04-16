@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Tests\Unit\Command\System;
 
 use App\Command\System\SystemRestartCommand;
+use App\Config\GlobalConfig;
 use App\Database\DatabaseAdapterRegistry;
 use App\Manager\DockerManager;
+use App\Manager\GlobalConfigManager;
+use App\Model\UserContext;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
+use App\Service\ImageBuilder;
 use App\Service\ServiceRegistry;
+use App\Service\SshAgentService;
 use App\Service\TraefikService;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
@@ -117,7 +122,21 @@ final class SystemRestartCommandTest extends TestCase
         $registry = new ServiceRegistry([$traefikService], new DatabaseAdapterRegistry([]));
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
-        $command = new SystemRestartCommand($registry, $traefikService, $formatterResolver);
+        $globalConfigManager = $this->createStub(GlobalConfigManager::class);
+        $globalConfigManager->method('load')->willReturn(new GlobalConfig());
+
+        $sshAgentService = new SshAgentService(
+            dockerManager: $this->dockerManager,
+            filesystem: new Filesystem(),
+            imageBuilder: new ImageBuilder($this->dockerManager, new Filesystem()),
+            userContext: new UserContext(),
+            globalConfigManager: $globalConfigManager,
+            projectDir: $tempDir,
+            userHomeDir: $tempDir,
+            dataDir: $tempDir,
+        );
+
+        $command = new SystemRestartCommand($registry, $traefikService, $sshAgentService, $formatterResolver);
 
         $application = new Application();
         $application->getDefinition()->addOption(new InputOption(

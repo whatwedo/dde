@@ -7,12 +7,14 @@ namespace App\Command\System;
 use App\Command\AbstractSystemCommand;
 use App\Output\FormatterResolver;
 use App\Service\ServiceRegistry;
+use App\Service\SshAgentService;
 use App\Service\TraefikService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Process\Process;
 
 #[AsCommand(
     name: 'system:restart',
@@ -23,6 +25,7 @@ final class SystemRestartCommand extends AbstractSystemCommand
     public function __construct(
         private readonly ServiceRegistry $serviceRegistry,
         private readonly TraefikService $traefikService,
+        private readonly SshAgentService $sshAgentService,
         FormatterResolver $formatterResolver,
     ) {
         parent::__construct($formatterResolver);
@@ -78,6 +81,18 @@ final class SystemRestartCommand extends AbstractSystemCommand
                 'status' => 'restarted',
                 'container' => $service->getContainerName(),
             ];
+        }
+
+        // Add SSH keys interactively after all services are started (requires TTY for passphrase prompts)
+        if ($input->isInteractive() && Process::isTtySupported() && $this->sshAgentService->isRunning() && $this->sshAgentService->getLoadedKeyCount() === 0) {
+            $keys = $this->sshAgentService->getConfiguredKeys();
+
+            if ($keys !== []) {
+                $io->newLine();
+                $io->writeln(sprintf('  Adding <info>%d</info> SSH key(s) to agent...', count($keys)));
+                $this->sshAgentService->addKeys();
+                $io->writeln(sprintf('  <info>%d</info> key(s) loaded.', $this->sshAgentService->getLoadedKeyCount()));
+            }
         }
 
         if (!$formatter->isInteractive()) {
