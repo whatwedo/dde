@@ -28,9 +28,7 @@ final class MailpitService extends AbstractSystemService
         return new ContainerConfig(
             image: $this->getImageName(),
             containerName: $this->getContainerName(),
-            ports: [
-                '127.0.0.1:8025:8025',
-            ],
+            ports: [],
             labels: [
                 ...$this->getDefaultLabels(),
                 'traefik.enable' => 'true',
