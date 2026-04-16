@@ -76,8 +76,8 @@ If the existing `dev` stage of a Dockerfile references the `dde` user (e.g. in `
 
 Any customisations that previously relied on the `dde` user can be implemented using **hooks** or **service adapters** instead:
 
-- **Hooks** (`.dde/hooks/`): shell scripts executed at defined lifecycle points (e.g. `post-up`).
-- **Service adapters** (`.dde/adapters/`): allow project-specific configuration of services such as nginx or php-fpm.
+- [**Hooks**](../extending/hooks.md) (`.dde/hooks/`): shell scripts executed at defined lifecycle points (e.g. `post-up`).
+- [**Service adapters**](../extending/service-adapters.md) (`.dde/adapters/`): allow project-specific configuration of services such as nginx or php-fpm.
 
 ## Breaking changes
 
