@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Manager;
 
 use App\Model\ContainerConfig;
+use App\Model\ContainerInfo;
+use App\Model\ContainerStatus;
 use App\Model\ServiceStartStatus;
 use App\Service\ServiceRegistry;
 use Symfony\Component\Filesystem\Filesystem;
@@ -32,12 +34,19 @@ final readonly class SystemServiceManager
             return ServiceStartStatus::ALREADY_RUNNING;
         }
 
-        // If any container for this service is already running (e.g. started by system:up),
-        // treat it as already running instead of throwing an error.
-        $existingContainers = $this->dockerManager->getContainersByLabel('dde.service', $service);
+        // If another version of this service is already running, downgrade to non-default
+        // to use a dynamic host port and avoid a port conflict (e.g. 3306 already allocated).
+        // The container is still reachable within the dde network via its container name.
+        if ($isDefault) {
+            $existingContainers = $this->dockerManager->getContainersByLabel('dde.service', $service);
+            $hasRunningOtherVersion = array_filter(
+                $existingContainers,
+                fn (ContainerInfo $c): bool => $c->name !== $containerName && $c->status === ContainerStatus::RUNNING,
+            ) !== [];
 
-        if ($existingContainers !== []) {
-            return ServiceStartStatus::ALREADY_RUNNING;
+            if ($hasRunningOtherVersion) {
+                $isDefault = false;
+            }
         }
 
         $config = $this->getContainerConfig($service, $version, $isDefault);

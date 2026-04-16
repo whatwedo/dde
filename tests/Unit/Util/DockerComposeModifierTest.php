@@ -882,6 +882,113 @@ final class DockerComposeModifierTest extends TestCase
         $this->assertFalse($this->modifier->serviceHasOldSshAgentVolume($config, 'web'));
     }
 
+    public function testRemoveDdeNetworkBoilerplateRemovesDefaultNetwork(): void
+    {
+        $config = [
+            'networks' => [
+                'default' => [
+                    'name' => 'dde',
+                    'external' => true,
+                ],
+            ],
+        ];
+
+        $result = $this->modifier->removeDdeNetworkBoilerplate($config);
+
+        $this->assertTrue($result);
+        $this->assertArrayNotHasKey('networks', $config);
+    }
+
+    public function testRemoveDdeNetworkBoilerplateReturnsFalseWhenNotPresent(): void
+    {
+        $config = [
+            'services' => [
+                'web' => [
+                    'image' => 'nginx',
+                ],
+            ],
+        ];
+        $result = $this->modifier->removeDdeNetworkBoilerplate($config);
+
+        $this->assertFalse($result);
+    }
+
+    public function testRemoveDdeNetworkBoilerplateReturnsFalseForDifferentNetwork(): void
+    {
+        $config = [
+            'networks' => [
+                'default' => [
+                    'name' => 'other-network',
+                    'external' => true,
+                ],
+            ],
+        ];
+
+        $result = $this->modifier->removeDdeNetworkBoilerplate($config);
+
+        $this->assertFalse($result);
+        $this->assertArrayHasKey('networks', $config);
+    }
+
+    public function testRemoveSshAgentBoilerplateRemovesVolumeAndEnvAndTopLevel(): void
+    {
+        $config = [
+            'services' => [
+                'web' => [
+                    'image' => 'nginx',
+                    'volumes' => ['dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro'],
+                    'environment' => ['SSH_AUTH_SOCK=/tmp/ssh-agent/socket'],
+                ],
+            ],
+            'volumes' => [
+                'dde_ssh-agent_socket-dir' => [
+                    'external' => true,
+                ],
+            ],
+        ];
+
+        $result = $this->modifier->removeSshAgentBoilerplate($config, 'web');
+
+        $this->assertTrue($result);
+        $this->assertArrayNotHasKey('volumes', $config['services']['web']);
+        $this->assertArrayNotHasKey('SSH_AUTH_SOCK', $config['services']['web']['environment'] ?? []);
+        $this->assertArrayNotHasKey('volumes', $config);
+    }
+
+    public function testRemoveSshAgentBoilerplateReturnsFalseWhenNothingToRemove(): void
+    {
+        $config = [
+            'services' => [
+                'web' => [
+                    'image' => 'nginx',
+                ],
+            ],
+        ];
+
+        $result = $this->modifier->removeSshAgentBoilerplate($config, 'web');
+
+        $this->assertFalse($result);
+    }
+
+    public function testRemoveSshAgentBoilerplatePreservesOtherVolumes(): void
+    {
+        $config = [
+            'services' => [
+                'web' => [
+                    'image' => 'nginx',
+                    'volumes' => [
+                        './src:/var/www',
+                        'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro',
+                    ],
+                ],
+            ],
+        ];
+
+        $this->modifier->removeSshAgentBoilerplate($config, 'web');
+
+        $this->assertSame(['./src:/var/www'], $config['services']['web']['volumes']);
+    }
+
     public function testServiceHasOldSshAgentVolumeReturnsFalseForNoVolumes(): void
     {
         $config = [

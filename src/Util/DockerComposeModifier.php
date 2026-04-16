@@ -359,8 +359,92 @@ readonly class DockerComposeModifier
     }
 
     /**
+     * Removes the "default: name: dde" network boilerplate from the compose config.
+     * This was added by dde v1 but is now injected by the dde overlay.
+     * Returns true if something was removed.
+     *
+     * @param array<string, mixed> $config
+     */
+    public function removeDdeNetworkBoilerplate(array &$config): bool
+    {
+        if (
+            isset($config['networks']['default']['name'])
+            && $config['networks']['default']['name'] === 'dde'
+        ) {
+            unset($config['networks']['default']);
+
+            if ($config['networks'] === []) {
+                unset($config['networks']);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Removes the dde_ssh-agent_socket-dir volume mount from a service,
+     * the SSH_AUTH_SOCK environment variable, and the top-level volume definition.
+     * This was added by dde v1 but is now injected by the dde overlay.
+     * Returns true if something was removed.
+     *
+     * @param array<string, mixed> $config
+     */
+    public function removeSshAgentBoilerplate(array &$config, string $serviceName): bool
+    {
+        if (! isset($config['services'][$serviceName]) || ! is_array($config['services'][$serviceName])) {
+            return false;
+        }
+
+        $service = &$config['services'][$serviceName];
+        $changed = false;
+
+        // Remove volume mount containing 'ssh-agent'
+        if (isset($service['volumes']) && is_array($service['volumes'])) {
+            $filtered = array_values(array_filter(
+                $service['volumes'],
+                static fn (mixed $v): bool => ! (is_string($v) && str_contains($v, 'ssh-agent')),
+            ));
+
+            if (count($filtered) !== count($service['volumes'])) {
+                if ($filtered === []) {
+                    unset($service['volumes']);
+                } else {
+                    $service['volumes'] = $filtered;
+                }
+
+                $changed = true;
+            }
+        }
+
+        // Remove SSH_AUTH_SOCK environment variable
+        if ($this->extractEnvironmentVariable($service, 'SSH_AUTH_SOCK') !== null) {
+            $this->removeEnvironmentVariable($service, 'SSH_AUTH_SOCK');
+            $changed = true;
+        }
+
+        // Remove top-level ssh-agent volume definitions (both dde_ prefixed and legacy v1 names)
+        foreach (array_keys($config['volumes'] ?? []) as $volumeName) {
+            if (is_string($volumeName) && str_contains($volumeName, 'ssh-agent')) {
+                unset($config['volumes'][$volumeName]);
+                $changed = true;
+            }
+        }
+
+        if (isset($config['volumes']) && $config['volumes'] === []) {
+            unset($config['volumes']);
+        }
+
+        return $changed;
+    }
+
+    /**
      * Returns true if the service has an SSH-Agent volume mount that is not yet
-     * in the canonical dde_ssh-agent_socket-dir format and needs to be migrated.
+     * in the canonical dde_ssh-agent_socket-dir format.
+     *
+     * Kept as a public utility for external callers that need to probe for old-format volumes.
+     * In the main adaptCompose() flow, removeSshAgentBoilerplate() is used directly instead.
      *
      * @param array<string, mixed> $config
      */
