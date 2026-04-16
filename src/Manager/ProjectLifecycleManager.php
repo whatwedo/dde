@@ -159,6 +159,17 @@ readonly class ProjectLifecycleManager
     }
 
     /**
+     * Ensures all global system services (Traefik, SSH-Agent, etc.) are running.
+     * Automatically starts them if they are not — equivalent to system:up.
+     */
+    public function ensureGlobalServices(): void
+    {
+        foreach ($this->serviceRegistry->getGlobalServices() as $service) {
+            $service->start();
+        }
+    }
+
+    /**
      * Creates the per-project network if it does not exist, then connects all
      * configured service containers to it with their service name as alias.
      * Receives null when no services are configured, in which case it is a no-op.
@@ -177,17 +188,6 @@ readonly class ProjectLifecycleManager
             $version = $config->getServiceVersion($service->name);
             $containerName = ServiceRegistry::buildContainerName($service->name, $version);
             $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$service->name]);
-        }
-    }
-
-    /**
-     * Ensures all global system services (Traefik, SSH-Agent, etc.) are running.
-     * Automatically starts them if they are not — equivalent to system:up.
-     */
-    private function ensureGlobalServices(): void
-    {
-        foreach ($this->serviceRegistry->getGlobalServices() as $service) {
-            $service->start();
         }
     }
 }

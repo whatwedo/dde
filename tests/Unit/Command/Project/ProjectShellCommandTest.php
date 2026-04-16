@@ -10,6 +10,7 @@ use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Manager\DockerComposeManager;
 use App\Manager\ProjectConfigManager;
+use App\Manager\ProjectLifecycleManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
@@ -33,6 +34,8 @@ final class ProjectShellCommandTest extends TestCase
 
     private DockerComposeManager&MockObject $dockerComposeManager;
 
+    private ProjectLifecycleManager&MockObject $lifecycleManager;
+
     private ShellDetectorUtil&Stub $shellDetector;
 
     private CommandTester $commandTester;
@@ -48,6 +51,7 @@ final class ProjectShellCommandTest extends TestCase
     public function testShellOpensDetectedShell(): void
     {
         $this->setupProjectFixture();
+        $this->stubServiceRunning('web');
         $this->shellDetector->method('detect')->willReturn('zsh');
 
         $process = $this->createStub(Process::class);
@@ -76,6 +80,7 @@ final class ProjectShellCommandTest extends TestCase
     public function testShellWithRootFlag(): void
     {
         $this->setupProjectFixture();
+        $this->stubServiceRunning('web');
         $this->shellDetector->method('detect')->willReturn('bash');
 
         $process = $this->createStub(Process::class);
@@ -106,6 +111,7 @@ final class ProjectShellCommandTest extends TestCase
     public function testShellWithServiceOption(): void
     {
         $this->setupProjectFixture();
+        $this->stubServiceRunning('worker');
         $this->shellDetector->method('detect')->willReturn('sh');
 
         $process = $this->createStub(Process::class);
@@ -154,6 +160,7 @@ final class ProjectShellCommandTest extends TestCase
                 'shell' => 'zsh',
             ],
         ]);
+        $this->stubServiceRunning('web');
         $this->shellDetector->method('detect')->willReturn('zsh');
 
         $process = $this->createStub(Process::class);
@@ -185,6 +192,7 @@ final class ProjectShellCommandTest extends TestCase
             ],
             'worker' => [],
         ]);
+        $this->stubServiceRunning('app');
         $this->shellDetector->method('detect')->willReturn('bash');
 
         $process = $this->createStub(Process::class);
@@ -211,6 +219,7 @@ final class ProjectShellCommandTest extends TestCase
     public function testShellFallsBackToComposeServiceWhenNoContainersConfigured(): void
     {
         $this->setupProjectFixture();
+        $this->stubServiceRunning('my-app');
         $this->shellDetector->method('detect')->willReturn('bash');
 
         $this->dockerComposeManager
@@ -241,6 +250,7 @@ final class ProjectShellCommandTest extends TestCase
     public function testShellPropagatesNonZeroExitCode(): void
     {
         $this->setupProjectFixture();
+        $this->stubServiceRunning('web');
         $this->shellDetector->method('detect')->willReturn('bash');
 
         $process = $this->createStub(Process::class);
@@ -270,6 +280,108 @@ final class ProjectShellCommandTest extends TestCase
         $this->assertNotSame(0, $this->commandTester->getStatusCode());
     }
 
+    public function testShellStartsProjectWhenContainerNotRunning(): void
+    {
+        $this->setupProjectFixture();
+        $this->shellDetector->method('detect')->willReturn('bash');
+
+        $this->dockerComposeManager
+            ->method('ps')
+            ->willReturn([]);
+
+        $this->lifecycleManager
+            ->expects($this->once())
+            ->method('up')
+            ->with(
+                $this->isInstanceOf(ResolvedConfig::class),
+                $this->tempDir,
+                false,
+                $this->anything(),
+            );
+
+        $process = $this->createStub(Process::class);
+        $process->method('getExitCode')->willReturn(0);
+
+        $this->dockerComposeManager
+            ->method('exec')
+            ->willReturn($process);
+
+        $this->commandTester->execute([], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $this->assertStringContainsString('not running', $this->commandTester->getDisplay());
+    }
+
+    public function testShellSkipsStartWhenContainerAlreadyRunning(): void
+    {
+        $this->setupProjectFixture();
+        $this->stubServiceRunning('web');
+        $this->shellDetector->method('detect')->willReturn('bash');
+
+        $this->lifecycleManager
+            ->expects($this->never())
+            ->method('up');
+
+        $process = $this->createStub(Process::class);
+        $process->method('getExitCode')->willReturn(0);
+
+        $this->dockerComposeManager
+            ->method('exec')
+            ->willReturn($process);
+
+        $this->commandTester->execute([], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+    }
+
+    public function testShellReturnsErrorWhenProjectUpFails(): void
+    {
+        $this->setupProjectFixture();
+        $this->shellDetector->method('detect')->willReturn('bash');
+
+        $this->dockerComposeManager
+            ->method('ps')
+            ->willReturn([]);
+
+        $this->lifecycleManager
+            ->method('up')
+            ->willThrowException(new \RuntimeException('docker compose up failed'));
+
+        $this->commandTester->execute([], [
+            'interactive' => false,
+        ]);
+
+        $this->assertNotSame(0, $this->commandTester->getStatusCode());
+    }
+
+    public function testShellAlwaysEnsuresGlobalServices(): void
+    {
+        $this->setupProjectFixture();
+        $this->stubServiceRunning('web');
+        $this->shellDetector->method('detect')->willReturn('bash');
+
+        $this->lifecycleManager
+            ->expects($this->once())
+            ->method('ensureGlobalServices');
+
+        $process = $this->createStub(Process::class);
+        $process->method('getExitCode')->willReturn(0);
+
+        $this->dockerComposeManager
+            ->method('exec')
+            ->willReturn($process);
+
+        $this->commandTester->execute([], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+    }
+
     /**
      * @param array<string, mixed> $containers
      */
@@ -291,6 +403,18 @@ final class ProjectShellCommandTest extends TestCase
             ->willReturn($resolvedConfig);
     }
 
+    private function stubServiceRunning(string $service): void
+    {
+        $this->dockerComposeManager
+            ->method('ps')
+            ->willReturn([
+                [
+                    'Service' => $service,
+                    'State' => 'running',
+                ],
+            ]);
+    }
+
     protected function setUp(): void
     {
         $this->tempDir = sys_get_temp_dir().'/dde_test_shell_'.bin2hex(random_bytes(8));
@@ -298,6 +422,7 @@ final class ProjectShellCommandTest extends TestCase
 
         $this->configManager = $this->createStub(ProjectConfigManager::class);
         $this->dockerComposeManager = $this->createMock(DockerComposeManager::class);
+        $this->lifecycleManager = $this->createMock(ProjectLifecycleManager::class);
         $this->shellDetector = $this->createStub(ShellDetectorUtil::class);
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
@@ -305,6 +430,7 @@ final class ProjectShellCommandTest extends TestCase
         $this->command = new ProjectShellCommand(
             $this->configManager,
             $this->dockerComposeManager,
+            $this->lifecycleManager,
             $formatterResolver,
             $this->shellDetector,
         );
