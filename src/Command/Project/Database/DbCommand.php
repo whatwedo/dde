@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Command\Project\Database;
 
 use App\Command\AbstractDatabaseCommand;
-use App\Manager\ConfigManager;
 use App\Manager\DatabaseManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use App\Service\ServiceRegistry;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -23,7 +23,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class DbCommand extends AbstractDatabaseCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         FormatterResolver $formatterResolver,
         private readonly DatabaseManager $databaseManager,
         private readonly ServiceRegistry $serviceRegistry,

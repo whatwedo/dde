@@ -9,8 +9,8 @@ use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Database\DatabaseAdapterRegistry;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectInfoManager;
 use App\Model\ServiceDefinition;
 use App\Output\FormatterResolver;
@@ -28,7 +28,7 @@ final class ProjectDescribeCommandTest extends TestCase
 {
     private string $tempDir;
 
-    private ConfigManager&Stub $configManager;
+    private ProjectConfigManager&Stub $configManager;
 
     private DockerComposeManager&Stub $dockerComposeManager;
 
@@ -275,7 +275,7 @@ final class ProjectDescribeCommandTest extends TestCase
         $this->tempDir = sys_get_temp_dir().'/dde_test_describe_'.bin2hex(random_bytes(8));
         mkdir($this->tempDir, 0o755, true);
 
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->configManager = $this->createStub(ProjectConfigManager::class);
         $this->dockerComposeManager = $this->createStub(DockerComposeManager::class);
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());

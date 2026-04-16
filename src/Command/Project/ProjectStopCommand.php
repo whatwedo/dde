@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Command\Project;
 
 use App\Command\AbstractProjectCommand;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -21,7 +21,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class ProjectStopCommand extends AbstractProjectCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         private readonly DockerComposeManager $dockerComposeManager,
         FormatterResolver $formatterResolver,
     ) {

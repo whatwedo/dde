@@ -11,7 +11,7 @@ use App\Config\ResolvedConfig;
 use App\Database\DatabaseAdapterRegistry;
 use App\Database\MariaDbAdapter;
 use App\Database\PostgresAdapter;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Model\ServiceDefinition;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -28,7 +28,7 @@ final class DbSnapshotListCommandTest extends TestCase
 {
     private string $tempDir;
 
-    private ConfigManager&Stub $configManager;
+    private ProjectConfigManager&Stub $configManager;
 
     private CommandTester $commandTester;
 
@@ -186,7 +186,7 @@ final class DbSnapshotListCommandTest extends TestCase
         $this->tempDir = sys_get_temp_dir().'/dde_test_snaplist_'.bin2hex(random_bytes(8));
         mkdir($this->tempDir, 0o755, true);
 
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->configManager = $this->createStub(ProjectConfigManager::class);
         $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());

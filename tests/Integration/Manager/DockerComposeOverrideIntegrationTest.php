@@ -11,9 +11,10 @@ use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Database\DatabaseAdapterRegistry;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
+use App\Manager\GlobalConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Model\UserContext;
 use App\Service\ServiceRegistry;
 use App\Service\TraefikService;
@@ -32,7 +33,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
 
     private AdapterRegistry $adapterRegistry;
 
-    private ConfigManager $configManager;
+    private ProjectConfigManager $configManager;
 
     public function testGenerateOverrideSingleService(): void
     {
@@ -252,11 +253,12 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
             dataDir: $this->tempDir.'/data',
         );
 
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([]));
-
-        $this->configManager = new ConfigManager(
+        $globalConfigManager = new GlobalConfigManager(
             configDir: $this->tempDir.'/config',
-            serviceRegistry: $serviceRegistry,
+        );
+        $this->configManager = new ProjectConfigManager(
+            globalConfigManager: $globalConfigManager,
+            serviceRegistry: new ServiceRegistry([], new DatabaseAdapterRegistry([])),
             processFactory: new ProcessFactory(),
         );
 

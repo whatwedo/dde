@@ -9,9 +9,9 @@ use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
+use App\Manager\ProjectConfigManager;
 use App\Model\UserContext;
 use App\Service\TraefikService;
 use PHPUnit\Framework\TestCase;
@@ -655,7 +655,7 @@ final class DockerComposeManagerTest extends TestCase
         $resourcesDir = dirname(__DIR__, 3).'/resources';
         $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
 
-        $configManager = $this->createStub(ConfigManager::class);
+        $configManager = $this->createStub(ProjectConfigManager::class);
         $configManager->method('resolveProjectHostname')->willReturn($worktreeHostname);
 
         $traefikService = new TraefikService(
@@ -683,7 +683,7 @@ final class DockerComposeManagerTest extends TestCase
     {
         $resourcesDir = dirname(__DIR__, 3).'/resources';
         $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
-        $configManager = $this->createStub(ConfigManager::class);
+        $configManager = $this->createStub(ProjectConfigManager::class);
         $traefikService = new TraefikService(
             dockerManager: $dockerManager,
             filesystem: new \Symfony\Component\Filesystem\Filesystem(),

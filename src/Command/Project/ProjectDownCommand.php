@@ -8,7 +8,7 @@ use App\Command\AbstractProjectCommand;
 use App\Event\ProjectDownPostEvent;
 use App\Event\ProjectDownPreEvent;
 use App\Exception\HookFailedException;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
 use App\Output\FormatterResolver;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -26,7 +26,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 final class ProjectDownCommand extends AbstractProjectCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         private readonly ProjectLifecycleManager $lifecycleManager,
         FormatterResolver $formatterResolver,
         private readonly EventDispatcherInterface $eventDispatcher,

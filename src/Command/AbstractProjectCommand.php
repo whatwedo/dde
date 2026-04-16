@@ -6,7 +6,7 @@ namespace App\Command;
 
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 
 abstract class AbstractProjectCommand extends AbstractBaseCommand
@@ -18,7 +18,7 @@ abstract class AbstractProjectCommand extends AbstractBaseCommand
     private ?ResolvedConfig $resolvedConfig = null;
 
     public function __construct(
-        protected readonly ConfigManager $configManager,
+        protected readonly ProjectConfigManager $configManager,
         FormatterResolver $formatterResolver,
     ) {
         parent::__construct($formatterResolver);

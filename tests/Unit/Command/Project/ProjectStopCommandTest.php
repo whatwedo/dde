@@ -8,8 +8,8 @@ use App\Command\Project\ProjectStopCommand;
 use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
@@ -27,7 +27,7 @@ final class ProjectStopCommandTest extends TestCase
 {
     private string $tempDir;
 
-    private ConfigManager&Stub $configManager;
+    private ProjectConfigManager&Stub $configManager;
 
     private DockerComposeManager&MockObject $dockerComposeManager;
 
@@ -129,7 +129,7 @@ final class ProjectStopCommandTest extends TestCase
         $this->tempDir = sys_get_temp_dir().'/dde_test_stop_'.bin2hex(random_bytes(8));
         mkdir($this->tempDir, 0o755, true);
 
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->configManager = $this->createStub(ProjectConfigManager::class);
         $this->dockerComposeManager = $this->createMock(DockerComposeManager::class);
 
         $command = new ProjectStopCommand(

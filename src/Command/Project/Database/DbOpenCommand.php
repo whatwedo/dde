@@ -6,8 +6,8 @@ namespace App\Command\Project\Database;
 
 use App\Command\AbstractDatabaseCommand;
 use App\Database\DatabaseAdapterRegistry;
-use App\Manager\ConfigManager;
 use App\Manager\DatabaseManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use App\Service\ServiceRegistry;
 use App\Util\UrlOpenerUtil;
@@ -23,7 +23,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class DbOpenCommand extends AbstractDatabaseCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         FormatterResolver $formatterResolver,
         private readonly DatabaseManager $databaseManager,
         private readonly DatabaseAdapterRegistry $adapterRegistry,

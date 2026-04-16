@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Plugin;
 
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Util\ProcessFactory;
 use Symfony\Component\Console\CommandLoader\CommandLoaderInterface;
 use Symfony\Component\Console\Exception\CommandNotFoundException;
@@ -18,7 +18,7 @@ final class PluginCommandLoader implements CommandLoaderInterface
 
     public function __construct(
         private readonly PluginLoader $pluginLoader,
-        private readonly ConfigManager $configManager,
+        private readonly ProjectConfigManager $configManager,
         private readonly ProcessFactory $processFactory = new ProcessFactory(),
     ) {
     }

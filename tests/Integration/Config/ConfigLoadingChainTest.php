@@ -9,7 +9,8 @@ use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Database\DatabaseAdapterRegistry;
-use App\Manager\ConfigManager;
+use App\Manager\GlobalConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Model\ServiceDefinition;
 use App\Service\ServiceRegistry;
 use App\Util\ProcessFactory;
@@ -48,8 +49,8 @@ final class ConfigLoadingChainTest extends TestCase
 
         file_put_contents($globalDir.'/config.yml', Yaml::dump($config, 4));
 
-        $manager = $this->createConfigManager($globalDir);
-        $globalConfig = $manager->loadGlobalConfig();
+        $manager = $this->createGlobalConfigManager($globalDir);
+        $globalConfig = $manager->load();
 
         self::assertInstanceOf(GlobalConfig::class, $globalConfig);
         self::assertSame('json', $globalConfig->output);
@@ -85,7 +86,7 @@ final class ConfigLoadingChainTest extends TestCase
 
         file_put_contents($projectDir.'/.dde/config.yml', Yaml::dump($config, 4));
 
-        $manager = $this->createConfigManager($this->tempDir.'/global-unused');
+        $manager = $this->createProjectConfigManager($this->tempDir.'/global-unused');
         $projectConfig = $manager->loadProjectConfig($projectDir);
 
         self::assertInstanceOf(ProjectConfig::class, $projectConfig);
@@ -149,7 +150,8 @@ final class ConfigLoadingChainTest extends TestCase
 
         file_put_contents($projectDir.'/.dde/config.yml', Yaml::dump($projectYaml, 4));
 
-        $manager = $this->createConfigManager($globalDir);
+        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([]));
+        $manager = $this->createProjectConfigManager($globalDir, $serviceRegistry);
         $resolved = $manager->resolveConfig($projectDir);
 
         self::assertInstanceOf(ResolvedConfig::class, $resolved);
@@ -186,8 +188,8 @@ final class ConfigLoadingChainTest extends TestCase
     {
         $nonExistentDir = $this->tempDir.'/does-not-exist';
 
-        $manager = $this->createConfigManager($nonExistentDir);
-        $globalConfig = $manager->loadGlobalConfig();
+        $manager = $this->createGlobalConfigManager($nonExistentDir);
+        $globalConfig = $manager->load();
 
         self::assertInstanceOf(GlobalConfig::class, $globalConfig);
         self::assertSame(GlobalConfigDefinition::OUTPUT, $globalConfig->output);
@@ -202,7 +204,7 @@ final class ConfigLoadingChainTest extends TestCase
         $projectDir = $this->tempDir.'/empty-project';
         $this->filesystem->mkdir($projectDir);
 
-        $manager = $this->createConfigManager($this->tempDir.'/global-unused');
+        $manager = $this->createProjectConfigManager($this->tempDir.'/global-unused');
         $projectConfig = $manager->loadProjectConfig($projectDir);
 
         self::assertInstanceOf(ProjectConfig::class, $projectConfig);
@@ -211,13 +213,18 @@ final class ConfigLoadingChainTest extends TestCase
         self::assertSame([], $projectConfig->containers);
     }
 
-    private function createConfigManager(string $configDir): ConfigManager
+    private function createGlobalConfigManager(string $configDir): GlobalConfigManager
     {
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([]));
-
-        return new ConfigManager(
+        return new GlobalConfigManager(
             configDir: $configDir,
-            serviceRegistry: $serviceRegistry,
+        );
+    }
+
+    private function createProjectConfigManager(string $configDir, ?ServiceRegistry $serviceRegistry = null): ProjectConfigManager
+    {
+        return new ProjectConfigManager(
+            globalConfigManager: new GlobalConfigManager(configDir: $configDir),
+            serviceRegistry: $serviceRegistry ?? new ServiceRegistry([], new DatabaseAdapterRegistry([])),
             processFactory: new ProcessFactory(),
         );
     }

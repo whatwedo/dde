@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Command\Project\Service;
 
 use App\Command\AbstractProjectCommand;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ServiceConfigManager;
 use App\Model\ServiceDefinition;
 use App\Output\FormatterResolver;
@@ -25,7 +25,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class ServiceEnableCommand extends AbstractProjectCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         private readonly ServiceRegistry $serviceRegistry,
         FormatterResolver $formatterResolver,
         private readonly ServiceConfigManager $serviceConfigManager = new ServiceConfigManager(),
@@ -86,7 +86,7 @@ final class ServiceEnableCommand extends AbstractProjectCommand
             return $formatter->error($runtimeException->getMessage());
         }
 
-        $configPath = $projectDir.'/'.ConfigManager::CONFIG_DIR.'/'.ConfigManager::CONFIG_FILE;
+        $configPath = $projectDir.'/'.ProjectConfigManager::CONFIG_DIR.'/'.ProjectConfigManager::CONFIG_FILE;
 
         if (! $this->serviceConfigManager->configFileExists($configPath)) {
             return $formatter->error(sprintf('Config file not found: %s', $configPath));

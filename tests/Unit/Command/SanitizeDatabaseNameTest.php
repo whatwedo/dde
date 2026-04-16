@@ -5,13 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Command;
 
 use App\Command\AbstractDatabaseCommand;
-use App\Database\DatabaseAdapterRegistry;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
-use App\Service\ServiceRegistry;
-use App\Util\ProcessFactory;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\InputInterface;
@@ -46,7 +43,7 @@ final class SanitizeDatabaseNameTest extends TestCase
 
     private function createTestCommand(): AbstractDatabaseCommand
     {
-        $configManager = new ConfigManager(configDir: '/tmp', serviceRegistry: new ServiceRegistry([], new DatabaseAdapterRegistry([])), processFactory: new ProcessFactory());
+        $configManager = $this->createStub(ProjectConfigManager::class);
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
         return new class($configManager, $formatterResolver) extends AbstractDatabaseCommand {

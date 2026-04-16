@@ -8,9 +8,9 @@ use App\Command\Project\ProjectStatusCommand;
 use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
@@ -26,7 +26,7 @@ final class ProjectStatusCommandTest extends TestCase
 {
     private string $tempDir;
 
-    private ConfigManager&Stub $configManager;
+    private ProjectConfigManager&Stub $configManager;
 
     private DockerComposeManager&Stub $dockerComposeManager;
 
@@ -200,7 +200,7 @@ final class ProjectStatusCommandTest extends TestCase
         $this->tempDir = sys_get_temp_dir().'/dde_test_status_'.bin2hex(random_bytes(8));
         mkdir($this->tempDir, 0o755, true);
 
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->configManager = $this->createStub(ProjectConfigManager::class);
         $this->dockerComposeManager = $this->createStub(DockerComposeManager::class);
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());

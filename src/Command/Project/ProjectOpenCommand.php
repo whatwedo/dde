@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Command\Project;
 
 use App\Command\AbstractProjectCommand;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
 use App\Manager\MkcertManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use App\Util\UrlOpenerUtil;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -23,7 +23,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class ProjectOpenCommand extends AbstractProjectCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         FormatterResolver $formatterResolver,
         private readonly DockerComposeManager $dockerComposeManager,
         private readonly MkcertManager $mkcertManager,

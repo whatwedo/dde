@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Command\Project\Database;
 
 use App\Command\AbstractDatabaseCommand;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use App\Service\ServiceRegistry;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -22,7 +22,7 @@ use Symfony\Component\Finder\Finder;
 final class DbSnapshotListCommand extends AbstractDatabaseCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         private readonly ServiceRegistry $serviceRegistry,
         private readonly Filesystem $filesystem,
         FormatterResolver $formatterResolver,

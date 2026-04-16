@@ -8,7 +8,7 @@ use App\Command\Project\Service\ServiceEnableCommand;
 use App\Config\Definition\ProjectConfigDefinition;
 use App\Config\ProjectConfig;
 use App\Database\DatabaseAdapterRegistry;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ServiceConfigManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -27,7 +27,7 @@ final class ServiceEnableCommandTest extends TestCase
 {
     private string $tempDir;
 
-    private ConfigManager&Stub $configManager;
+    private ProjectConfigManager&Stub $configManager;
 
     private ServiceRegistry $serviceRegistry;
 
@@ -216,7 +216,7 @@ final class ServiceEnableCommandTest extends TestCase
         mkdir($this->tempDir.'/.dde', 0o755, true);
 
         $this->filesystem = new Filesystem();
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->configManager = $this->createStub(ProjectConfigManager::class);
         $this->serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([]));
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());

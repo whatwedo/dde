@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Command\System;
 
 use App\Command\System\SystemInstallCommand;
+use App\Config\GlobalConfig;
 use App\Manager\CompletionManager;
 use App\Manager\DockerManager;
+use App\Manager\GlobalConfigManager;
 use App\Manager\MkcertManager;
 use App\Model\UserContext;
 use App\Output\FormatterResolver;
@@ -230,15 +232,18 @@ final class SystemInstallCommandTest extends TestCase
             dataDir: $this->tempDir,
         );
 
+        $globalConfigManager = $this->createStub(GlobalConfigManager::class);
+        $globalConfigManager->method('load')->willReturn(new GlobalConfig());
+
         $sshAgentService = new SshAgentService(
             dockerManager: $this->dockerManager,
             filesystem: $filesystem,
             imageBuilder: $imageBuilder,
             userContext: new UserContext('1000', '1000'),
+            globalConfigManager: $globalConfigManager,
             projectDir: $this->tempDir,
             userHomeDir: $this->tempDir,
             dataDir: $this->tempDir,
-            configuredKeys: [],
         );
 
         $completionService = new CompletionManager(

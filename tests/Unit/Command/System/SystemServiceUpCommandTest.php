@@ -7,8 +7,8 @@ namespace Tests\Unit\Command\System;
 use App\Command\System\SystemServiceUpCommand;
 use App\Config\GlobalConfig;
 use App\Database\DatabaseAdapterRegistry;
-use App\Manager\ConfigManager;
 use App\Manager\DockerManager;
+use App\Manager\GlobalConfigManager;
 use App\Manager\SystemServiceManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -26,14 +26,14 @@ final class SystemServiceUpCommandTest extends TestCase
 {
     private DockerManager&Stub $dockerManager;
 
-    private ConfigManager&Stub $configManager;
+    private GlobalConfigManager&Stub $globalConfigManager;
 
     private CommandTester $commandTester;
 
     public function testUnknownServiceReturnsError(): void
     {
-        $this->configManager
-            ->method('loadGlobalConfig')
+        $this->globalConfigManager
+            ->method('load')
             ->willReturn(new GlobalConfig());
 
         $this->commandTester->execute([
@@ -50,8 +50,8 @@ final class SystemServiceUpCommandTest extends TestCase
 
     public function testAlreadyRunningReturnsAlreadyRunningStatus(): void
     {
-        $this->configManager
-            ->method('loadGlobalConfig')
+        $this->globalConfigManager
+            ->method('load')
             ->willReturn(new GlobalConfig());
 
         $this->dockerManager
@@ -82,8 +82,8 @@ final class SystemServiceUpCommandTest extends TestCase
 
     public function testAlreadyRunningJsonOutput(): void
     {
-        $this->configManager
-            ->method('loadGlobalConfig')
+        $this->globalConfigManager
+            ->method('load')
             ->willReturn(new GlobalConfig());
 
         $this->dockerManager
@@ -121,8 +121,8 @@ final class SystemServiceUpCommandTest extends TestCase
 
     public function testSuccessfulStartReturnsOkStatus(): void
     {
-        $this->configManager
-            ->method('loadGlobalConfig')
+        $this->globalConfigManager
+            ->method('load')
             ->willReturn(new GlobalConfig());
 
         $this->dockerManager
@@ -162,8 +162,8 @@ final class SystemServiceUpCommandTest extends TestCase
 
     public function testSuccessfulStartJsonOutput(): void
     {
-        $this->configManager
-            ->method('loadGlobalConfig')
+        $this->globalConfigManager
+            ->method('load')
             ->willReturn(new GlobalConfig());
 
         $this->dockerManager
@@ -209,8 +209,8 @@ final class SystemServiceUpCommandTest extends TestCase
 
     public function testCustomVersionOption(): void
     {
-        $this->configManager
-            ->method('loadGlobalConfig')
+        $this->globalConfigManager
+            ->method('load')
             ->willReturn(new GlobalConfig());
 
         $this->dockerManager
@@ -251,7 +251,7 @@ final class SystemServiceUpCommandTest extends TestCase
     protected function setUp(): void
     {
         $this->dockerManager = $this->createStub(DockerManager::class);
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->globalConfigManager = $this->createStub(GlobalConfigManager::class);
 
         $tempDir = sys_get_temp_dir().'/dde-test-cmd-'.bin2hex(random_bytes(8));
         mkdir($tempDir, 0o777, true);
@@ -277,7 +277,7 @@ final class SystemServiceUpCommandTest extends TestCase
             serviceManager: $serviceManager,
             serviceRegistry: $registry,
             dockerManager: $this->dockerManager,
-            configManager: $this->configManager,
+            globalConfigManager: $this->globalConfigManager,
             formatterResolver: $formatterResolver,
         );
 
