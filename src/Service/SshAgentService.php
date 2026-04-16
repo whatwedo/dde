@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Manager\DockerManager;
+use App\Manager\GlobalConfigManager;
 use App\Model\ContainerConfig;
 use App\Model\UserContext;
 use Symfony\Component\Filesystem\Filesystem;
@@ -12,18 +13,15 @@ use Symfony\Component\Finder\Finder;
 
 final class SshAgentService extends AbstractSystemService
 {
-    /**
-     * @param array<string> $configuredKeys
-     */
     public function __construct(
         DockerManager $dockerManager,
         private readonly Filesystem $filesystem,
         private readonly ImageBuilder $imageBuilder,
         private readonly UserContext $userContext,
+        private readonly GlobalConfigManager $globalConfigManager,
         private readonly string $projectDir,
         private readonly string $userHomeDir,
         private readonly string $dataDir,
-        private readonly array $configuredKeys = [],
     ) {
         parent::__construct($dockerManager);
     }
@@ -154,8 +152,14 @@ final class SshAgentService extends AbstractSystemService
      */
     public function getConfiguredKeys(): array
     {
-        if ($this->configuredKeys !== []) {
-            return $this->configuredKeys;
+        $globalConfig = $this->globalConfigManager->load();
+        $configuredKeys = array_map(
+            fn (string $key): string => str_starts_with($key, '~/') ? $this->userHomeDir.substr($key, 1) : $key,
+            $globalConfig->sshKeys,
+        );
+
+        if ($configuredKeys !== []) {
+            return $configuredKeys;
         }
 
         return $this->detectSshKeys();
