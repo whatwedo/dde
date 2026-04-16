@@ -286,7 +286,7 @@ readonly class DockerComposeManager
         }
     }
 
-    public function generateOverride(ResolvedConfig $config, string $projectDir, ?WorktreeInfo $worktreeInfo = null): string
+    public function generateOverride(ResolvedConfig $config, string $projectDir, ?WorktreeInfo $worktreeInfo = null, ?string $projectNetwork = null): string
     {
         $composeServices = $this->discoverComposeServicesWithConfig($projectDir);
 
@@ -297,6 +297,14 @@ readonly class DockerComposeManager
         $overrideServices = [];
         $entrypointPath = $this->adapterRegistry->getEntrypointPath();
         $adaptersDir = $this->adapterRegistry->getBuiltinAdaptersDir();
+
+        $serviceNetworks = [
+            'dde' => null,
+        ];
+
+        if ($projectNetwork !== null) {
+            $serviceNetworks[$projectNetwork] = null;
+        }
 
         foreach ($composeServices as $serviceName => $serviceConfig) {
             $imageName = $this->resolveServiceImage($serviceName, $serviceConfig, $projectDir);
@@ -314,6 +322,7 @@ readonly class DockerComposeManager
             if (! $this->dockerManager->imageHasShell($imageName)) {
                 $overrideServices[$serviceName] = [
                     'labels' => $labels,
+                    'networks' => $serviceNetworks,
                 ];
 
                 continue;
@@ -322,6 +331,7 @@ readonly class DockerComposeManager
             $environment = [
                 'DDE_UID' => (string) $this->userContext->uid,
                 'DDE_GID' => (string) $this->userContext->gid,
+                'SSH_AUTH_SOCK' => '/tmp/ssh-agent/socket',
             ];
 
             if ($worktreeHostname !== null) {
@@ -343,11 +353,14 @@ readonly class DockerComposeManager
                 $volumes[] = $projectAdaptersDir.':/dde/adapters-project:ro';
             }
 
+            $volumes[] = 'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro';
+
             $serviceOverride = [
                 'entrypoint' => ['/dde/entrypoint.sh'],
                 'volumes' => $volumes,
                 'environment' => $environment,
                 'labels' => $labels,
+                'networks' => $serviceNetworks,
             ];
 
             // Preserve original entrypoint + CMD when overriding entrypoint
@@ -385,7 +398,20 @@ readonly class DockerComposeManager
             $overrideServices[$serviceName] = $serviceOverride;
         }
 
+        $networks = [
+            'dde' => [
+                'external' => true,
+            ],
+        ];
+
+        if ($projectNetwork !== null) {
+            $networks[$projectNetwork] = [
+                'external' => true,
+            ];
+        }
+
         $override = [
+            'networks' => $networks,
             'volumes' => [
                 'dde_ssh-agent_socket-dir' => [
                     'external' => true,

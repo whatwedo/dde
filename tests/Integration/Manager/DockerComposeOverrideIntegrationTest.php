@@ -85,6 +85,14 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertIsArray($parsed['volumes']);
         self::assertArrayHasKey('dde_ssh-agent_socket-dir', $parsed['volumes']);
         self::assertTrue($parsed['volumes']['dde_ssh-agent_socket-dir']['external']);
+
+        // Networks
+        self::assertIsArray($parsed['networks']);
+        self::assertArrayHasKey('dde', $parsed['networks']);
+
+        // SSH_AUTH_SOCK env var
+        self::assertArrayHasKey('SSH_AUTH_SOCK', $env);
+        self::assertSame('/tmp/ssh-agent/socket', $env['SSH_AUTH_SOCK']);
     }
 
     public function testGenerateOverrideMultipleServices(): void
@@ -203,6 +211,92 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $this->manager->generateOverride($config, $projectDir);
     }
 
+    public function testGenerateOverrideInjectsBothNetworks(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir, null, 'dde-services-myproject');
+
+        $parsed = Yaml::parseFile($overridePath);
+
+        self::assertIsArray($parsed['networks']);
+        self::assertArrayHasKey('dde', $parsed['networks']);
+        self::assertTrue($parsed['networks']['dde']['external']);
+        self::assertArrayHasKey('dde-services-myproject', $parsed['networks']);
+        self::assertTrue($parsed['networks']['dde-services-myproject']['external']);
+
+        $web = $parsed['services']['web'];
+        self::assertIsArray($web['networks']);
+        self::assertArrayHasKey('dde', $web['networks']);
+        self::assertArrayHasKey('dde-services-myproject', $web['networks']);
+    }
+
+    public function testGenerateOverrideWithoutProjectNetworkInjectsOnlyDdeNetwork(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir);
+
+        $parsed = Yaml::parseFile($overridePath);
+
+        self::assertIsArray($parsed['networks']);
+        self::assertArrayHasKey('dde', $parsed['networks']);
+        self::assertArrayNotHasKey('dde-services-myproject', $parsed['networks']);
+    }
+
+    public function testGenerateOverrideInjectsSshAgentVolumeAndEnv(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir);
+
+        $parsed = Yaml::parseFile($overridePath);
+
+        self::assertArrayHasKey('dde_ssh-agent_socket-dir', $parsed['volumes']);
+        self::assertTrue($parsed['volumes']['dde_ssh-agent_socket-dir']['external']);
+
+        $web = $parsed['services']['web'];
+        self::assertIsArray($web['environment']);
+        self::assertArrayHasKey('SSH_AUTH_SOCK', $web['environment']);
+        self::assertSame('/tmp/ssh-agent/socket', $web['environment']['SSH_AUTH_SOCK']);
+
+        self::assertIsArray($web['volumes']);
+        self::assertContains('dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro', $web['volumes']);
+    }
+
+    public function testGenerateOverrideDoesNotAddExtraHosts(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        $config = $this->makeResolvedConfigWithServices([
+            new \App\Model\ServiceDefinition(name: 'mariadb', version: '10.6'),
+        ]);
+
+        $overridePath = $this->manager->generateOverride($config, $projectDir);
+        $parsed = Yaml::parseFile($overridePath);
+
+        self::assertArrayNotHasKey('extra_hosts', $parsed['services']['web']);
+    }
+
     private function makeResolvedConfig(string $projectName = 'test-project'): ResolvedConfig
     {
         $global = new GlobalConfig(
@@ -215,6 +309,27 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $project = new ProjectConfig(
             name: $projectName,
             services: [],
+            containers: [],
+        );
+
+        return ResolvedConfig::merge($global, $project);
+    }
+
+    /**
+     * @param list<\App\Model\ServiceDefinition> $services
+     */
+    private function makeResolvedConfigWithServices(array $services, string $projectName = 'test-project'): ResolvedConfig
+    {
+        $global = new GlobalConfig(
+            output: GlobalConfigDefinition::OUTPUT,
+            dnsForward: GlobalConfigDefinition::DNS_FORWARD,
+            sshKeys: GlobalConfigDefinition::SSH_KEYS,
+            serviceVersions: [],
+            warnings: [],
+        );
+        $project = new ProjectConfig(
+            name: $projectName,
+            services: $services,
             containers: [],
         );
 
