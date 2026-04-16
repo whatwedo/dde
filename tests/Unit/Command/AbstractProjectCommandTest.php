@@ -28,6 +28,7 @@ final class AbstractProjectCommandTest extends TestCase
     public function testGetProjectDirectoryThrowsWhenConfigManagerNotImplemented(): void
     {
         $configManager = $this->createStub(ProjectConfigManager::class);
+        $configManager->method('findProjectDirectory')->willReturn(null);
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
         $command = new class($configManager, $formatterResolver) extends AbstractProjectCommand {
