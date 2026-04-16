@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-alpha.3] - 2026-04-16
+
+### Added
+- Auto-start project and system services when running a shell in a stopped project (`feat(shell)`)
+- Per-project Docker network: created on `project:up`, disconnected on `project:down`; system service containers are automatically connected/disconnected
+- SSH-agent injected into compose override per project, replacing hardcoded init boilerplate
+- Multi-select service chooser with per-service version picker during `project:init`
+
+### Changed
+- Mailpit is now accessible exclusively via Traefik; host port forwarding removed
+- `ConfigManager` split into `GlobalConfigManager` and `ProjectConfigManager` for clearer responsibility boundaries
+- dde network, SSH-agent, and `OPEN_URL` boilerplate removed from init template; injected via compose override instead
+
+### Fixed
+- SSH keys are now added to the agent after `system:restart`
+- SSH keys loaded from global config instead of auto-detecting all keys on the system
+- Homebrew formula uses `caveats` instead of `post_install` for post-install instructions
+
 ## [2.0.0-alpha.2] - 2026-04-15
 
 ### Added
