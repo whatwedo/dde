@@ -1,9 +1,15 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { remarkRewriteMdLinks } from './src/plugins/remark-rewrite-md-links.mjs';
 
 export default defineConfig({
 	site: 'https://dde.sh',
+	markdown: {
+		// Rewrite relative .md links (which work when browsing on GitHub)
+		// to clean Starlight URLs at build time. See the plugin for details.
+		remarkPlugins: [remarkRewriteMdLinks],
+	},
 	integrations: [
 		starlight({
 			title: 'dde',
