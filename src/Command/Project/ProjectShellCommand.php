@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Command\Project;
 
 use App\Command\AbstractProjectCommand;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use App\Util\ShellDetectorUtil;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -24,7 +24,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class ProjectShellCommand extends AbstractProjectCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         private readonly DockerComposeManager $dockerComposeManager,
         FormatterResolver $formatterResolver,
         private readonly ShellDetectorUtil $shellDetector,

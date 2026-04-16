@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Plugin;
 
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Plugin\PluginCommandLoader;
 use App\Plugin\PluginDefinition;
 use App\Plugin\PluginLoader;
@@ -78,7 +78,7 @@ final class PluginCommandLoaderTest extends TestCase
         $pluginLoader = $this->createStub(PluginLoader::class);
         $pluginLoader->method('loadPlugins')->willReturn($definitions);
 
-        $configManager = $this->createStub(ConfigManager::class);
+        $configManager = $this->createStub(ProjectConfigManager::class);
         $configManager->method('findProjectDirectory')->willReturn('/tmp/project');
 
         return new PluginCommandLoader($pluginLoader, $configManager);

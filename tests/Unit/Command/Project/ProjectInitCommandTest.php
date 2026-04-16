@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Unit\Command\Project;
 
 use App\Command\Project\ProjectInitCommand;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectInitAdaptationManager;
 use App\Manager\ProjectInitManager;
 use App\Output\FormatterResolver;
@@ -437,7 +437,7 @@ final class ProjectInitCommandTest extends TestCase
         );
         $dockerfileParser = new DockerfileParser();
 
-        $configManager = $this->createStub(ConfigManager::class);
+        $configManager = $this->createStub(ProjectConfigManager::class);
 
         $adaptationManager = new ProjectInitAdaptationManager(
             $dockerComposeManager,

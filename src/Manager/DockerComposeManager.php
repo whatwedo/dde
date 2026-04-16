@@ -22,7 +22,7 @@ readonly class DockerComposeManager
 {
     public function __construct(
         private AdapterRegistry $adapterRegistry,
-        private ConfigManager $configManager,
+        private ProjectConfigManager $configManager,
         private DockerManager $dockerManager,
         private TraefikService $traefikService,
         private UserContext $userContext,
@@ -411,12 +411,12 @@ readonly class DockerComposeManager
     public function findComposeFile(string $projectDir): string
     {
         return $this->findComposeFileOrNull($projectDir)
-            ?? throw new \RuntimeException(sprintf('No compose file found in "%s". Expected one of: %s', $projectDir, implode(', ', ConfigManager::COMPOSE_FILES)));
+            ?? throw new \RuntimeException(sprintf('No compose file found in "%s". Expected one of: %s', $projectDir, implode(', ', ProjectConfigManager::COMPOSE_FILES)));
     }
 
     public function findComposeFileOrNull(string $projectDir): ?string
     {
-        foreach (ConfigManager::COMPOSE_FILES as $filename) {
+        foreach (ProjectConfigManager::COMPOSE_FILES as $filename) {
             $path = $projectDir.'/'.$filename;
 
             if ($this->filesystem->exists($path)) {

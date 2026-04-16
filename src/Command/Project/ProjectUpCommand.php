@@ -8,7 +8,7 @@ use App\Command\AbstractProjectCommand;
 use App\Event\ProjectUpPostEvent;
 use App\Event\ProjectUpPreEvent;
 use App\Exception\HookFailedException;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
 use App\Model\ServiceStartStatus;
 use App\Output\FormatterResolver;
@@ -28,7 +28,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 final class ProjectUpCommand extends AbstractProjectCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         private readonly ProjectLifecycleManager $lifecycleManager,
         FormatterResolver $formatterResolver,
         private readonly EventDispatcherInterface $eventDispatcher,

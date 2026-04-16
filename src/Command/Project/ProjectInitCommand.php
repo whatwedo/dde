@@ -6,8 +6,8 @@ namespace App\Command\Project;
 
 use App\Command\AbstractProjectCommand;
 use App\Config\Definition\ProjectConfigDefinition;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectInitAdaptationManager;
 use App\Manager\ProjectInitManager;
 use App\Output\FormatterResolver;
@@ -25,7 +25,7 @@ use Symfony\Component\Filesystem\Filesystem;
 final class ProjectInitCommand extends AbstractProjectCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         private readonly ProjectInitManager $projectInitManager,
         private readonly ProjectInitAdaptationManager $adaptationManager,
         private readonly DockerComposeManager $dockerComposeManager,

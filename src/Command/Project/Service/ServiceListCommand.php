@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Command\Project\Service;
 
 use App\Command\AbstractProjectCommand;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use App\Service\ServiceRegistry;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -19,7 +19,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class ServiceListCommand extends AbstractProjectCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         private readonly ServiceRegistry $serviceRegistry,
         FormatterResolver $formatterResolver,
     ) {

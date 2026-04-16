@@ -11,8 +11,8 @@ use App\Config\ResolvedConfig;
 use App\Database\DatabaseAdapterRegistry;
 use App\Database\MariaDbAdapter;
 use App\Database\PostgresAdapter;
-use App\Manager\ConfigManager;
 use App\Manager\DatabaseManager;
+use App\Manager\ProjectConfigManager;
 use App\Model\ServiceDefinition;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -32,7 +32,7 @@ final class DbImportCommandTest extends TestCase
 {
     private string $tempDir;
 
-    private ConfigManager&Stub $configManager;
+    private ProjectConfigManager&Stub $configManager;
 
     private DatabaseManager&MockObject $databaseManager;
 
@@ -333,7 +333,7 @@ final class DbImportCommandTest extends TestCase
         $this->tempDir = sys_get_temp_dir().'/dde_test_dbimport_'.bin2hex(random_bytes(8));
         mkdir($this->tempDir, 0o755, true);
 
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->configManager = $this->createStub(ProjectConfigManager::class);
         $this->databaseManager = $this->createMock(DatabaseManager::class);
         $this->serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
 

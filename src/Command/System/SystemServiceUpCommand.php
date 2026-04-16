@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Command\System;
 
 use App\Command\AbstractSystemCommand;
-use App\Manager\ConfigManager;
 use App\Manager\DockerManager;
+use App\Manager\GlobalConfigManager;
 use App\Manager\SystemServiceManager;
 use App\Model\ServiceStartStatus;
 use App\Output\FormatterResolver;
@@ -30,7 +30,7 @@ final class SystemServiceUpCommand extends AbstractSystemCommand
         private readonly SystemServiceManager $serviceManager,
         private readonly ServiceRegistry $serviceRegistry,
         private readonly DockerManager $dockerManager,
-        private readonly ConfigManager $configManager,
+        private readonly GlobalConfigManager $globalConfigManager,
         FormatterResolver $formatterResolver,
     ) {
         parent::__construct($formatterResolver);
@@ -69,7 +69,7 @@ final class SystemServiceUpCommand extends AbstractSystemCommand
         }
 
         $versionOption = $input->getOption('service-version');
-        $globalConfig = $this->configManager->loadGlobalConfig();
+        $globalConfig = $this->globalConfigManager->load();
 
         $defaultVersion = $globalConfig->serviceVersions[$name] ?? $this->serviceRegistry->getServiceVersion($name);
 

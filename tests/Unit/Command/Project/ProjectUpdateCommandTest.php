@@ -8,8 +8,8 @@ use App\Command\Project\ProjectUpdateCommand;
 use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -29,7 +29,7 @@ final class ProjectUpdateCommandTest extends TestCase
 {
     private string $tempDir;
 
-    private ConfigManager&MockObject $configManager;
+    private ProjectConfigManager&MockObject $configManager;
 
     private DockerComposeManager&MockObject $dockerComposeManager;
 
@@ -216,7 +216,7 @@ final class ProjectUpdateCommandTest extends TestCase
         $this->tempDir = sys_get_temp_dir().'/dde_test_update_'.bin2hex(random_bytes(8));
         mkdir($this->tempDir, 0o755, true);
 
-        $this->configManager = $this->createMock(ConfigManager::class);
+        $this->configManager = $this->createMock(ProjectConfigManager::class);
         $this->dockerComposeManager = $this->createMock(DockerComposeManager::class);
         $this->lifecycleManager = $this->createMock(ProjectLifecycleManager::class);
         $this->eventDispatcher = $this->createStub(EventDispatcherInterface::class);

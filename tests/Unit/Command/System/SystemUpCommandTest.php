@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Command\System;
 
 use App\Command\System\SystemUpCommand;
+use App\Config\GlobalConfig;
 use App\Database\DatabaseAdapterRegistry;
 use App\Manager\DockerManager;
+use App\Manager\GlobalConfigManager;
 use App\Model\ContainerConfig;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -140,11 +142,15 @@ final class SystemUpCommandTest extends TestCase
         $registry = new ServiceRegistry([$traefikService], new DatabaseAdapterRegistry([]));
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
+        $globalConfigManager = $this->createStub(GlobalConfigManager::class);
+        $globalConfigManager->method('load')->willReturn(new GlobalConfig());
+
         $sshAgentService = new SshAgentService(
             dockerManager: $this->dockerManager,
             filesystem: new Filesystem(),
             imageBuilder: new \App\Service\ImageBuilder($this->dockerManager, new Filesystem()),
             userContext: new \App\Model\UserContext('1000', '1000'),
+            globalConfigManager: $globalConfigManager,
             projectDir: $tempDir,
             userHomeDir: $tempDir,
             dataDir: $tempDir,

@@ -7,7 +7,7 @@ namespace Tests\Unit\Command\Project\Service;
 use App\Command\Project\Service\ServiceListCommand;
 use App\Config\ProjectConfig;
 use App\Database\DatabaseAdapterRegistry;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Model\ServiceDefinition;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -24,7 +24,7 @@ final class ServiceListCommandTest extends TestCase
 {
     private string $tempDir;
 
-    private ConfigManager&Stub $configManager;
+    private ProjectConfigManager&Stub $configManager;
 
     private ServiceRegistry $serviceRegistry;
 
@@ -166,7 +166,7 @@ final class ServiceListCommandTest extends TestCase
         $this->tempDir = sys_get_temp_dir().'/dde_test_svc_list_'.bin2hex(random_bytes(8));
         mkdir($this->tempDir, 0o755, true);
 
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->configManager = $this->createStub(ProjectConfigManager::class);
         $this->serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([]));
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());

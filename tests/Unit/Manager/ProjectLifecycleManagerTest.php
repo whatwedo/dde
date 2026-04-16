@@ -10,11 +10,11 @@ use App\Config\ResolvedConfig;
 use App\Database\DatabaseAdapterRegistry;
 use App\Database\MariaDbAdapter;
 use App\Database\PostgresAdapter;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
 use App\Manager\ImageManager;
 use App\Manager\MkcertManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
 use App\Manager\SystemServiceManager;
 use App\Model\ContainerInfo;
@@ -122,7 +122,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
-        $configManager = $this->createStub(ConfigManager::class);
+        $configManager = $this->createStub(ProjectConfigManager::class);
         $manager = new ProjectLifecycleManager(
             $configManager,
             $this->dockerComposeManager,
@@ -397,7 +397,7 @@ final class ProjectLifecycleManagerTest extends TestCase
 
         $this->certificateManager = $this->createStub(MkcertManager::class);
 
-        $configManager = $this->createStub(ConfigManager::class);
+        $configManager = $this->createStub(ProjectConfigManager::class);
         $this->manager = new ProjectLifecycleManager(
             $configManager,
             $this->dockerComposeManager,

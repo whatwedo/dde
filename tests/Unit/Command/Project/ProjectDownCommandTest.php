@@ -10,7 +10,7 @@ use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Event\ProjectDownPreEvent;
 use App\Exception\HookFailedException;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -30,7 +30,7 @@ final class ProjectDownCommandTest extends TestCase
 {
     private string $tempDir;
 
-    private ConfigManager&Stub $configManager;
+    private ProjectConfigManager&Stub $configManager;
 
     private ProjectLifecycleManager&MockObject $lifecycleManager;
 
@@ -201,7 +201,7 @@ final class ProjectDownCommandTest extends TestCase
         $this->tempDir = sys_get_temp_dir().'/dde_test_down_'.bin2hex(random_bytes(8));
         mkdir($this->tempDir, 0o755, true);
 
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->configManager = $this->createStub(ProjectConfigManager::class);
         $this->lifecycleManager = $this->createMock(ProjectLifecycleManager::class);
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());

@@ -9,7 +9,7 @@ use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
@@ -24,7 +24,7 @@ use Symfony\Component\Process\Process;
 #[\PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations]
 final class ProjectOpenCommandTest extends TestCase
 {
-    private ConfigManager&Stub $configManager;
+    private ProjectConfigManager&Stub $configManager;
 
     private CommandTester $commandTester;
 
@@ -171,7 +171,7 @@ final class ProjectOpenCommandTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->configManager = $this->createStub(ProjectConfigManager::class);
 
         $processFactory = $this->createMock(\App\Util\ProcessFactory::class);
         $processFactory->method('create')

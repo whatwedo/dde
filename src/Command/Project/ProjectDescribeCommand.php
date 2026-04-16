@@ -6,8 +6,8 @@ namespace App\Command\Project;
 
 use App\Command\AbstractProjectCommand;
 use App\Config\WorktreeInfo;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectInfoManager;
 use App\Output\FormatterResolver;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -22,7 +22,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class ProjectDescribeCommand extends AbstractProjectCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         private readonly DockerComposeManager $dockerComposeManager,
         private readonly ProjectInfoManager $projectInfoManager,
         FormatterResolver $formatterResolver,

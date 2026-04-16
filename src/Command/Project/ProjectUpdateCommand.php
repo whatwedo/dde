@@ -10,8 +10,8 @@ use App\Event\ProjectDownPreEvent;
 use App\Event\ProjectUpPostEvent;
 use App\Event\ProjectUpPreEvent;
 use App\Exception\HookFailedException;
-use App\Manager\ConfigManager;
 use App\Manager\DockerComposeManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
 use App\Output\FormatterResolver;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -30,7 +30,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 final class ProjectUpdateCommand extends AbstractProjectCommand
 {
     public function __construct(
-        ConfigManager $configManager,
+        ProjectConfigManager $configManager,
         private readonly DockerComposeManager $dockerComposeManager,
         private readonly ProjectLifecycleManager $lifecycleManager,
         private readonly EventDispatcherInterface $eventDispatcher,

@@ -13,7 +13,7 @@ use Symfony\Component\Filesystem\Filesystem;
 readonly class ProjectLifecycleManager
 {
     public function __construct(
-        private ConfigManager $configManager,
+        private ProjectConfigManager $configManager,
         private DockerComposeManager $dockerComposeManager,
         private SystemServiceManager $systemServiceManager,
         private ImageManager $imageManager,

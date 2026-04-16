@@ -4,22 +4,19 @@ declare(strict_types=1);
 
 namespace App\Manager;
 
-use App\Config\Definition\GlobalConfigDefinition;
 use App\Config\Definition\ProjectConfigDefinition;
-use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Service\ServiceRegistry;
 use App\Util\ProcessFactory;
-use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
-readonly class ConfigManager
+readonly class ProjectConfigManager
 {
     public const string CONFIG_FILE = 'config.yml';
 
@@ -30,28 +27,12 @@ readonly class ConfigManager
     private const string PROJECT_MARKER = '.dde/config.yml';
 
     public function __construct(
-        private string $configDir,
+        private GlobalConfigManager $globalConfigManager,
         private ServiceRegistry $serviceRegistry,
         private ProcessFactory $processFactory,
         private Filesystem $filesystem = new Filesystem(),
         private Processor $processor = new Processor(),
     ) {
-    }
-
-    public function loadGlobalConfig(): GlobalConfig
-    {
-        $path = $this->configDir.'/'.self::CONFIG_FILE;
-        $data = $this->loadYaml($path);
-        $warnings = [];
-
-        try {
-            $processed = $this->processor->processConfiguration(new GlobalConfigDefinition(), [$data]);
-        } catch (InvalidConfigurationException $invalidConfigurationException) {
-            $warnings[] = sprintf('Invalid global config "%s": %s', $path, $invalidConfigurationException->getMessage());
-            $processed = $this->processor->processConfiguration(new GlobalConfigDefinition(), [[]]);
-        }
-
-        return GlobalConfig::fromProcessedConfig($processed, $warnings);
     }
 
     public function loadProjectConfig(string $projectDir): ProjectConfig
@@ -66,7 +47,7 @@ readonly class ConfigManager
 
     public function resolveConfig(string $projectDir): ResolvedConfig
     {
-        $global = $this->loadGlobalConfig();
+        $global = $this->globalConfigManager->load();
         $project = $this->loadProjectConfig($projectDir);
 
         return ResolvedConfig::merge($global, $project, $this->serviceRegistry->getDefaultVersions());

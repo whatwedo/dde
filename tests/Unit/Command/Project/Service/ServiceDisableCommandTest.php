@@ -7,7 +7,7 @@ namespace Tests\Unit\Command\Project\Service;
 use App\Command\Project\Service\ServiceDisableCommand;
 use App\Config\Definition\ProjectConfigDefinition;
 use App\Config\ProjectConfig;
-use App\Manager\ConfigManager;
+use App\Manager\ProjectConfigManager;
 use App\Manager\ServiceConfigManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -25,7 +25,7 @@ final class ServiceDisableCommandTest extends TestCase
 {
     private string $tempDir;
 
-    private ConfigManager&Stub $configManager;
+    private ProjectConfigManager&Stub $configManager;
 
     private CommandTester $commandTester;
 
@@ -224,7 +224,7 @@ final class ServiceDisableCommandTest extends TestCase
         mkdir($this->tempDir.'/.dde', 0o755, true);
 
         $this->filesystem = new Filesystem();
-        $this->configManager = $this->createStub(ConfigManager::class);
+        $this->configManager = $this->createStub(ProjectConfigManager::class);
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
