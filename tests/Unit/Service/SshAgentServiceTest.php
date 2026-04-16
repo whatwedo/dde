@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Service;
 
+use App\Config\GlobalConfig;
 use App\Manager\DockerManager;
+use App\Manager\GlobalConfigManager;
 use App\Model\ContainerConfig;
 use App\Model\UserContext;
 use App\Service\ImageBuilder;
@@ -18,6 +20,8 @@ use Symfony\Component\Filesystem\Filesystem;
 final class SshAgentServiceTest extends TestCase
 {
     private DockerManager&MockObject $dockerManager;
+
+    private GlobalConfigManager&MockObject $globalConfigManager;
 
     private string $tempDir;
 
@@ -84,7 +88,7 @@ final class SshAgentServiceTest extends TestCase
         $this->filesystem->mkdir(dirname($keyPath));
         $this->filesystem->dumpFile($keyPath, "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----");
 
-        $service = $this->createService(configuredKeys: [$keyPath]);
+        $service = $this->createService(sshKeys: [$keyPath]);
         $config = $service->getContainerConfig();
 
         $this->assertArrayHasKey($keyPath, $config->volumes);
@@ -99,7 +103,7 @@ final class SshAgentServiceTest extends TestCase
         $this->filesystem->dumpFile($key1, 'key1');
         $this->filesystem->dumpFile($key2, 'key2');
 
-        $service = $this->createService(configuredKeys: [$key1, $key2]);
+        $service = $this->createService(sshKeys: [$key1, $key2]);
         $config = $service->getContainerConfig();
 
         $this->assertArrayHasKey($key1, $config->volumes);
@@ -110,9 +114,17 @@ final class SshAgentServiceTest extends TestCase
 
     public function testGetConfiguredKeysReturnsExplicitKeys(): void
     {
-        $service = $this->createService(configuredKeys: ['/path/to/key']);
+        $service = $this->createService(sshKeys: ['/path/to/key']);
 
         $this->assertSame(['/path/to/key'], $service->getConfiguredKeys());
+    }
+
+    public function testGetConfiguredKeysExpandsTilde(): void
+    {
+        $fakeHome = $this->tempDir.'/home';
+        $service = $this->createService(sshKeys: ['~/.ssh/id_ed25519'], userHomeDir: $fakeHome);
+
+        $this->assertSame([$fakeHome.'/.ssh/id_ed25519'], $service->getConfiguredKeys());
     }
 
     public function testGetConfiguredKeysFallsBackToDetection(): void
@@ -280,25 +292,28 @@ final class SshAgentServiceTest extends TestCase
     }
 
     /**
-     * @param array<string> $configuredKeys
+     * @param array<string> $sshKeys
      */
-    private function createService(array $configuredKeys = [], string $userHomeDir = '/tmp'): SshAgentService
+    private function createService(array $sshKeys = [], string $userHomeDir = '/tmp'): SshAgentService
     {
+        $this->globalConfigManager->method('load')->willReturn(new GlobalConfig(sshKeys: $sshKeys));
+
         return new SshAgentService(
             dockerManager: $this->dockerManager,
             filesystem: $this->filesystem,
             imageBuilder: new ImageBuilder($this->dockerManager, $this->filesystem),
             userContext: new UserContext(),
+            globalConfigManager: $this->globalConfigManager,
             projectDir: $this->projectDir,
             userHomeDir: $userHomeDir,
             dataDir: $this->tempDir,
-            configuredKeys: $configuredKeys,
         );
     }
 
     protected function setUp(): void
     {
         $this->dockerManager = $this->createMock(DockerManager::class);
+        $this->globalConfigManager = $this->createMock(GlobalConfigManager::class);
         $this->filesystem = new Filesystem();
         $this->tempDir = sys_get_temp_dir().'/dde-test-'.bin2hex(random_bytes(8));
         $this->projectDir = $this->tempDir.'/project';
