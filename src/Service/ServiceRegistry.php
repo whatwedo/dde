@@ -181,6 +181,28 @@ final readonly class ServiceRegistry
         return self::SERVICE_TYPES[$name]['environment'] ?? [];
     }
 
+    /**
+     * Returns default DB credentials for a service type, or null if not a DB service.
+     *
+     * @return array{user: string, password: string}|null
+     */
+    public function getServiceCredentials(string $type): ?array
+    {
+        return match ($type) {
+            // MariaDB has no MARIADB_USER env var — the root username is immutable and
+            // cannot be configured via environment. Hardcoding 'root' here is intentional.
+            'mariadb' => [
+                'user' => 'root',
+                'password' => self::SERVICE_TYPES['mariadb']['environment']['MARIADB_ROOT_PASSWORD'],
+            ],
+            'postgres' => [
+                'user' => self::SERVICE_TYPES['postgres']['environment']['POSTGRES_USER'],
+                'password' => self::SERVICE_TYPES['postgres']['environment']['POSTGRES_PASSWORD'],
+            ],
+            default => null,
+        };
+    }
+
     public function getContainerDataMount(string $name): string
     {
         return self::SERVICE_TYPES[$name]['dataMount'] ?? '/data';
