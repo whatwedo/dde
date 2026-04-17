@@ -11,7 +11,6 @@ use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
-use App\Manager\ProjectConfigManager;
 use App\Model\UserContext;
 use App\Service\TraefikService;
 use PHPUnit\Framework\TestCase;
@@ -595,7 +594,7 @@ final class DockerComposeManagerTest extends TestCase
             suffix: 'meseto-wt-feature',
         );
 
-        $manager = $this->createManagerWithWorktreeSupport('meseto-feature.test');
+        $manager = $this->createManagerWithRealWorktreeManager();
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
@@ -603,12 +602,12 @@ final class DockerComposeManagerTest extends TestCase
 
         $env = $data['services']['web']['environment'];
 
-        $this->assertSame('meseto-feature.test', $env['VIRTUAL_HOST']);
-        $this->assertSame('http://mercure.meseto-feature.test/.well-known/mercure', $env['MERCURE_URL']);
-        $this->assertSame('https://meseto-feature.test', $env['OPEN_URL']);
+        $this->assertSame('meseto-wt-feature.test', $env['VIRTUAL_HOST']);
+        $this->assertSame('http://mercure.meseto-wt-feature.test/.well-known/mercure', $env['MERCURE_URL']);
+        $this->assertSame('https://meseto-wt-feature.test', $env['OPEN_URL']);
 
-        // DATABASE_URL does not contain the hostname, should NOT be overridden
-        $this->assertArrayNotHasKey('DATABASE_URL', $env);
+        // DATABASE_URL path segment gets worktree suffix appended
+        $this->assertSame('mysql://root@db:3306/app_wt_feature', $env['DATABASE_URL']);
 
         unlink($overridePath);
     }
@@ -632,7 +631,7 @@ final class DockerComposeManagerTest extends TestCase
             suffix: 'meseto-wt-feature',
         );
 
-        $manager = $this->createManagerWithWorktreeSupport('meseto-feature.test');
+        $manager = $this->createManagerWithRealWorktreeManager();
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
@@ -640,8 +639,43 @@ final class DockerComposeManagerTest extends TestCase
 
         $env = $data['services']['web']['environment'];
 
-        $this->assertSame('https://meseto-feature.test', $env['OPEN_URL']);
+        $this->assertSame('https://meseto-wt-feature.test', $env['OPEN_URL']);
         $this->assertArrayNotHasKey('APP_SECRET', $env);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeRewritesDatabaseUrl(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'environment' => [
+                    'DATABASE_URL=mysql://root:pw@mariadb:3306/meseto?serverVersion=11.8.0-MariaDB',
+                    'APP_URL=https://meseto.test',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/meseto',
+            worktreeDirectory: '/projects/meseto-wt-feature',
+            branch: 'feature/test',
+            suffix: 'meseto-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath);
+        $env = $data['services']['web']['environment'];
+
+        $this->assertSame(
+            'mysql://root:pw@mariadb:3306/meseto_wt_feature?serverVersion=11.8.0-MariaDB',
+            $env['DATABASE_URL'],
+        );
+        $this->assertSame('https://meseto-wt-feature.test', $env['APP_URL']);
 
         unlink($overridePath);
     }
@@ -655,8 +689,22 @@ final class DockerComposeManagerTest extends TestCase
         $resourcesDir = dirname(__DIR__, 3).'/resources';
         $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
 
-        $configManager = $this->createStub(ProjectConfigManager::class);
-        $configManager->method('resolveProjectHostname')->willReturn($worktreeHostname);
+        $worktreeManager = $this->createStub(\App\Manager\WorktreeManager::class);
+        $worktreeManager->method('resolveHostname')->willReturn($worktreeHostname);
+        $worktreeManager->method('computeEnvironmentOverrides')->willReturnCallback(
+            function (array $env, string $project, \App\Config\WorktreeInfo $info) use ($worktreeHostname): array {
+                $result = [];
+                foreach ($env as $k => $v) {
+                    $key = is_int($k) ? explode('=', (string) $v, 2)[0] : $k;
+                    $val = is_int($k) ? (explode('=', (string) $v, 2)[1] ?? '') : (string) $v;
+                    if (str_contains($val, $project.'.test')) {
+                        $result[$key] = str_replace($project.'.test', $worktreeHostname, $val);
+                    }
+                }
+
+                return $result;
+            },
+        );
 
         $traefikService = new TraefikService(
             dockerManager: $dockerManager,
@@ -664,7 +712,27 @@ final class DockerComposeManagerTest extends TestCase
             dataDir: $this->tempDir,
         );
 
-        return new DockerComposeManager($adapterRegistry, $configManager, $dockerManager, $traefikService, new UserContext());
+        return new DockerComposeManager($adapterRegistry, $dockerManager, $traefikService, new UserContext(), $worktreeManager);
+    }
+
+    private function createManagerWithRealWorktreeManager(): DockerComposeManager
+    {
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(true);
+        $dockerManager->method('inspectImage')->willReturn('null');
+
+        $resourcesDir = dirname(__DIR__, 3).'/resources';
+        $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
+
+        $worktreeManager = new \App\Manager\WorktreeManager(new \App\Util\ProcessFactory());
+
+        $traefikService = new TraefikService(
+            dockerManager: $dockerManager,
+            filesystem: new \Symfony\Component\Filesystem\Filesystem(),
+            dataDir: $this->tempDir,
+        );
+
+        return new DockerComposeManager($adapterRegistry, $dockerManager, $traefikService, new UserContext(), $worktreeManager);
     }
 
     /**
@@ -683,14 +751,14 @@ final class DockerComposeManagerTest extends TestCase
     {
         $resourcesDir = dirname(__DIR__, 3).'/resources';
         $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
-        $configManager = $this->createStub(ProjectConfigManager::class);
+        $worktreeManager = $this->createStub(\App\Manager\WorktreeManager::class);
         $traefikService = new TraefikService(
             dockerManager: $dockerManager,
             filesystem: new \Symfony\Component\Filesystem\Filesystem(),
             dataDir: $this->tempDir,
         );
 
-        return new DockerComposeManager($adapterRegistry, $configManager, $dockerManager, $traefikService, new UserContext());
+        return new DockerComposeManager($adapterRegistry, $dockerManager, $traefikService, new UserContext(), $worktreeManager);
     }
 
     protected function setUp(): void
