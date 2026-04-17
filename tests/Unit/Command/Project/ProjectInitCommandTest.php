@@ -537,19 +537,20 @@ final class ProjectInitCommandTest extends TestCase
 
         $configManager = $this->createStub(ProjectConfigManager::class);
 
-        $adaptationManager = new ProjectInitAdaptationManager(
-            $dockerComposeManager,
-            $dockerComposeParser,
-            $dockerComposeModifier,
-            $dockerfileParser,
-        );
-
         $serviceRegistry = new ServiceRegistry(
             [$traefikService],
             new \App\Database\DatabaseAdapterRegistry([
                 new \App\Database\MariaDbAdapter(),
                 new \App\Database\PostgresAdapter(),
             ]),
+        );
+
+        $adaptationManager = new ProjectInitAdaptationManager(
+            $dockerComposeManager,
+            $dockerComposeParser,
+            $dockerComposeModifier,
+            $dockerfileParser,
+            $serviceRegistry,
         );
 
         $command = new ProjectInitCommand(

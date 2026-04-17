@@ -116,12 +116,51 @@ final class ProjectInitCommand extends AbstractProjectCommand
             $dockerResult = $this->handleDockerAdaptation($projectDir, $name, $container, $isDryRun, $isForce, $io, $suppressInteractive);
         }
 
-        // Adapt MAILER_DSN if mailpit is enabled
+        // Apply env migrations (forced: APP_ENV, MAILER_DSN; prompted: DATABASE_URL)
         if (! $isDryRun) {
-            $mailerChange = $this->adaptationManager->adaptMailerDsn($projectDir, $container, $this->serviceNames($services));
+            $serviceDefinitions = [];
 
-            if ($mailerChange !== null && $formatter->isInteractive()) {
-                $io->writeln(sprintf('  <info>%s</info>', $mailerChange));
+            foreach ($services as $s) {
+                if (is_string($s)) {
+                    $serviceDefinitions[] = $this->serviceRegistry->getServiceConfig($s);
+                } else {
+                    $serviceDefinitions[] = $this->serviceRegistry->getServiceConfig($s['name'], $s['version']);
+                }
+            }
+
+            $envMigrations = $this->adaptationManager->proposeEnvMigrations(
+                $projectDir,
+                $name,
+                $container,
+                $this->serviceNames($services),
+                $serviceDefinitions,
+            );
+
+            foreach ($envMigrations['appliedChanges'] as $change) {
+                if ($formatter->isInteractive()) {
+                    $io->writeln(sprintf('  <info>%s</info>', $change));
+                }
+            }
+
+            $accepted = [];
+
+            foreach ($envMigrations['proposals'] as $proposal) {
+                if ($suppressInteractive) {
+                    continue; // Default: reject in non-interactive mode
+                }
+
+                $io->section(sprintf('%s migration', $proposal->variable));
+                $io->writeln(sprintf('  <comment>current:</comment> %s', $proposal->originalValue));
+                $io->writeln(sprintf('  <comment>.env:</comment>    %s', $proposal->envTargetValue));
+                $io->writeln(sprintf('  <comment>compose:</comment> %s', $proposal->composeValue));
+
+                if ($io->confirm(sprintf('Apply this %s migration?', $proposal->variable), true)) {
+                    $accepted[] = $proposal;
+                }
+            }
+
+            if ($accepted !== []) {
+                $this->adaptationManager->applyEnvMigrations($projectDir, $container, $accepted);
             }
         }
 
@@ -172,6 +211,7 @@ final class ProjectInitCommand extends AbstractProjectCommand
         );
         $question->setMultiselect(true);
         $question->setErrorMessage('Service "%s" is not available.');
+
         $innerValidator = $question->getValidator();
         $question->setValidator(static function (mixed $selected) use ($innerValidator): mixed {
             if ($selected === null || $selected === '') {
