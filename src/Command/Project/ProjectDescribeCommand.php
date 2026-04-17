@@ -9,7 +9,9 @@ use App\Config\WorktreeInfo;
 use App\Manager\DockerComposeManager;
 use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectInfoManager;
+use App\Manager\WorktreeManager;
 use App\Output\FormatterResolver;
+use App\Util\IdentifierSanitizer;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -25,6 +27,7 @@ final class ProjectDescribeCommand extends AbstractProjectCommand
         ProjectConfigManager $configManager,
         private readonly DockerComposeManager $dockerComposeManager,
         private readonly ProjectInfoManager $projectInfoManager,
+        private readonly WorktreeManager $worktreeManager,
         FormatterResolver $formatterResolver,
     ) {
         parent::__construct($configManager, $formatterResolver);
@@ -44,15 +47,15 @@ final class ProjectDescribeCommand extends AbstractProjectCommand
         $config = $this->getResolvedConfig();
         $liveContainers = $this->dockerComposeManager->ps($projectDir);
 
-        $worktreeInfo = $this->configManager->detectWorktree($projectDir);
-        $hostname = $this->configManager->resolveProjectHostname($config->projectName, $worktreeInfo);
+        $worktreeInfo = $this->worktreeManager->detect($projectDir);
+        $hostname = $this->worktreeManager->resolveHostname($config->projectName, $worktreeInfo);
         $url = sprintf('https://%s', $hostname);
         $worktreeData = null;
 
         if ($worktreeInfo instanceof WorktreeInfo) {
             $worktreeData = [
                 'branch' => $worktreeInfo->branch,
-                'suffix' => $this->configManager->sanitizeWorktreeSuffix($worktreeInfo->suffix, $config->projectName),
+                'suffix' => IdentifierSanitizer::forHostname($worktreeInfo->suffix, $config->projectName),
                 'mainDirectory' => $worktreeInfo->mainDirectory,
             ];
         }

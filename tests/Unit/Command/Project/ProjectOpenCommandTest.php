@@ -10,6 +10,7 @@ use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Manager\ProjectConfigManager;
+use App\Manager\WorktreeManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
@@ -30,6 +31,8 @@ final class ProjectOpenCommandTest extends TestCase
 
     private ProjectOpenCommand $command;
 
+    private WorktreeManager&Stub $worktreeManager;
+
     public function testCommandIsRegistered(): void
     {
         $this->assertSame('project:open', $this->command->getName());
@@ -41,12 +44,12 @@ final class ProjectOpenCommandTest extends TestCase
     {
         $this->setupProjectFixture();
 
-        $this->configManager
-            ->method('detectWorktree')
+        $this->worktreeManager
+            ->method('detect')
             ->willReturn(null);
 
-        $this->configManager
-            ->method('resolveProjectHostname')
+        $this->worktreeManager
+            ->method('resolveHostname')
             ->willReturn('test-project.test');
 
         $this->commandTester->execute([
@@ -63,8 +66,8 @@ final class ProjectOpenCommandTest extends TestCase
     {
         $this->setupProjectFixture();
 
-        $this->configManager
-            ->method('detectWorktree')
+        $this->worktreeManager
+            ->method('detect')
             ->willReturn(new WorktreeInfo(
                 mainDirectory: '/tmp/main',
                 worktreeDirectory: '/tmp/wt-feature-x',
@@ -72,8 +75,8 @@ final class ProjectOpenCommandTest extends TestCase
                 suffix: 'wt-feature-x',
             ));
 
-        $this->configManager
-            ->method('resolveProjectHostname')
+        $this->worktreeManager
+            ->method('resolveHostname')
             ->willReturn('test-project-feature-x.test');
 
         $this->commandTester->execute([
@@ -90,12 +93,12 @@ final class ProjectOpenCommandTest extends TestCase
     {
         $this->setupProjectFixture();
 
-        $this->configManager
-            ->method('detectWorktree')
+        $this->worktreeManager
+            ->method('detect')
             ->willReturn(null);
 
-        $this->configManager
-            ->method('resolveProjectHostname')
+        $this->worktreeManager
+            ->method('resolveHostname')
             ->willReturn('test-project.test');
 
         $this->commandTester->execute([
@@ -115,8 +118,8 @@ final class ProjectOpenCommandTest extends TestCase
     {
         $this->setupProjectFixture();
 
-        $this->configManager
-            ->method('detectWorktree')
+        $this->worktreeManager
+            ->method('detect')
             ->willReturn(new WorktreeInfo(
                 mainDirectory: '/tmp/main',
                 worktreeDirectory: '/tmp/wt-bugfix',
@@ -124,8 +127,8 @@ final class ProjectOpenCommandTest extends TestCase
                 suffix: 'wt-bugfix',
             ));
 
-        $this->configManager
-            ->method('resolveProjectHostname')
+        $this->worktreeManager
+            ->method('resolveHostname')
             ->willReturn('test-project-bugfix.test');
 
         $this->commandTester->execute([
@@ -172,6 +175,7 @@ final class ProjectOpenCommandTest extends TestCase
     protected function setUp(): void
     {
         $this->configManager = $this->createStub(ProjectConfigManager::class);
+        $this->worktreeManager = $this->createStub(WorktreeManager::class);
 
         $processFactory = $this->createMock(\App\Util\ProcessFactory::class);
         $processFactory->method('create')
@@ -195,6 +199,7 @@ final class ProjectOpenCommandTest extends TestCase
             $formatterResolver,
             $dockerComposeManager,
             $mkcertManager,
+            $this->worktreeManager,
             new UrlOpenerUtil($processFactory),
         );
 

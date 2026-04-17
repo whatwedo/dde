@@ -8,6 +8,7 @@ use App\Command\AbstractProjectCommand;
 use App\Manager\DockerComposeManager;
 use App\Manager\MkcertManager;
 use App\Manager\ProjectConfigManager;
+use App\Manager\WorktreeManager;
 use App\Output\FormatterResolver;
 use App\Util\UrlOpenerUtil;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -27,6 +28,7 @@ final class ProjectOpenCommand extends AbstractProjectCommand
         FormatterResolver $formatterResolver,
         private readonly DockerComposeManager $dockerComposeManager,
         private readonly MkcertManager $mkcertManager,
+        private readonly WorktreeManager $worktreeManager,
         private readonly UrlOpenerUtil $urlOpenerUtil = new UrlOpenerUtil(),
     ) {
         parent::__construct($configManager, $formatterResolver);
@@ -82,8 +84,8 @@ final class ProjectOpenCommand extends AbstractProjectCommand
         }
 
         // Fallback: construct from project name
-        $worktreeInfo = $this->configManager->detectWorktree($projectDir);
-        $hostname = $this->configManager->resolveProjectHostname($projectName, $worktreeInfo);
+        $worktreeInfo = $this->worktreeManager->detect($projectDir);
+        $hostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
 
         return sprintf('https://%s', $hostname);
     }
