@@ -10,14 +10,10 @@ use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
-use App\Database\DatabaseAdapterRegistry;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
-use App\Manager\GlobalConfigManager;
-use App\Manager\ProjectConfigManager;
 use App\Manager\WorktreeManager;
 use App\Model\UserContext;
-use App\Service\ServiceRegistry;
 use App\Service\TraefikService;
 use App\Util\ProcessFactory;
 use PHPUnit\Framework\TestCase;
@@ -33,8 +29,6 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
     private DockerComposeManager $manager;
 
     private AdapterRegistry $adapterRegistry;
-
-    private ProjectConfigManager $configManager;
 
     public function testGenerateOverrideSingleService(): void
     {
@@ -369,21 +363,12 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
             dataDir: $this->tempDir.'/data',
         );
 
-        $globalConfigManager = new GlobalConfigManager(
-            configDir: $this->tempDir.'/config',
-        );
-        $this->configManager = new ProjectConfigManager(
-            globalConfigManager: $globalConfigManager,
-            serviceRegistry: new ServiceRegistry([], new DatabaseAdapterRegistry([])),
-            worktreeManager: new WorktreeManager(new ProcessFactory()),
-        );
-
         $this->manager = new DockerComposeManager(
             adapterRegistry: $this->adapterRegistry,
-            configManager: $this->configManager,
             dockerManager: $dockerManager,
             traefikService: $traefikService,
             userContext: $userContext,
+            worktreeManager: new WorktreeManager(new ProcessFactory()),
         );
     }
 
