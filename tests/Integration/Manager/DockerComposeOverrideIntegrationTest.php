@@ -384,6 +384,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
             dockerManager: $dockerManager,
             traefikService: $traefikService,
             userContext: $userContext,
+            worktreeManager: new WorktreeManager(new ProcessFactory()),
         );
     }
 
