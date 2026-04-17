@@ -22,10 +22,10 @@ readonly class DockerComposeManager
 {
     public function __construct(
         private AdapterRegistry $adapterRegistry,
-        private ProjectConfigManager $configManager,
         private DockerManager $dockerManager,
         private TraefikService $traefikService,
         private UserContext $userContext,
+        private WorktreeManager $worktreeManager,
         private Filesystem $filesystem = new Filesystem(),
         private ProcessFactory $processFactory = new ProcessFactory(),
     ) {
@@ -314,7 +314,7 @@ readonly class DockerComposeManager
             $projectHostname = $config->projectName.'.test';
 
             if ($worktreeInfo instanceof WorktreeInfo) {
-                $worktreeHostname = $this->configManager->resolveProjectHostname($config->projectName, $worktreeInfo);
+                $worktreeHostname = $this->worktreeManager->resolveHostname($config->projectName, $worktreeInfo);
                 $labels = array_merge($labels, $this->overrideTraefikLabels($serviceConfig['labels'] ?? [], $projectHostname, $worktreeHostname, $serviceName));
             }
 
@@ -342,8 +342,12 @@ readonly class DockerComposeManager
                 'SSH_AUTH_SOCK' => '/tmp/ssh-agent/socket',
             ];
 
-            if ($worktreeHostname !== null) {
-                $envOverrides = $this->overrideEnvironmentHostnames($serviceConfig['environment'] ?? [], $projectHostname, $worktreeHostname);
+            if ($worktreeInfo instanceof WorktreeInfo) {
+                $envOverrides = $this->worktreeManager->computeEnvironmentOverrides(
+                    $serviceConfig['environment'] ?? [],
+                    $config->projectName,
+                    $worktreeInfo,
+                );
 
                 foreach ($envOverrides as $key => $value) {
                     $environment[$key] = $value;
@@ -739,52 +743,5 @@ readonly class DockerComposeManager
         }
 
         return $overrideLabels;
-    }
-
-    /**
-     * Scans environment variables for the project hostname and returns overrides
-     * with the worktree hostname substituted.
-     *
-     * Handles both map format (KEY: value) and list format (- KEY=value).
-     *
-     * @param array<int|string, mixed> $existingEnv
-     *
-     * @return array<string, string>
-     */
-    private function overrideEnvironmentHostnames(array $existingEnv, string $projectHostname, string $worktreeHostname): array
-    {
-        $overrides = [];
-
-        foreach ($existingEnv as $key => $value) {
-            if (is_int($key)) {
-                // List format: "KEY=value"
-                $envString = (string) $value;
-
-                if (! str_contains($envString, $projectHostname)) {
-                    continue;
-                }
-
-                $eqPos = strpos($envString, '=');
-
-                if ($eqPos === false) {
-                    continue;
-                }
-
-                $envKey = substr($envString, 0, $eqPos);
-                $envValue = substr($envString, $eqPos + 1);
-                $overrides[$envKey] = str_replace($projectHostname, $worktreeHostname, $envValue);
-            } else {
-                // Map format: KEY: value
-                $envValue = (string) $value;
-
-                if (! str_contains($envValue, $projectHostname)) {
-                    continue;
-                }
-
-                $overrides[$key] = str_replace($projectHostname, $worktreeHostname, $envValue);
-            }
-        }
-
-        return $overrides;
     }
 }
