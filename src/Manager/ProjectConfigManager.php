@@ -10,7 +10,6 @@ use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Service\ServiceRegistry;
 use App\Util\IdentifierSanitizer;
-use App\Util\ProcessFactory;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -29,7 +28,7 @@ readonly class ProjectConfigManager
     public function __construct(
         private GlobalConfigManager $globalConfigManager,
         private ServiceRegistry $serviceRegistry,
-        private ProcessFactory $processFactory,
+        private WorktreeManager $worktreeManager,
         private Filesystem $filesystem = new Filesystem(),
         private Processor $processor = new Processor(),
     ) {
@@ -77,121 +76,17 @@ readonly class ProjectConfigManager
 
     public function detectWorktree(string $projectDir): ?WorktreeInfo
     {
-        $process = $this->processFactory->create(['git', 'worktree', 'list', '--porcelain'], $projectDir, 10);
-
-        try {
-            $process->run();
-        } catch (\Throwable) {
-            return null;
-        }
-
-        if (!$process->isSuccessful()) {
-            return null;
-        }
-
-        $output = $process->getOutput();
-
-        if ($output === '') {
-            return null;
-        }
-
-        $worktrees = $this->parseWorktreeOutput($output);
-
-        if (count($worktrees) < 2) {
-            return null;
-        }
-
-        $realProjectDir = realpath($projectDir);
-
-        if ($realProjectDir === false) {
-            return null;
-        }
-
-        $mainWorktree = $worktrees[0];
-
-        // If project dir matches the main worktree, this is not a worktree checkout
-        if ($this->pathsEqual($realProjectDir, $mainWorktree['path'])) {
-            return null;
-        }
-
-        // Find the matching worktree entry
-        foreach ($worktrees as $worktree) {
-            if ($this->pathsEqual($realProjectDir, $worktree['path'])) {
-                return new WorktreeInfo(
-                    mainDirectory: $mainWorktree['path'],
-                    worktreeDirectory: $realProjectDir,
-                    branch: $worktree['branch'],
-                    suffix: basename($realProjectDir),
-                );
-            }
-        }
-
-        return null;
+        return $this->worktreeManager->detect($projectDir);
     }
 
     public function resolveProjectHostname(string $projectName, ?WorktreeInfo $worktreeInfo): string
     {
-        if ($worktreeInfo instanceof WorktreeInfo) {
-            $suffix = $this->sanitizeWorktreeSuffix($worktreeInfo->suffix, $projectName);
-
-            return $projectName.'-'.$suffix.'.test';
-        }
-
-        return $projectName.'.test';
+        return $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
     }
 
     public function sanitizeWorktreeSuffix(string $dirName, string $projectName): string
     {
         return IdentifierSanitizer::forHostname($dirName, $projectName);
-    }
-
-    /**
-     * @return list<array{path: string, branch: string}>
-     */
-    private function parseWorktreeOutput(string $output): array
-    {
-        $worktrees = [];
-        $blocks = preg_split('/\n\n+/', trim($output));
-
-        if ($blocks === false) {
-            return [];
-        }
-
-        foreach ($blocks as $block) {
-            $path = null;
-            $branch = '';
-
-            foreach (explode("\n", $block) as $line) {
-                if (str_starts_with($line, 'worktree ')) {
-                    $path = substr($line, 9);
-                } elseif (str_starts_with($line, 'branch ')) {
-                    $branchRef = substr($line, 7);
-                    // Strip refs/heads/ prefix
-                    $branch = str_starts_with($branchRef, 'refs/heads/') ? substr($branchRef, 11) : $branchRef;
-                }
-            }
-
-            if ($path !== null) {
-                $worktrees[] = [
-                    'path' => $path,
-                    'branch' => $branch,
-                ];
-            }
-        }
-
-        return $worktrees;
-    }
-
-    private function pathsEqual(string $a, string $b): bool
-    {
-        $realA = realpath($a);
-        $realB = realpath($b);
-
-        if ($realA === false || $realB === false) {
-            return rtrim($a, '/') === rtrim($b, '/');
-        }
-
-        return $realA === $realB;
     }
 
     /**

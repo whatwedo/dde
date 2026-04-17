@@ -7,19 +7,20 @@ namespace App\Manager;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Service\ServiceRegistry;
+use App\Util\IdentifierSanitizer;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
 readonly class ProjectLifecycleManager
 {
     public function __construct(
-        private ProjectConfigManager $configManager,
         private DockerComposeManager $dockerComposeManager,
         private SystemServiceManager $systemServiceManager,
         private ImageManager $imageManager,
         private MkcertManager $mkcertManager,
         private ServiceRegistry $serviceRegistry,
         private DockerManager $dockerManager,
+        private WorktreeManager $worktreeManager,
         private Filesystem $filesystem = new Filesystem(),
     ) {
     }
@@ -47,11 +48,11 @@ readonly class ProjectLifecycleManager
         $this->mkcertManager->ensureForComposeFile($projectName, $composeFile);
 
         // 3b. Ensure TLS certificates for worktree domains
-        $worktreeInfo = $this->configManager->detectWorktree($projectDir);
+        $worktreeInfo = $this->worktreeManager->detect($projectDir);
 
         if ($worktreeInfo instanceof WorktreeInfo) {
-            $worktreeHostname = $this->configManager->resolveProjectHostname($projectName, $worktreeInfo);
-            $suffix = $this->configManager->sanitizeWorktreeSuffix($worktreeInfo->suffix, $projectName);
+            $worktreeHostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
+            $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
             $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, [$worktreeHostname]);
         }
 
