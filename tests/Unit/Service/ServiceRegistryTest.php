@@ -174,6 +174,41 @@ final class ServiceRegistryTest extends TestCase
         $this->assertSame('/data', $registry->getContainerDataMount('valkey'));
     }
 
+    public function testGetServiceCredentialsForMariadb(): void
+    {
+        $creds = $this->registry->getServiceCredentials('mariadb');
+
+        $this->assertSame([
+            'user' => 'root',
+            'password' => 'root',
+        ], $creds);
+    }
+
+    public function testGetServiceCredentialsForPostgres(): void
+    {
+        $creds = $this->registry->getServiceCredentials('postgres');
+
+        $this->assertSame([
+            'user' => 'postgres',
+            'password' => 'postgres',
+        ], $creds);
+    }
+
+    public function testGetServiceCredentialsForValkeyReturnsNull(): void
+    {
+        $this->assertNull($this->registry->getServiceCredentials('valkey'));
+    }
+
+    public function testGetServiceCredentialsForMailpitReturnsNull(): void
+    {
+        $this->assertNull($this->registry->getServiceCredentials('mailpit'));
+    }
+
+    public function testGetServiceCredentialsForUnknownReturnsNull(): void
+    {
+        $this->assertNull($this->registry->getServiceCredentials('unknown'));
+    }
+
     private function createDatabaseAdapterRegistry(): DatabaseAdapterRegistry
     {
         return new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]);
