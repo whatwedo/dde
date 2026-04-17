@@ -14,9 +14,9 @@ use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
 use App\Manager\ImageManager;
 use App\Manager\MkcertManager;
-use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
 use App\Manager\SystemServiceManager;
+use App\Manager\WorktreeManager;
 use App\Model\ContainerConfig;
 use App\Model\ServiceDefinition;
 use App\Service\AbstractSystemService;
@@ -121,15 +121,15 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
-        $configManager = $this->createStub(ProjectConfigManager::class);
+        $worktreeManager = $this->createStub(WorktreeManager::class);
         $manager = new ProjectLifecycleManager(
-            $configManager,
             $this->dockerComposeManager,
             $systemServiceManager,
             $this->imageManager,
             $this->certificateManager,
             $serviceRegistry,
             $this->dockerManager,
+            $worktreeManager,
             $this->filesystem,
         );
 
@@ -564,15 +564,15 @@ final class ProjectLifecycleManagerTest extends TestCase
         // networkExists returns false by default (PHPUnit mock default for bool return),
         // so removeNetwork is never called unless a test explicitly stubs networkExists to true.
 
-        $configManager = $this->createStub(ProjectConfigManager::class);
+        $worktreeManager = $this->createStub(WorktreeManager::class);
         $this->manager = new ProjectLifecycleManager(
-            $configManager,
             $this->dockerComposeManager,
             $systemServiceManager,
             $this->imageManager,
             $this->certificateManager,
             $serviceRegistry,
             $this->dockerManager,
+            $worktreeManager,
             $this->filesystem,
         );
     }

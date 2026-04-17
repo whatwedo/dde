@@ -12,6 +12,7 @@ use App\Database\DatabaseAdapterRegistry;
 use App\Manager\DockerComposeManager;
 use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectInfoManager;
+use App\Manager\WorktreeManager;
 use App\Model\ServiceDefinition;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -31,6 +32,8 @@ final class ProjectDescribeCommandTest extends TestCase
     private ProjectConfigManager&Stub $configManager;
 
     private DockerComposeManager&Stub $dockerComposeManager;
+
+    private WorktreeManager&Stub $worktreeManager;
 
     private CommandTester $commandTester;
 
@@ -181,12 +184,12 @@ final class ProjectDescribeCommandTest extends TestCase
             ->method('resolveConfig')
             ->willReturn($resolvedConfig);
 
-        $this->configManager
-            ->method('detectWorktree')
+        $this->worktreeManager
+            ->method('detect')
             ->willReturn(null);
 
-        $this->configManager
-            ->method('resolveProjectHostname')
+        $this->worktreeManager
+            ->method('resolveHostname')
             ->willReturn('test-project.test');
 
         $this->dockerComposeManager
@@ -248,12 +251,12 @@ final class ProjectDescribeCommandTest extends TestCase
             ->method('resolveConfig')
             ->willReturn($resolvedConfig);
 
-        $this->configManager
-            ->method('detectWorktree')
+        $this->worktreeManager
+            ->method('detect')
             ->willReturn(null);
 
-        $this->configManager
-            ->method('resolveProjectHostname')
+        $this->worktreeManager
+            ->method('resolveHostname')
             ->willReturn('test-project.test');
     }
 
@@ -277,6 +280,7 @@ final class ProjectDescribeCommandTest extends TestCase
 
         $this->configManager = $this->createStub(ProjectConfigManager::class);
         $this->dockerComposeManager = $this->createStub(DockerComposeManager::class);
+        $this->worktreeManager = $this->createStub(WorktreeManager::class);
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
@@ -284,6 +288,7 @@ final class ProjectDescribeCommandTest extends TestCase
             $this->configManager,
             $this->dockerComposeManager,
             new ProjectInfoManager(new ServiceRegistry([], new DatabaseAdapterRegistry([]))),
+            $this->worktreeManager,
             $formatterResolver,
         );
 
