@@ -318,12 +318,20 @@ readonly class DockerComposeManager
                 $labels = array_merge($labels, $this->overrideTraefikLabels($serviceConfig['labels'] ?? [], $projectHostname, $worktreeHostname, $serviceName));
             }
 
+            $containerHostname = $this->resolveContainerHostname($serviceName, $serviceConfig, $config);
+
             // Skip entrypoint override for shell-less images (scratch, single-binary)
             if (! $this->dockerManager->imageHasShell($imageName)) {
-                $overrideServices[$serviceName] = [
+                $shellLessOverride = [
                     'labels' => $labels,
                     'networks' => $serviceNetworks,
                 ];
+
+                if ($containerHostname !== null) {
+                    $shellLessOverride['hostname'] = $containerHostname;
+                }
+
+                $overrideServices[$serviceName] = $shellLessOverride;
 
                 continue;
             }
@@ -362,6 +370,10 @@ readonly class DockerComposeManager
                 'labels' => $labels,
                 'networks' => $serviceNetworks,
             ];
+
+            if ($containerHostname !== null) {
+                $serviceOverride['hostname'] = $containerHostname;
+            }
 
             // Preserve original entrypoint + CMD when overriding entrypoint
             // Mirror Docker's behavior:
@@ -643,6 +655,57 @@ readonly class DockerComposeManager
             static fn (string $v): string => str_replace('$', '$$', $v),
             $values,
         );
+    }
+
+    /**
+     * Resolves the container hostname for a service.
+     *
+     * Priority: hostname in compose.yml (respect user) > .dde/config.yml containers.<name>.hostname
+     * > auto-generated "<projectName>-<serviceName>". Returns null when the compose file already
+     * declares a hostname, so the override leaves it untouched.
+     *
+     * @param array<string, mixed> $serviceConfig
+     */
+    private function resolveContainerHostname(string $serviceName, array $serviceConfig, ResolvedConfig $config): ?string
+    {
+        if (is_string($serviceConfig['hostname'] ?? null) && $serviceConfig['hostname'] !== '') {
+            return null;
+        }
+
+        $containerConfig = $config->containers[$serviceName] ?? [];
+
+        if (is_array($containerConfig) && is_string($containerConfig['hostname'] ?? null) && $containerConfig['hostname'] !== '') {
+            return $this->sanitizeHostname($containerConfig['hostname']);
+        }
+
+        $projectSegment = $this->sanitizeHostname($config->projectName);
+        $serviceSegment = $this->sanitizeHostname($serviceName);
+
+        if ($projectSegment === '') {
+            return $serviceSegment !== '' ? $serviceSegment : null;
+        }
+
+        if ($serviceSegment === '' || $projectSegment === $serviceSegment) {
+            return $projectSegment;
+        }
+
+        return $projectSegment.'-'.$serviceSegment;
+    }
+
+    /**
+     * Sanitizes a string to a valid RFC 1123 hostname label (a-z, 0-9, hyphens, max 63 chars).
+     */
+    private function sanitizeHostname(string $value): string
+    {
+        $lower = strtolower($value);
+        $replaced = (string) preg_replace('/[^a-z0-9-]+/', '-', $lower);
+        $trimmed = trim($replaced, '-');
+
+        if (strlen($trimmed) > 63) {
+            $trimmed = trim(substr($trimmed, 0, 63), '-');
+        }
+
+        return $trimmed;
     }
 
     /**
