@@ -613,6 +613,113 @@ final class DockerComposeManagerTest extends TestCase
         unlink($overridePath);
     }
 
+    public function testGenerateOverrideSetsHostnameFromProjectAndServiceName(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+            'worker' => [
+                'image' => 'php:8.5',
+            ],
+        ]);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        $this->assertSame('meseto-web', $data['services']['web']['hostname']);
+        $this->assertSame('meseto-worker', $data['services']['worker']['hostname']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideSanitizesHostnameCharacters(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'My Project_42'));
+
+        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        $this->assertSame('my-project-42-web', $data['services']['web']['hostname']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideRespectsHostnameFromComposeFile(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'hostname' => 'custom-host',
+            ],
+        ]);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        $this->assertArrayNotHasKey('hostname', $data['services']['web']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideUsesHostnameFromProjectConfig(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $config = ResolvedConfig::merge(
+            new GlobalConfig(),
+            new ProjectConfig(name: 'meseto', containers: [
+                'web' => [
+                    'hostname' => 'api.local',
+                ],
+            ]),
+        );
+
+        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        $this->assertSame('api-local', $data['services']['web']['hostname']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideSetsHostnameForShellLessServices(): void
+    {
+        $this->createComposeFile([
+            'mercure' => [
+                'image' => 'dunglas/mercure',
+            ],
+        ]);
+
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(false);
+
+        $manager = $this->createManagerWithDockerManager($dockerManager);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath);
+
+        $this->assertSame('meseto-mercure', $data['services']['mercure']['hostname']);
+
+        unlink($overridePath);
+    }
+
     public function testGenerateOverrideWorktreeOverridesMapFormatEnvironment(): void
     {
         $this->createComposeFile([
