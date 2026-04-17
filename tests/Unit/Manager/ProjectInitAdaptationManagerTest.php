@@ -283,6 +283,387 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $this->assertNull($result);
     }
 
+    public function testProposeEnvMigrationsAppliesAppEnvToCompose(): void
+    {
+        $composePath = $this->tempDir.'/docker-compose.yml';
+        file_put_contents($composePath, <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', [], []);
+        $this->assertNotEmpty($result['appliedChanges']);
+
+        $config = \Symfony\Component\Yaml\Yaml::parseFile($composePath);
+        $env = $config['services']['web']['environment'];
+        $found = false;
+
+        foreach ($env as $k => $v) {
+            if ($k === 'APP_ENV' && $v === 'dev') {
+                $found = true;
+            }
+
+            if (is_int($k) && $v === 'APP_ENV=dev') {
+                $found = true;
+            }
+        }
+
+        $this->assertTrue($found, 'Expected APP_ENV=dev in compose environment');
+    }
+
+    public function testProposeEnvMigrationsSkipsAppEnvWhenAlreadySet(): void
+    {
+        $composePath = $this->tempDir.'/docker-compose.yml';
+        file_put_contents($composePath, <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+                environment:
+                  APP_ENV: dev
+            YAML);
+        $originalContent = file_get_contents($composePath);
+
+        $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', [], []);
+
+        // File should remain unchanged (idempotent)
+        $this->assertSame($originalContent, file_get_contents($composePath));
+    }
+
+    public function testProposeEnvMigrationsAppliesMailerDsnWhenMailpitConfigured(): void
+    {
+        $composePath = $this->tempDir.'/docker-compose.yml';
+        file_put_contents($composePath, <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "MAILER_DSN=smtp://whatever:25\n");
+
+        $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['mailpit'], []);
+
+        $config = \Symfony\Component\Yaml\Yaml::parseFile($composePath);
+        $env = $config['services']['web']['environment'] ?? [];
+        $hasCompose = false;
+
+        foreach ($env as $k => $v) {
+            if (($k === 'MAILER_DSN' && $v === 'smtp://mailpit:1025')
+                || (is_int($k) && $v === 'MAILER_DSN=smtp://mailpit:1025')) {
+                $hasCompose = true;
+            }
+        }
+
+        $this->assertTrue($hasCompose, 'Expected MAILER_DSN=smtp://mailpit:1025 in compose');
+
+        $envContent = (string) file_get_contents($this->tempDir.'/.env');
+        $this->assertStringContainsString('MAILER_DSN=null://null', $envContent);
+    }
+
+    public function testProposeEnvMigrationsSkipsMailerDsnWhenMailpitNotConfigured(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "MAILER_DSN=smtp://whatever:25\n");
+
+        $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['mariadb'], []);
+
+        $envContent = (string) file_get_contents($this->tempDir.'/.env');
+        $this->assertStringContainsString('MAILER_DSN=smtp://whatever:25', $envContent);
+        $this->assertStringNotContainsString('null://null', $envContent);
+    }
+
+    public function testProposeEnvMigrationsReturnsDatabaseUrlProposalForMysqlScheme(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "DATABASE_URL=mysql://root:secret@localhost:3306/beispiel?serverVersion=8.0\n");
+
+        $services = $this->createServiceDefinitions([
+            'mariadb' => '11.8',
+        ]);
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['mariadb'], $services);
+        $proposals = $result['proposals'];
+
+        $this->assertCount(1, $proposals);
+        $this->assertSame('DATABASE_URL', $proposals[0]->variable);
+        $this->assertSame('mysql://app:changeme@127.0.0.1:3306/beispiel?serverVersion=8.0', $proposals[0]->envTargetValue);
+        $this->assertSame('mysql://root:root@mariadb/beispiel?serverVersion=11.8.0-MariaDB', $proposals[0]->composeValue);
+    }
+
+    public function testProposeEnvMigrationsReturnsDatabaseUrlProposalForPostgresScheme(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "DATABASE_URL=postgresql://postgres:secret@localhost:5432/beispiel\n");
+
+        $services = $this->createServiceDefinitions([
+            'postgres' => '16',
+        ]);
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['postgres'], $services);
+        $proposals = $result['proposals'];
+
+        $this->assertCount(1, $proposals);
+        $this->assertSame('postgresql://app:changeme@127.0.0.1:5432/beispiel', $proposals[0]->envTargetValue);
+        $this->assertSame('postgresql://postgres:postgres@postgres/beispiel?serverVersion=16', $proposals[0]->composeValue);
+    }
+
+    public function testProposeEnvMigrationsSkipsDatabaseUrlWhenComposeAlreadyHasIt(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+                environment:
+                  DATABASE_URL: mysql://existing@db/existing
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "DATABASE_URL=mysql://root:secret@localhost:3306/beispiel\n");
+
+        $services = $this->createServiceDefinitions([
+            'mariadb' => '11.8',
+        ]);
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['mariadb'], $services);
+
+        $this->assertCount(0, $result['proposals']);
+    }
+
+    public function testProposeEnvMigrationsSkipsDatabaseUrlWhenNoEnvEntry(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "SOMETHING=else\n");
+
+        $services = $this->createServiceDefinitions([
+            'mariadb' => '11.8',
+        ]);
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['mariadb'], $services);
+
+        $this->assertCount(0, $result['proposals']);
+    }
+
+    public function testProposeEnvMigrationsSkipsDatabaseUrlWhenNoDbService(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "DATABASE_URL=mysql://root@localhost:3306/beispiel\n");
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', [], []);
+
+        $this->assertCount(0, $result['proposals']);
+    }
+
+    public function testProposeEnvMigrationsSkipsDatabaseUrlForUnknownScheme(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "DATABASE_URL=sqlite:///tmp/db.sqlite\n");
+
+        $services = $this->createServiceDefinitions([
+            'mariadb' => '11.8',
+        ]);
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['mariadb'], $services);
+
+        $this->assertCount(0, $result['proposals']);
+    }
+
+    public function testProposeEnvMigrationsOverwritesAppEnvWhenDivergent(): void
+    {
+        $composePath = $this->tempDir.'/docker-compose.yml';
+        file_put_contents($composePath, <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+                environment:
+                  APP_ENV: prod
+            YAML);
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', [], []);
+
+        $config = \Symfony\Component\Yaml\Yaml::parseFile($composePath);
+        $env = $config['services']['web']['environment'];
+        $found = false;
+
+        foreach ($env as $k => $v) {
+            if (($k === 'APP_ENV' && $v === 'dev') || (is_int($k) && $v === 'APP_ENV=dev')) {
+                $found = true;
+            }
+        }
+
+        $this->assertTrue($found, 'Expected APP_ENV=dev in compose after overwrite from prod');
+        $this->assertNotEmpty($result['appliedChanges']);
+    }
+
+    public function testProposeEnvMigrationsRecognizesPgsqlSchemeForPostgresService(): void
+    {
+        $composePath = $this->tempDir.'/docker-compose.yml';
+        file_put_contents($composePath, <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "DATABASE_URL=pgsql://postgres:secret@localhost:5432/beispiel\n");
+
+        $services = $this->createServiceDefinitions([
+            'postgres' => '16',
+        ]);
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['postgres'], $services);
+
+        $this->assertCount(1, $result['proposals']);
+        $this->assertStringContainsString('postgres:postgres@postgres', $result['proposals'][0]->composeValue);
+    }
+
+    public function testProposeEnvMigrationsMariadbThreePartVersionDoesNotDoubleAppendZero(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "DATABASE_URL=mysql://root:secret@localhost:3306/beispiel\n");
+
+        // Three-part version like 11.4.1 should produce "11.4.1-MariaDB", not "11.4.1.0-MariaDB".
+        $services = $this->createServiceDefinitions([
+            'mariadb' => '11.4.1',
+        ]);
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['mariadb'], $services);
+
+        $this->assertCount(1, $result['proposals']);
+        $this->assertStringContainsString('?serverVersion=11.4.1-MariaDB', $result['proposals'][0]->composeValue);
+        $this->assertStringNotContainsString('11.4.1.0-MariaDB', $result['proposals'][0]->composeValue);
+    }
+
+    public function testProposeEnvMigrationsSkipsMailerDsnWhenEnvHasNoEntryButMailpitConfigured(): void
+    {
+        $composePath = $this->tempDir.'/docker-compose.yml';
+        file_put_contents($composePath, <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "SOMETHING=else\n");
+
+        $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['mailpit'], []);
+
+        // compose should get MAILER_DSN set
+        $config = \Symfony\Component\Yaml\Yaml::parseFile($composePath);
+        $env = $config['services']['web']['environment'];
+        $hasCompose = false;
+
+        foreach ($env as $k => $v) {
+            if (($k === 'MAILER_DSN' && $v === 'smtp://mailpit:1025') || (is_int($k) && $v === 'MAILER_DSN=smtp://mailpit:1025')) {
+                $hasCompose = true;
+            }
+        }
+
+        $this->assertTrue($hasCompose);
+
+        // .env should remain untouched (no MAILER_DSN line to replace)
+        $envContent = file_get_contents($this->tempDir.'/.env');
+        $this->assertSame("SOMETHING=else\n", $envContent);
+    }
+
+    public function testApplyEnvMigrationsWritesAcceptedProposal(): void
+    {
+        $composePath = $this->tempDir.'/docker-compose.yml';
+        file_put_contents($composePath, <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "DATABASE_URL=mysql://root:secret@localhost:3306/beispiel\n");
+
+        $proposal = new \App\Manager\EnvMigrationProposal(
+            variable: 'DATABASE_URL',
+            envFile: '.env',
+            originalValue: 'mysql://root:secret@localhost:3306/beispiel',
+            envTargetValue: 'mysql://app:changeme@127.0.0.1:3306/beispiel',
+            composeValue: 'mysql://root:root@mariadb/beispiel?serverVersion=11.8.0-MariaDB',
+            description: 'Migrate DATABASE_URL',
+        );
+
+        $this->manager->applyEnvMigrations($this->tempDir, 'web', [$proposal]);
+
+        $envContent = (string) file_get_contents($this->tempDir.'/.env');
+        $this->assertStringContainsString('DATABASE_URL=mysql://app:changeme@127.0.0.1:3306/beispiel', $envContent);
+
+        $config = \Symfony\Component\Yaml\Yaml::parseFile($composePath);
+        $env = $config['services']['web']['environment'];
+        $hasCompose = false;
+
+        foreach ($env as $k => $v) {
+            $found = ($k === 'DATABASE_URL' && $v === 'mysql://root:root@mariadb/beispiel?serverVersion=11.8.0-MariaDB')
+                || (is_int($k) && $v === 'DATABASE_URL=mysql://root:root@mariadb/beispiel?serverVersion=11.8.0-MariaDB');
+
+            if ($found) {
+                $hasCompose = true;
+            }
+        }
+
+        $this->assertTrue($hasCompose);
+    }
+
+    public function testApplyEnvMigrationsNoopWhenProposalsEmpty(): void
+    {
+        $composePath = $this->createTempCompose(<<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents($this->tempDir.'/.env', "DATABASE_URL=mysql://root@localhost:3306/beispiel\n");
+
+        $originalEnv = file_get_contents($this->tempDir.'/.env');
+        $originalCompose = file_get_contents($composePath);
+
+        $this->manager->applyEnvMigrations($this->tempDir, 'web', []);
+
+        $this->assertSame($originalEnv, file_get_contents($this->tempDir.'/.env'));
+        $this->assertSame($originalCompose, file_get_contents($composePath));
+    }
+
+    /**
+     * @param array<string, string> $servicesWithVersions service name => version
+     *
+     * @return list<\App\Model\ServiceDefinition>
+     */
+    private function createServiceDefinitions(array $servicesWithVersions): array
+    {
+        $result = [];
+
+        foreach ($servicesWithVersions as $name => $version) {
+            $result[] = new \App\Model\ServiceDefinition(
+                name: $name,
+                version: $version,
+                containerName: 'dde-'.$name.'-'.$version,
+            );
+        }
+
+        return $result;
+    }
+
     private function createTempCompose(string $yamlContent): string
     {
         $path = $this->tempDir.'/docker-compose-'.bin2hex(random_bytes(4)).'.yml';
@@ -327,11 +708,20 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         );
         $dockerfileParser = new DockerfileParser();
 
+        $serviceRegistry = new \App\Service\ServiceRegistry(
+            [],
+            new \App\Database\DatabaseAdapterRegistry([
+                new \App\Database\MariaDbAdapter(),
+                new \App\Database\PostgresAdapter(),
+            ]),
+        );
+
         $this->manager = new ProjectInitAdaptationManager(
             $dockerComposeManager,
             $dockerComposeParser,
             $dockerComposeModifier,
             $dockerfileParser,
+            $serviceRegistry,
         );
     }
 
