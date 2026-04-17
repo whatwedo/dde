@@ -9,10 +9,10 @@ use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Service\ServiceRegistry;
+use App\Util\IdentifierSanitizer;
 use App\Util\ProcessFactory;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\String\Slugger\AsciiSlugger;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -142,39 +142,7 @@ readonly class ProjectConfigManager
 
     public function sanitizeWorktreeSuffix(string $dirName, string $projectName): string
     {
-        $suffix = $dirName;
-
-        // Remove project name prefix (case-insensitive)
-        if (str_starts_with(strtolower($suffix), strtolower($projectName).'-')) {
-            $suffix = substr($suffix, strlen($projectName) + 1);
-        } elseif (strcasecmp($suffix, $projectName) === 0) {
-            $suffix = '';
-        }
-
-        // Transliterate unicode to ASCII (e.g. ü → ue)
-        $slugger = new AsciiSlugger();
-        $suffix = (string) $slugger->slug($suffix, '-')->lower();
-
-        // Replace any remaining invalid characters with hyphens
-        $suffix = (string) preg_replace('/[^a-z0-9-]/', '-', $suffix);
-
-        // Collapse consecutive hyphens
-        $suffix = (string) preg_replace('/-{2,}/', '-', $suffix);
-
-        // Trim leading/trailing hyphens
-        $suffix = trim($suffix, '-');
-
-        // Fallback for empty suffix
-        if ($suffix === '') {
-            $suffix = 'worktree';
-        }
-
-        // Truncate to 63 characters (DNS label limit)
-        if (strlen($suffix) > 63) {
-            $suffix = rtrim(substr($suffix, 0, 63), '-');
-        }
-
-        return $suffix;
+        return IdentifierSanitizer::forHostname($dirName, $projectName);
     }
 
     /**
