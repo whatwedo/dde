@@ -7,13 +7,11 @@ namespace App\Command;
 use App\Config\ResolvedConfig;
 use App\Model\ServiceDefinition;
 use App\Service\ServiceRegistry;
+use App\Util\IdentifierSanitizer;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\String\Slugger\AsciiSlugger;
 
 abstract class AbstractDatabaseCommand extends AbstractProjectCommand
 {
-    private ?AsciiSlugger $slugger = null;
-
     /**
      * @throws \RuntimeException
      */
@@ -71,38 +69,7 @@ abstract class AbstractDatabaseCommand extends AbstractProjectCommand
 
     protected function sanitizeDatabaseName(string $name): string
     {
-        // Preserve a leading underscore (valid DB identifier prefix) before slugging
-        $leadingUnderscore = str_starts_with($name, '_');
-
-        // Transliterate unicode to ASCII (über -> uber)
-        $this->slugger ??= new AsciiSlugger();
-        $name = (string) $this->slugger->slug($name, '_')->lower();
-
-        // Replace any remaining non-alphanumeric/underscore chars
-        $name = preg_replace('/[^a-z0-9_]/', '_', $name);
-
-        // Collapse consecutive underscores
-        $name = preg_replace('/_+/', '_', (string)$name);
-
-        // Trim trailing underscores
-        $name = rtrim((string)$name, '_');
-
-        // Re-apply leading underscore if it was present originally
-        if ($leadingUnderscore && $name !== '' && !str_starts_with($name, '_')) {
-            $name = '_'.$name;
-        }
-
-        // If empty after sanitization, use a fallback
-        if ($name === '') {
-            return 'project';
-        }
-
-        // Prefix if starts with digit (invalid in MySQL/PostgreSQL without quoting)
-        if (ctype_digit($name[0])) {
-            $name = 'db_'.$name;
-        }
-
-        return $name;
+        return IdentifierSanitizer::forDatabase($name);
     }
 
     private function withResolvedVersion(ServiceDefinition $service, ResolvedConfig $config): ServiceDefinition
