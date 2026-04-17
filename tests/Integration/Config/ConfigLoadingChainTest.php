@@ -11,6 +11,7 @@ use App\Config\ResolvedConfig;
 use App\Database\DatabaseAdapterRegistry;
 use App\Manager\GlobalConfigManager;
 use App\Manager\ProjectConfigManager;
+use App\Manager\WorktreeManager;
 use App\Model\ServiceDefinition;
 use App\Service\ServiceRegistry;
 use App\Util\ProcessFactory;
@@ -225,7 +226,7 @@ final class ConfigLoadingChainTest extends TestCase
         return new ProjectConfigManager(
             globalConfigManager: new GlobalConfigManager(configDir: $configDir),
             serviceRegistry: $serviceRegistry ?? new ServiceRegistry([], new DatabaseAdapterRegistry([])),
-            processFactory: new ProcessFactory(),
+            worktreeManager: new WorktreeManager(new ProcessFactory()),
         );
     }
 

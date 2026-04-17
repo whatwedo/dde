@@ -15,6 +15,7 @@ use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
 use App\Manager\GlobalConfigManager;
 use App\Manager\ProjectConfigManager;
+use App\Manager\WorktreeManager;
 use App\Model\UserContext;
 use App\Service\ServiceRegistry;
 use App\Service\TraefikService;
@@ -374,7 +375,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $this->configManager = new ProjectConfigManager(
             globalConfigManager: $globalConfigManager,
             serviceRegistry: new ServiceRegistry([], new DatabaseAdapterRegistry([])),
-            processFactory: new ProcessFactory(),
+            worktreeManager: new WorktreeManager(new ProcessFactory()),
         );
 
         $this->manager = new DockerComposeManager(
