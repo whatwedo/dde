@@ -16,6 +16,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Yaml\Tag\TaggedValue;
 use Symfony\Component\Yaml\Yaml;
 
 readonly class DockerComposeManager
@@ -320,10 +321,18 @@ readonly class DockerComposeManager
 
             $containerHostname = $this->resolveContainerHostname($serviceName, $serviceConfig, $config);
 
+            // For worktrees, emit labels with !override so Docker Compose replaces
+            // (not merges) the base compose labels. Otherwise the Traefik router
+            // names from the base file stay on the worktree container and cause
+            // both hostnames to resolve to the same container.
+            $labelsValue = $worktreeInfo instanceof WorktreeInfo
+                ? new TaggedValue('override', $labels)
+                : $labels;
+
             // Skip entrypoint override for shell-less images (scratch, single-binary)
             if (! $this->dockerManager->imageHasShell($imageName)) {
                 $shellLessOverride = [
-                    'labels' => $labels,
+                    'labels' => $labelsValue,
                     'networks' => $serviceNetworks,
                 ];
 
@@ -371,7 +380,7 @@ readonly class DockerComposeManager
                 'entrypoint' => ['/dde/entrypoint.sh'],
                 'volumes' => $volumes,
                 'environment' => $environment,
-                'labels' => $labels,
+                'labels' => $labelsValue,
                 'networks' => $serviceNetworks,
             ];
 
@@ -708,8 +717,9 @@ readonly class DockerComposeManager
     /**
      * Overrides Traefik labels from compose.yml for worktree usage.
      *
-     * Replaces the Host() value in existing router rules with the worktree hostname,
-     * keeping the original router names so the override file overwrites (not duplicates) them.
+     * Replaces both the Host() value and the router name so main and worktree
+     * containers can coexist without Traefik reporting "router defined multiple
+     * times with different configurations".
      *
      * @param array<int|string, mixed> $existingLabels
      *
@@ -719,6 +729,8 @@ readonly class DockerComposeManager
     {
         $overrideLabels = [];
         $hasTraefikLabels = false;
+        $oldRouterName = $this->traefikService->generateRouterName($projectHostname, $serviceName);
+        $newRouterName = $this->traefikService->generateRouterName($worktreeHostname, $serviceName);
 
         foreach ($existingLabels as $key => $value) {
             $label = is_int($key) ? (string) $value : $key.'='.$value;
@@ -729,12 +741,22 @@ readonly class DockerComposeManager
 
             $hasTraefikLabels = true;
 
-            // Replace Host(`project.test`) with Host(`worktree.project.test`)
-            $overrideLabels[] = (string) preg_replace(
+            // 1. Rename router/service in label key so the worktree container registers
+            //    routers under its own unique name (avoids Traefik conflict warnings).
+            $label = (string) preg_replace(
+                '/(traefik\.http\.(?:routers|services)\.)'.preg_quote($oldRouterName, '/').'(\.|-tls\.)/',
+                '$1'.$newRouterName.'$2',
+                $label,
+            );
+
+            // 2. Rewrite Host() rule value to the worktree hostname
+            $label = (string) preg_replace(
                 '/Host\(`'.preg_quote($projectHostname, '/').'`\)/',
                 sprintf('Host(`%s`)', $worktreeHostname),
                 $label,
             );
+
+            $overrideLabels[] = $label;
         }
 
         // Fallback: generate new labels if compose.yml has none
