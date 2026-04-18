@@ -375,6 +375,78 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $this->assertStringNotContainsString('null://null', $envContent);
     }
 
+    public function testProposeEnvMigrationsHandlesQuotedDatabaseUrlFromEnv(): void
+    {
+        // Mirrors the fs-brain case: Symfony-style .env with a double-quoted
+        // DATABASE_URL whose value contains unescaped & characters. The parser
+        // must strip the surrounding quotes; otherwise the URL regex fails on
+        // the leading `"` and the proposal is silently dropped.
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents(
+            $this->tempDir.'/.env',
+            'DATABASE_URL="mysql://root:root@mariadb:3306/fs-brain?serverVersion=10.5.15-mariadb&charset=utf8mb4"'."\n",
+        );
+
+        $services = $this->createServiceDefinitions([
+            'mariadb' => '11.8',
+        ]);
+
+        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'fs-brain', 'web', ['mariadb'], $services);
+
+        $this->assertCount(1, $result['proposals'], 'Quoted DATABASE_URL should yield a proposal');
+        $proposal = $result['proposals'][0];
+        $this->assertSame('DATABASE_URL', $proposal->variable);
+        $this->assertSame(
+            'mysql://root:root@mariadb:3306/fs-brain?serverVersion=10.5.15-mariadb&charset=utf8mb4',
+            $proposal->originalValue,
+            'originalValue must be unquoted',
+        );
+        $this->assertSame(
+            'mysql://app:changeme@127.0.0.1:3306/fs-brain?serverVersion=10.5.15-mariadb&charset=utf8mb4',
+            $proposal->envTargetValue,
+        );
+        $this->assertSame(
+            'mysql://root:root@mariadb/fs_brain?serverVersion=11.8.0-MariaDB&charset=utf8mb4',
+            $proposal->composeValue,
+        );
+    }
+
+    public function testApplyEnvMigrationsPreservesDoubleQuotesOnAcceptedProposal(): void
+    {
+        // Follow-up to the fs-brain scenario: once the user accepts the proposal,
+        // the .env write must preserve the original double-quote style so the
+        // line still parses cleanly against shells that source .env.
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+            services:
+              web:
+                image: php:8.5
+            YAML);
+        file_put_contents(
+            $this->tempDir.'/.env',
+            'DATABASE_URL="mysql://root:root@mariadb:3306/fs-brain?charset=utf8mb4"'."\n",
+        );
+
+        $proposal = new \App\Manager\EnvMigrationProposal(
+            variable: 'DATABASE_URL',
+            envFile: '.env',
+            originalValue: 'mysql://root:root@mariadb:3306/fs-brain?charset=utf8mb4',
+            envTargetValue: 'mysql://app:changeme@127.0.0.1:3306/fs-brain?charset=utf8mb4',
+            composeValue: 'mysql://root:root@mariadb/fs_brain?serverVersion=11.8.0-MariaDB&charset=utf8mb4',
+            description: 'Migrate DATABASE_URL',
+        );
+
+        $this->manager->applyEnvMigrations($this->tempDir, 'web', [$proposal]);
+
+        $this->assertSame(
+            'DATABASE_URL="mysql://app:changeme@127.0.0.1:3306/fs-brain?charset=utf8mb4"'."\n",
+            (string) file_get_contents($this->tempDir.'/.env'),
+        );
+    }
+
     public function testProposeEnvMigrationsReturnsDatabaseUrlProposalForMysqlScheme(): void
     {
         file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
@@ -642,6 +714,168 @@ final class ProjectInitAdaptationManagerTest extends TestCase
 
         $this->assertSame($originalEnv, file_get_contents($this->tempDir.'/.env'));
         $this->assertSame($originalCompose, file_get_contents($composePath));
+    }
+
+    // --- env parsing: readEnvVariable / writeEnvVariable ---------------------
+
+    public function testReadEnvVariableReturnsNullWhenFileMissing(): void
+    {
+        $this->assertNull($this->manager->readEnvVariable($this->tempDir, '.env', 'DATABASE_URL'));
+    }
+
+    public function testReadEnvVariableReturnsNullWhenVariableAbsent(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "APP_ENV=dev\n");
+
+        $this->assertNull($this->manager->readEnvVariable($this->tempDir, '.env', 'DATABASE_URL'));
+    }
+
+    public function testReadEnvVariableReadsUnquotedValue(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "APP_ENV=dev\n");
+
+        $this->assertSame('dev', $this->manager->readEnvVariable($this->tempDir, '.env', 'APP_ENV'));
+    }
+
+    public function testReadEnvVariableStripsDoubleQuotes(): void
+    {
+        file_put_contents($this->tempDir.'/.env', 'DATABASE_URL="mysql://root:root@mariadb:3306/fs-brain?serverVersion=10.5.15-mariadb&charset=utf8mb4"'."\n");
+
+        $this->assertSame(
+            'mysql://root:root@mariadb:3306/fs-brain?serverVersion=10.5.15-mariadb&charset=utf8mb4',
+            $this->manager->readEnvVariable($this->tempDir, '.env', 'DATABASE_URL'),
+        );
+    }
+
+    public function testReadEnvVariableStripsSingleQuotes(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "APP_SECRET='s3cr3t!'\n");
+
+        $this->assertSame('s3cr3t!', $this->manager->readEnvVariable($this->tempDir, '.env', 'APP_SECRET'));
+    }
+
+    public function testReadEnvVariableKeepsValueWhenOnlyLeadingQuote(): void
+    {
+        // Mismatched quotes — leave value untouched rather than strip wrongly.
+        file_put_contents($this->tempDir.'/.env', 'APP_SECRET="incomplete'."\n");
+
+        $this->assertSame('"incomplete', $this->manager->readEnvVariable($this->tempDir, '.env', 'APP_SECRET'));
+    }
+
+    public function testReadEnvVariableHandlesExportPrefix(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "export DATABASE_URL=mysql://root@db/app\n");
+
+        $this->assertSame(
+            'mysql://root@db/app',
+            $this->manager->readEnvVariable($this->tempDir, '.env', 'DATABASE_URL'),
+        );
+    }
+
+    public function testReadEnvVariableHandlesExportPrefixWithQuotes(): void
+    {
+        file_put_contents($this->tempDir.'/.env', 'export DATABASE_URL="mysql://root@db/app?opt=1&foo=2"'."\n");
+
+        $this->assertSame(
+            'mysql://root@db/app?opt=1&foo=2',
+            $this->manager->readEnvVariable($this->tempDir, '.env', 'DATABASE_URL'),
+        );
+    }
+
+    public function testReadEnvVariableIgnoresCommentedLines(): void
+    {
+        $envContent = "# DATABASE_URL=should-be-ignored\nDATABASE_URL=real\n";
+        file_put_contents($this->tempDir.'/.env', $envContent);
+
+        $this->assertSame('real', $this->manager->readEnvVariable($this->tempDir, '.env', 'DATABASE_URL'));
+    }
+
+    public function testReadEnvVariableHandlesCrlfLineEndings(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "APP_ENV=prod\r\nDATABASE_URL=\"mysql://x\"\r\n");
+
+        $this->assertSame('prod', $this->manager->readEnvVariable($this->tempDir, '.env', 'APP_ENV'));
+        $this->assertSame('mysql://x', $this->manager->readEnvVariable($this->tempDir, '.env', 'DATABASE_URL'));
+    }
+
+    public function testWriteEnvVariablePreservesDoubleQuoteStyle(): void
+    {
+        file_put_contents($this->tempDir.'/.env', 'DATABASE_URL="mysql://old:old@host:3306/olddb?opt=1"'."\n");
+
+        $this->manager->writeEnvVariable(
+            $this->tempDir,
+            '.env',
+            'DATABASE_URL',
+            'mysql://app:changeme@127.0.0.1:3306/fs-brain?serverVersion=10&charset=utf8',
+        );
+
+        $this->assertSame(
+            'DATABASE_URL="mysql://app:changeme@127.0.0.1:3306/fs-brain?serverVersion=10&charset=utf8"'."\n",
+            (string) file_get_contents($this->tempDir.'/.env'),
+        );
+    }
+
+    public function testWriteEnvVariablePreservesSingleQuoteStyle(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "APP_SECRET='old'\n");
+
+        $this->manager->writeEnvVariable($this->tempDir, '.env', 'APP_SECRET', 'new');
+
+        $this->assertSame("APP_SECRET='new'\n", (string) file_get_contents($this->tempDir.'/.env'));
+    }
+
+    public function testWriteEnvVariableKeepsUnquotedValueUnquoted(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "MAILER_DSN=smtp://old:25\n");
+
+        $this->manager->writeEnvVariable($this->tempDir, '.env', 'MAILER_DSN', 'null://null');
+
+        $this->assertSame("MAILER_DSN=null://null\n", (string) file_get_contents($this->tempDir.'/.env'));
+    }
+
+    public function testWriteEnvVariablePreservesExportPrefix(): void
+    {
+        file_put_contents($this->tempDir.'/.env', 'export DATABASE_URL="mysql://old"'."\n");
+
+        $this->manager->writeEnvVariable($this->tempDir, '.env', 'DATABASE_URL', 'mysql://new');
+
+        $this->assertSame(
+            'export DATABASE_URL="mysql://new"'."\n",
+            (string) file_get_contents($this->tempDir.'/.env'),
+        );
+    }
+
+    public function testWriteEnvVariablePreservesCrlfLineEndings(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "APP_ENV=prod\r\nMAILER_DSN=smtp://x\r\n");
+
+        $this->manager->writeEnvVariable($this->tempDir, '.env', 'APP_ENV', 'dev');
+
+        $this->assertSame("APP_ENV=dev\r\nMAILER_DSN=smtp://x\r\n", (string) file_get_contents($this->tempDir.'/.env'));
+    }
+
+    public function testWriteEnvVariableLeavesOtherLinesUntouched(): void
+    {
+        $envContent = "# header comment\nAPP_ENV=prod\n\nMAILER_DSN=smtp://keep-me\n";
+        file_put_contents($this->tempDir.'/.env', $envContent);
+
+        $this->manager->writeEnvVariable($this->tempDir, '.env', 'APP_ENV', 'dev');
+
+        $this->assertSame(
+            "# header comment\nAPP_ENV=dev\n\nMAILER_DSN=smtp://keep-me\n",
+            (string) file_get_contents($this->tempDir.'/.env'),
+        );
+    }
+
+    public function testReadWriteRoundtripPreservesValue(): void
+    {
+        $value = 'mysql://root:root@mariadb:3306/fs-brain?serverVersion=10.5.15-mariadb&charset=utf8mb4';
+        file_put_contents($this->tempDir.'/.env', 'DATABASE_URL="'.$value.'"'."\n");
+
+        $original = $this->manager->readEnvVariable($this->tempDir, '.env', 'DATABASE_URL');
+        $this->manager->writeEnvVariable($this->tempDir, '.env', 'DATABASE_URL', $original ?? '');
+
+        $this->assertSame($value, $this->manager->readEnvVariable($this->tempDir, '.env', 'DATABASE_URL'));
     }
 
     /**
