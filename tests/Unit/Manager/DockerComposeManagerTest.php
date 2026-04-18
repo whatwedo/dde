@@ -141,7 +141,7 @@ final class DockerComposeManagerTest extends TestCase
 
         $this->assertFileExists($overridePath);
 
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertIsArray($data);
         $this->assertArrayHasKey('volumes', $data);
@@ -161,7 +161,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertTrue($data['volumes']['dde_ssh-agent_socket-dir']['external']);
 
@@ -182,7 +182,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         foreach (['web', 'db'] as $service) {
             $this->assertArrayHasKey($service, $data['services']);
@@ -207,7 +207,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertContains('dde.managed=true', $data['services']['web']['labels']);
 
@@ -225,7 +225,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertArrayHasKey('entrypoint', $data['services']['web']);
         $this->assertSame(['/dde/entrypoint.sh'], $data['services']['web']['entrypoint']);
@@ -258,7 +258,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertSame(['minio', 'server', '/data', '--console-address', ':9001'], $data['services']['storage']['command']);
 
@@ -277,7 +277,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertSame(['server', '/data'], $data['services']['storage']['command']);
 
@@ -297,7 +297,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertSame(['/custom-entrypoint.sh', 'nginx', '-g', 'daemon off;'], $data['services']['web']['command']);
 
@@ -328,7 +328,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         // $ must be escaped to $$ so Docker Compose does not interpolate it
         $this->assertSame(
@@ -355,7 +355,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         // Should only have labels, no entrypoint/volumes/environment
         $this->assertArrayHasKey('mercure', $data['services']);
@@ -389,7 +389,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         // web gets full override
         $this->assertArrayHasKey('entrypoint', $data['services']['web']);
@@ -430,7 +430,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertArrayHasKey('app', $data['services']);
 
@@ -514,18 +514,26 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
-        $labels = $data['services']['web']['labels'];
+        // Worktree overrides must wrap labels with !override so Docker Compose
+        // replaces (not merges) the base file's labels on the worktree container.
+        $this->assertInstanceOf(\Symfony\Component\Yaml\Tag\TaggedValue::class, $data['services']['web']['labels']);
+        $this->assertSame('override', $data['services']['web']['labels']->getTag());
+        $labels = $data['services']['web']['labels']->getValue();
 
-        // Router names stay the same, but Host() changes to worktree hostname
+        // Router names are renamed to match the worktree hostname so main and
+        // worktree containers can coexist without Traefik router-name conflicts.
+        // Host() rules are rewritten to the worktree hostname.
         $this->assertContains('traefik.enable=true', $labels);
-        $this->assertContains('traefik.http.routers.meseto-test-web.rule=Host(`meseto-feature.test`)', $labels);
-        $this->assertContains('traefik.http.routers.meseto-test-web-tls.rule=Host(`meseto-feature.test`)', $labels);
-        $this->assertContains('traefik.http.routers.meseto-test-web-tls.tls=true', $labels);
+        $this->assertContains('traefik.http.routers.meseto-feature-test-web.rule=Host(`meseto-feature.test`)', $labels);
+        $this->assertContains('traefik.http.routers.meseto-feature-test-web-tls.rule=Host(`meseto-feature.test`)', $labels);
+        $this->assertContains('traefik.http.routers.meseto-feature-test-web-tls.tls=true', $labels);
 
-        // Must NOT contain the original hostname as standalone Host()
+        // Must NOT contain the original router name or the original hostname
         foreach ($labels as $label) {
+            $this->assertStringNotContainsString('routers.meseto-test-web', $label, 'Old router name must be gone');
+
             if (str_contains($label, '.rule=')) {
                 $this->assertStringNotContainsString('Host(`meseto.test`)', $label);
             }
@@ -553,9 +561,10 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
-        $labels = $data['services']['web']['labels'];
+        $this->assertInstanceOf(\Symfony\Component\Yaml\Tag\TaggedValue::class, $data['services']['web']['labels']);
+        $labels = $data['services']['web']['labels']->getValue();
 
         // Should generate new labels with worktree hostname
         $this->assertContains('traefik.enable=true', $labels);
@@ -598,7 +607,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $env = $data['services']['web']['environment'];
 
@@ -717,7 +726,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $env = $data['services']['web']['environment'];
 
@@ -750,7 +759,7 @@ final class DockerComposeManagerTest extends TestCase
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
         $env = $data['services']['web']['environment'];
 
         $this->assertSame(

@@ -43,7 +43,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
 
         self::assertFileExists($overridePath);
 
-        $parsed = Yaml::parseFile($overridePath);
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         // Service web must be present
         self::assertIsArray($parsed['services']);
@@ -103,7 +103,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $config = $this->makeResolvedConfig();
         $overridePath = $this->manager->generateOverride($config, $projectDir);
 
-        $parsed = Yaml::parseFile($overridePath);
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         self::assertArrayHasKey('web', $parsed['services']);
         self::assertArrayHasKey('api', $parsed['services']);
@@ -133,7 +133,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $config = $this->makeResolvedConfig();
         $overridePath = $this->manager->generateOverride($config, $projectDir);
 
-        $parsed = Yaml::parseFile($overridePath);
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
         $volumes = $parsed['services']['web']['volumes'];
 
         self::assertContains($projectAdaptersDir.':/dde/adapters-project:ro', $volumes);
@@ -157,15 +157,18 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $config = $this->makeResolvedConfig('myproject');
         $overridePath = $this->manager->generateOverride($config, $projectDir, $worktreeInfo);
 
-        $parsed = Yaml::parseFile($overridePath);
-        $labels = $parsed['services']['web']['labels'];
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+        $labelsValue = $parsed['services']['web']['labels'];
+
+        // Worktree overrides wrap labels with !override so Compose replaces
+        // (not merges) the base labels on the worktree container.
+        self::assertInstanceOf(\Symfony\Component\Yaml\Tag\TaggedValue::class, $labelsValue);
+        self::assertSame('override', $labelsValue->getTag());
+        $labels = $labelsValue->getValue();
 
         self::assertContains('dde.managed=true', $labels);
-
-        // Check that traefik.enable=true label is present
         self::assertContains('traefik.enable=true', $labels);
 
-        // Verify at least one label contains the project name
         $traefikLabels = array_filter($labels, static fn (string $l): bool => str_contains($l, 'traefik.'));
         self::assertNotEmpty($traefikLabels);
     }
@@ -189,7 +192,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertNotEmpty($content);
 
         // Must be valid YAML
-        $parsed = Yaml::parse($content);
+        $parsed = Yaml::parse($content, Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($parsed);
         self::assertArrayHasKey('services', $parsed);
     }
@@ -217,7 +220,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $config = $this->makeResolvedConfig('myproject');
         $overridePath = $this->manager->generateOverride($config, $projectDir, null, 'dde-services-myproject');
 
-        $parsed = Yaml::parseFile($overridePath);
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         self::assertIsArray($parsed['networks']);
         self::assertArrayHasKey('dde', $parsed['networks']);
@@ -242,7 +245,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $config = $this->makeResolvedConfig('myproject');
         $overridePath = $this->manager->generateOverride($config, $projectDir);
 
-        $parsed = Yaml::parseFile($overridePath);
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         self::assertIsArray($parsed['networks']);
         self::assertArrayHasKey('dde', $parsed['networks']);
@@ -260,7 +263,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $config = $this->makeResolvedConfig('myproject');
         $overridePath = $this->manager->generateOverride($config, $projectDir);
 
-        $parsed = Yaml::parseFile($overridePath);
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         self::assertArrayHasKey('dde_ssh-agent_socket-dir', $parsed['volumes']);
         self::assertTrue($parsed['volumes']['dde_ssh-agent_socket-dir']['external']);
@@ -287,7 +290,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         ]);
 
         $overridePath = $this->manager->generateOverride($config, $projectDir);
-        $parsed = Yaml::parseFile($overridePath);
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         self::assertArrayNotHasKey('extra_hosts', $parsed['services']['web']);
     }
