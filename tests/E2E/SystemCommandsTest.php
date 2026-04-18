@@ -124,6 +124,10 @@ final class SystemCommandsTest extends TestCase
 
     public function testSystemServiceUp(): void
     {
+        // Ensure system is installed (creates dde network) so system:up isn't blocked
+        // by SystemInstallCheckListener when this test runs before SystemInstallTest.
+        $this->runConsole('system:install', timeout: 180);
+
         // Ensure system network exists
         $this->runConsoleJson('system:up', timeout: 180);
 
