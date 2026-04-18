@@ -112,8 +112,10 @@ readonly class ProjectLifecycleManager
             $this->dockerManager->disconnectContainerFromNetwork($containerName, $projectNetwork);
         }
 
-        // 3. Remove the per-project network if it exists
-        if ($this->dockerManager->networkExists($projectNetwork)) {
+        // 3. Remove the per-project network only if no other containers are attached.
+        //    Main and worktree share the same project network (same project name),
+        //    so tearing down a worktree while main is still up must leave the network alone.
+        if ($this->dockerManager->networkExists($projectNetwork) && ! $this->dockerManager->networkHasActiveContainers($projectNetwork)) {
             $this->dockerManager->removeNetwork($projectNetwork);
         }
     }
