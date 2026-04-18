@@ -448,6 +448,79 @@ readonly class ProjectInitAdaptationManager
     }
 
     /**
+     * Reads a variable from an .env-style file, stripping an optional surrounding
+     * quote pair (") or (') from the value. Returns null when the file does not
+     * exist or the variable is not present (uncommented).
+     */
+    public function readEnvVariable(string $projectDir, string $envFile, string $varName): ?string
+    {
+        $path = $projectDir.'/'.$envFile;
+
+        if (! $this->filesystem->exists($path)) {
+            return null;
+        }
+
+        $content = $this->filesystem->readFile($path);
+
+        foreach (explode("\n", $content) as $line) {
+            $trimmed = ltrim($line);
+
+            if ($trimmed === '' || str_starts_with($trimmed, '#')) {
+                continue;
+            }
+
+            if (preg_match('/^(?:export\s+)?'.preg_quote($varName, '/').'=(.*)$/', $trimmed, $m)) {
+                return $this->unquoteEnvValue(rtrim($m[1], "\r"));
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Writes a new value for a variable in an .env-style file while preserving
+     * the original formatting: leading whitespace, "export" prefix, surrounding
+     * quote style (" or ') and CRLF line endings. Creates no entry if none
+     * existed — callers should only invoke this for existing keys.
+     */
+    public function writeEnvVariable(string $projectDir, string $envFile, string $varName, string $value): void
+    {
+        $path = $projectDir.'/'.$envFile;
+
+        if (! $this->filesystem->exists($path)) {
+            return;
+        }
+
+        $content = $this->filesystem->readFile($path);
+        $lines = explode("\n", $content);
+        $written = false;
+
+        foreach ($lines as &$line) {
+            $trimmed = ltrim($line);
+
+            if ($trimmed === '' || str_starts_with($trimmed, '#')) {
+                continue;
+            }
+
+            if (preg_match('/^(?:export\s+)?'.preg_quote($varName, '/').'=(.*)$/', $trimmed, $m)) {
+                $leadingWhitespace = substr($line, 0, strlen($line) - strlen($trimmed));
+                $exportPrefix = str_starts_with($trimmed, 'export ') ? 'export ' : '';
+                $hasCr = str_ends_with($line, "\r");
+                $quote = $this->detectQuoteStyle(rtrim($m[1], "\r"));
+                $line = $leadingWhitespace.$exportPrefix.$varName.'='.$quote.$value.$quote.($hasCr ? "\r" : '');
+                $written = true;
+                break;
+            }
+        }
+
+        unset($line);
+
+        if ($written) {
+            $this->filesystem->dumpFile($path, implode("\n", $lines));
+        }
+    }
+
+    /**
      * @param array<string, mixed> $config
      */
     private function applyAppEnvRule(array &$config, string $container): ?string
@@ -680,65 +753,40 @@ readonly class ProjectInitAdaptationManager
         return implode('&', $filtered);
     }
 
-    private function readEnvVariable(string $projectDir, string $envFile, string $varName): ?string
+    /**
+     * Returns the unquoted value if $raw is surrounded by a matching pair of
+     * single or double quotes; otherwise returns $raw unchanged.
+     */
+    private function unquoteEnvValue(string $raw): string
     {
-        $path = $projectDir.'/'.$envFile;
+        if (strlen($raw) >= 2) {
+            $first = $raw[0];
+            $last = $raw[strlen($raw) - 1];
 
-        if (! $this->filesystem->exists($path)) {
-            return null;
-        }
-
-        $content = $this->filesystem->readFile($path);
-
-        foreach (explode("\n", $content) as $line) {
-            $trimmed = ltrim($line);
-
-            if ($trimmed === '' || str_starts_with($trimmed, '#')) {
-                continue;
-            }
-
-            if (preg_match('/^(?:export\s+)?'.preg_quote($varName, '/').'=(.*)$/', $trimmed, $m)) {
-                return $m[1];
+            if (($first === '"' || $first === "'") && $first === $last) {
+                return substr($raw, 1, -1);
             }
         }
 
-        return null;
+        return $raw;
     }
 
-    private function writeEnvVariable(string $projectDir, string $envFile, string $varName, string $value): void
+    /**
+     * Returns the quote character used to surround $raw (`"` or `'`), or an
+     * empty string when the value is not quoted.
+     */
+    private function detectQuoteStyle(string $raw): string
     {
-        $path = $projectDir.'/'.$envFile;
+        if (strlen($raw) >= 2) {
+            $first = $raw[0];
+            $last = $raw[strlen($raw) - 1];
 
-        if (! $this->filesystem->exists($path)) {
-            return;
-        }
-
-        $content = $this->filesystem->readFile($path);
-        $lines = explode("\n", $content);
-        $written = false;
-
-        foreach ($lines as &$line) {
-            $trimmed = ltrim($line);
-
-            if ($trimmed === '' || str_starts_with($trimmed, '#')) {
-                continue;
-            }
-
-            if (preg_match('/^(?:export\s+)?'.preg_quote($varName, '/').'=/', $trimmed)) {
-                $leadingWhitespace = substr($line, 0, strlen($line) - strlen($trimmed));
-                $exportPrefix = str_starts_with($trimmed, 'export ') ? 'export ' : '';
-                $hasCr = str_ends_with($line, "\r");
-                $line = $leadingWhitespace.$exportPrefix.$varName.'='.$value.($hasCr ? "\r" : '');
-                $written = true;
-                break;
+            if (($first === '"' || $first === "'") && $first === $last) {
+                return $first;
             }
         }
 
-        unset($line);
-
-        if ($written) {
-            $this->filesystem->dumpFile($path, implode("\n", $lines));
-        }
+        return '';
     }
 
     /**
