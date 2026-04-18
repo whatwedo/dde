@@ -299,6 +299,121 @@ final class DockerComposeModifierTest extends TestCase
         $this->assertStringContainsString('services', $content);
     }
 
+    public function testWriteMovesEnvironmentDirectlyAfterImage(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'dde_test_').'.yml';
+        $this->tempFiles[] = $path;
+
+        $config = [
+            'services' => [
+                'web' => [
+                    'image' => 'nginx',
+                    'volumes' => ['./:/var/www'],
+                    'labels' => ['traefik.enable=true'],
+                    'environment' => ['APP_ENV=dev'],
+                ],
+            ],
+        ];
+
+        $this->modifier->write($path, $config);
+
+        $imagePos = strpos((string) file_get_contents($path), 'image:');
+        $envPos = strpos((string) file_get_contents($path), 'environment:');
+        $volumesPos = strpos((string) file_get_contents($path), 'volumes:');
+
+        $this->assertNotFalse($imagePos);
+        $this->assertNotFalse($envPos);
+        $this->assertNotFalse($volumesPos);
+        $this->assertLessThan($envPos, $imagePos, 'image must come before environment');
+        $this->assertLessThan($volumesPos, $envPos, 'environment must come before volumes');
+    }
+
+    public function testWriteMovesEnvironmentDirectlyAfterBuild(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'dde_test_').'.yml';
+        $this->tempFiles[] = $path;
+
+        $config = [
+            'services' => [
+                'web' => [
+                    'build' => [
+                        'context' => '.',
+                        'target' => 'dev',
+                    ],
+                    'volumes' => ['./:/var/www'],
+                    'labels' => ['traefik.enable=true'],
+                    'environment' => ['APP_ENV=dev'],
+                ],
+            ],
+        ];
+
+        $this->modifier->write($path, $config);
+
+        $buildPos = strpos((string) file_get_contents($path), 'build:');
+        $envPos = strpos((string) file_get_contents($path), 'environment:');
+        $labelsPos = strpos((string) file_get_contents($path), 'labels:');
+
+        $this->assertNotFalse($buildPos);
+        $this->assertNotFalse($envPos);
+        $this->assertNotFalse($labelsPos);
+        $this->assertLessThan($envPos, $buildPos, 'build must come before environment');
+        $this->assertLessThan($labelsPos, $envPos, 'environment must come before labels');
+    }
+
+    public function testReorderServiceKeysIsIdempotent(): void
+    {
+        $service = [
+            'image' => 'nginx',
+            'environment' => ['APP_ENV=dev'],
+            'volumes' => ['./:/var/www'],
+        ];
+
+        $once = $this->modifier->reorderServiceKeys($service);
+        $twice = $this->modifier->reorderServiceKeys($once);
+
+        $this->assertSame($once, $twice);
+        $this->assertSame(['image', 'environment', 'volumes'], array_keys($once));
+    }
+
+    public function testReorderServiceKeysMovesEnvironmentToCorrectPosition(): void
+    {
+        $service = [
+            'image' => 'nginx',
+            'volumes' => ['./:/var/www'],
+            'labels' => ['traefik.enable=true'],
+            'environment' => ['APP_ENV=dev'],
+        ];
+
+        $result = $this->modifier->reorderServiceKeys($service);
+
+        $this->assertSame(['image', 'environment', 'volumes', 'labels'], array_keys($result));
+    }
+
+    public function testReorderServiceKeysAppendsEnvironmentWhenNoImageOrBuild(): void
+    {
+        $service = [
+            'extends' => 'web',
+            'volumes' => ['./:/var/www'],
+            'environment' => ['APP_ENV=dev'],
+        ];
+
+        $result = $this->modifier->reorderServiceKeys($service);
+
+        $this->assertSame(['extends', 'volumes', 'environment'], array_keys($result));
+    }
+
+    public function testReorderServiceKeysNoopWhenNoEnvironment(): void
+    {
+        $service = [
+            'image' => 'nginx',
+            'volumes' => ['./:/var/www'],
+        ];
+
+        $result = $this->modifier->reorderServiceKeys($service);
+
+        $this->assertSame($service, $result);
+    }
+
     public function testAddTraefikLabelsRemovesEmptyEnvironment(): void
     {
         $config = [
