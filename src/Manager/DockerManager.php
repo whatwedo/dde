@@ -110,6 +110,25 @@ readonly class DockerManager
         return $process->isSuccessful();
     }
 
+    /**
+     * Returns true if the network exists and has one or more connected containers.
+     * Used by lifecycle teardown to skip network removal when another project
+     * (e.g. main while tearing down a worktree) still has containers attached.
+     */
+    public function networkHasActiveContainers(string $name): bool
+    {
+        $process = $this->processFactory->create([
+            'docker', 'network', 'inspect', '--format', '{{len .Containers}}', $name,
+        ]);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            return false;
+        }
+
+        return (int) trim($process->getOutput()) > 0;
+    }
+
     public function createNetwork(string $name): void
     {
         $process = $this->processFactory->create(['docker', 'network', 'create', $name]);
