@@ -132,9 +132,19 @@ final class WorktreeConfigTest extends TestCase
         $worktreePdo = $this->execInWorktreeSuccess(['php', '-r', "new PDO('mysql:host=mariadb;port=3306', 'root', 'root'); echo 'DB_OK';"]);
         $this->assertStringContainsString('DB_OK', $worktreePdo);
 
-        // Tear both down
+        // Tearing down the worktree while main is still up must NOT disconnect
+        // the shared MariaDB service from the per-project network — otherwise
+        // main's web container loses the `mariadb` alias and cannot reach the DB.
         $result = $this->runConsoleJsonInDir($this->worktreeDir, 'project:down', timeout: 60);
         $this->assertSame('ok', $result['status']);
+
+        $this->waitForHttpResponse($mainUrl.'/index.php', 'MAIN_CONTENT');
+        $mainPdoAfterWorktreeDown = $this->execInMainSuccess(['php', '-r', "new PDO('mysql:host=mariadb;port=3306', 'root', 'root'); echo 'DB_OK';"]);
+        $this->assertStringContainsString(
+            'DB_OK',
+            $mainPdoAfterWorktreeDown,
+            'main must still reach MariaDB after the worktree project:down',
+        );
 
         $result = $this->runConsoleJsonInDir($this->mainRepoDir, 'project:down', timeout: 60);
         $this->assertSame('ok', $result['status']);
