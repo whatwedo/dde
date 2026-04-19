@@ -95,6 +95,23 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
 - When a fix addresses a real-world bug, add a **regression test** that would have caught the bug (verify by reverting the fix and watching the test fail).
 - `make qa` must stay green after every commit, including bisect-mid-branch checkouts. Rebase with `--exec "make qa"` when in doubt.
 
+## Documentation
+**Every developed feature must be documented in the same branch.** A feature is not complete until the relevant docs are updated. Before merging, ask: "where would a user / maintainer / AI agent look for this?"
+
+Required touch-points per feature:
+
+- **User-facing behaviour** (new command, new flag, new automatic behaviour) → `docs/guides/<topic>.md`. Add a cross-reference from related guides.
+- **Architecture / internals change** (new manager, new util, reshuffled responsibilities) → update this `AGENTS.md` (architecture list) plus a note in `docs/internals/<topic>.md` when the internal contract is non-obvious.
+- **v1 → v2 migration impact** (changes that affect how a legacy project is upgraded) → extend `docs/guides/migration-from-v1.md`.
+- **Claude / AI agent workflow** (anything that changes how the `dde` CLI should be driven from an AI agent) → update `skills/claude/dde/SKILL.md`.
+- **Convention changes** (rules for commits, tests, PHPStan, architecture invariants) → extend this `AGENTS.md`.
+
+Docs that live with the feature:
+
+- Prefer short, focused pages over long generic ones.
+- Always include a "why" alongside the "how" for non-obvious design decisions (e.g. why `.env` stays neutral while `docker-compose.yml` carries the dde runtime).
+- Regression-fix commits should mention the regression in the commit body so the rationale survives in the git history, even if no docs page needs updating.
+
 ## Commit Messages
 Conventional Commits: `feat(project):`, `fix(config):`, `test(manager):`, `docs(commands):`, `chore(ci):`
 
