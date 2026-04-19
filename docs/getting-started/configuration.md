@@ -68,8 +68,7 @@ Per-container settings, keyed by the service name in your `docker-compose.yml`:
 ```yaml
 containers:
   web:
-    shell: zsh          # override shell for dde project:shell
-    hostname: api.local # override auto-generated container hostname
+    shell: zsh    # override shell for dde project:shell
 ```
 
 #### Hostnames
@@ -80,12 +79,8 @@ instead of the random Docker container ID. The hostname is derived from the
 project name and the compose service name and sanitized to a valid RFC 1123
 label (lowercase, `a-z0-9-`, max 63 chars).
 
-You can override the auto-generated hostname:
-
-- Set `hostname:` on the service in your `docker-compose.yml` — dde leaves it
-  untouched.
-- Or set `containers.<service>.hostname` in `.dde/config.yml` — dde sanitizes
-  and uses that value.
+To opt out, set an explicit `hostname:` on the service in your
+`docker-compose.yml` — dde leaves it untouched.
 
 ## Override Order
 
