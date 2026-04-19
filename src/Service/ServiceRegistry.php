@@ -181,6 +181,27 @@ final readonly class ServiceRegistry
         return self::SERVICE_TYPES[$name]['environment'] ?? [];
     }
 
+    /**
+     * Returns default DB credentials for a service type, or null if it is not a
+     * known database service. Credentials come from the matching DatabaseAdapter
+     * so the adapter remains the single source of truth for DB-specific values.
+     *
+     * @return array{user: string, password: string}|null
+     */
+    public function getServiceCredentials(string $type): ?array
+    {
+        if (! $this->databaseAdapterRegistry->hasAdapter($type)) {
+            return null;
+        }
+
+        $adapter = $this->databaseAdapterRegistry->getAdapter($type);
+
+        return [
+            'user' => $adapter->getUsername(),
+            'password' => $adapter->getPassword(),
+        ];
+    }
+
     public function getContainerDataMount(string $name): string
     {
         return self::SERVICE_TYPES[$name]['dataMount'] ?? '/data';
