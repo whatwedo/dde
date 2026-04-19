@@ -78,6 +78,27 @@ dde project:up
 
 Open `https://my-app.test` in your browser to verify.
 
+#### .env file migration
+
+While adapting the project, `project:init` also inspects the `.env`/`.env.local`/`.env.dev` files and migrates a small, well-known set of variables.
+
+**Why this split?** v2 draws a clear line between the two config layers:
+
+- **`.env` stays a neutral template.** It keeps values that are safe to commit and safe to use outside of dde (e.g. running tests on CI, opening the project on a plain host). `app:changeme` on `127.0.0.1`, `null://null` as mailer — the app boots without touching the developer's machine.
+- **`docker-compose.yml` holds the dde-specific runtime.** The container-side credentials, service hostnames (`mariadb`, `mailpit`), ports and server-version hints live here. This is the layer that `dde project:up` actually renders into the container.
+
+Because dde-specific values live only in `docker-compose.yml`, the [worktree override](./worktrees.md#environment-overrides) can cleanly rewrite them per worktree (hostnames, `DATABASE_URL` path segment) without ever touching the committed `.env`. Main and worktree both share the same `.env`, but see different values inside their containers.
+
+With that split in mind, `project:init` applies these three rules:
+
+| Variable | Where | Behaviour |
+|---|---|---|
+| `APP_ENV` | compose `environment:` | Always forced to `dev`. `.env` is not touched. |
+| `MAILER_DSN` | compose `environment:` + `.env` | Only when `mailpit` is a configured dde service. compose gets `smtp://mailpit:1025`; `.env` is rewritten to `null://null` (so the app is safe to run outside dde too). |
+| `DATABASE_URL` | compose `environment:` + `.env` | User-prompted. If the `.env` value matches a configured dde DB service, you are asked whether to migrate. Accepting rewrites `.env` to `<scheme>://app:changeme@127.0.0.1:<port>/<db>?<query>` and adds a compose entry `<scheme>://<root>:<root>@<service>/<sanitized-db>?serverVersion=<version>&<query>`. |
+
+In non-interactive mode (piped stdout, `--no-interaction`) the `DATABASE_URL` prompt is silently rejected — run `project:init` in a real terminal if you want to apply it.
+
 #### Remove dde user from existing Dockerfiles
 
 If the existing `dev` stage of a Dockerfile references the `dde` user (e.g. in `chown` instructions), those references must be removed. v2 no longer has a `dde` user available during the docker bild.
