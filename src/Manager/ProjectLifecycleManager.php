@@ -105,6 +105,20 @@ readonly class ProjectLifecycleManager
 
         $projectNetwork = self::buildProjectNetworkName($config->projectName);
 
+        if (! $this->dockerManager->networkExists($projectNetwork)) {
+            return;
+        }
+
+        // Main and worktree share the same project network (same project name).
+        // If the compose-down above left containers from another project attached,
+        // disconnecting our service containers would strip their network aliases
+        // (e.g. `mariadb`) and break the still-running project. In that case we
+        // leave both the service connections and the network alone — the last
+        // project to go down cleans up.
+        if ($this->hasForeignContainersOnNetwork($config, $projectNetwork)) {
+            return;
+        }
+
         // 2. Disconnect service containers from the per-project network
         foreach ($config->services as $service) {
             $version = $config->getServiceVersion($service->name);
@@ -112,12 +126,8 @@ readonly class ProjectLifecycleManager
             $this->dockerManager->disconnectContainerFromNetwork($containerName, $projectNetwork);
         }
 
-        // 3. Remove the per-project network only if no other containers are attached.
-        //    Main and worktree share the same project network (same project name),
-        //    so tearing down a worktree while main is still up must leave the network alone.
-        if ($this->dockerManager->networkExists($projectNetwork) && ! $this->dockerManager->networkHasActiveContainers($projectNetwork)) {
-            $this->dockerManager->removeNetwork($projectNetwork);
-        }
+        // 3. Remove the now-empty per-project network
+        $this->dockerManager->removeNetwork($projectNetwork);
     }
 
     /**
@@ -170,6 +180,19 @@ readonly class ProjectLifecycleManager
         foreach ($this->serviceRegistry->getGlobalServices() as $service) {
             $service->start();
         }
+    }
+
+    private function hasForeignContainersOnNetwork(ResolvedConfig $config, string $network): bool
+    {
+        $attached = $this->dockerManager->getConnectedContainerNames($network);
+        $serviceContainers = [];
+
+        foreach ($config->services as $service) {
+            $version = $config->getServiceVersion($service->name);
+            $serviceContainers[] = ServiceRegistry::buildContainerName($service->name, $version);
+        }
+
+        return array_diff($attached, $serviceContainers) !== [];
     }
 
     /**
