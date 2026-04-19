@@ -99,6 +99,60 @@ Options for all DB commands:
 - `--service=SERVICE` — Target specific DB service
 - `--database=DATABASE` — Database name (default: project name)
 
+## Git worktrees
+
+dde has first-class support for [Git worktrees](https://git-scm.com/docs/git-worktree): when you run `dde project:up` from a non-main worktree checkout, dde automatically assigns that checkout its own hostname **and automatically rewrites `DATABASE_URL`** to point at a worktree-specific database name.
+
+### What dde does automatically per worktree
+
+Given a project named `my-app` and a worktree at `~/projects/my-app-feature-x`:
+
+| | Main checkout | Worktree checkout |
+|---|---|---|
+| URL | `https://my-app.test` | `https://my-app-feature-x.test` |
+| `DATABASE_URL` inside the container | `…/my_app?…` | `…/my_app_feature_x?…` |
+| Container env for `APP_URL`, `MERCURE_URL`, `TRUSTED_HOSTS`, … | unchanged | main `.test` hostname replaced with worktree hostname |
+
+You do **not** need to edit `.env` or `docker-compose.yml` per worktree — dde patches all of this in the compose override at `project:up` time. The base `docker-compose.yml` and the `.env` file are never modified.
+
+### Detecting a worktree
+
+```bash
+dde project:describe --output=json | jq '.data.worktree'
+```
+
+Returns `null` for the main checkout, otherwise an object with `branch`, `suffix` and `mainDirectory`.
+
+### Opening the right URL
+
+`dde project:open` always picks the worktree hostname when run from a worktree. Use `dde project:open --url-only` to print the URL without launching a browser.
+
+### Seeding the worktree database
+
+The worktree database does not exist yet. dde rewrites the `DATABASE_URL` to point at a new name (e.g. `my_app_feature_x`), but it does **not** issue `CREATE DATABASE`. You have to run a bootstrap step once per worktree.
+
+Most projects ship a one-shot install script (f.ex. `make install`) that creates the database, runs migrations and loads fixtures. Run it inside the worktree container:
+
+```bash
+dde project:exec make install
+```
+
+As an alternative, when you want the worktree to start from main's current state (this both creates the DB and loads the dump):
+
+```bash
+# In main: export
+cd ~/projects/my-app
+dde project:db:export /tmp/seed.sql
+
+# In worktree: import into the auto-named DB
+cd ~/projects/my-app-feature-x
+dde project:db:import /tmp/seed.sql
+```
+
+### Running main and worktree in parallel
+
+Both can be `project:up` at the same time. The shared `mariadb`/`postgres` service is kept reachable through a reference-counted per-project network, and `project:down` in one worktree never kills the other.
+
 ## Debugging
 
 When something is not working:
