@@ -129,6 +129,35 @@ readonly class DockerManager
         return (int) trim($process->getOutput()) > 0;
     }
 
+    /**
+     * Returns the container names currently attached to the given network.
+     * Empty list when the network does not exist. Used by lifecycle teardown
+     * to tell "last project on the network" from "other projects still using it".
+     *
+     * @return list<string>
+     */
+    public function getConnectedContainerNames(string $network): array
+    {
+        $process = $this->processFactory->create([
+            'docker',
+            'network',
+            'inspect',
+            '--format',
+            "{{range .Containers}}{{.Name}}\n{{end}}",
+            $network,
+        ]);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            explode("\n", trim($process->getOutput())),
+            static fn (string $name): bool => $name !== '',
+        ));
+    }
+
     public function createNetwork(string $name): void
     {
         $process = $this->processFactory->create(['docker', 'network', 'create', $name]);
