@@ -672,31 +672,6 @@ final class DockerComposeManagerTest extends TestCase
         unlink($overridePath);
     }
 
-    public function testGenerateOverrideUsesHostnameFromProjectConfig(): void
-    {
-        $this->createComposeFile([
-            'web' => [
-                'image' => 'nginx:latest',
-            ],
-        ]);
-
-        $config = ResolvedConfig::merge(
-            new GlobalConfig(),
-            new ProjectConfig(name: 'meseto', containers: [
-                'web' => [
-                    'hostname' => 'api.local',
-                ],
-            ]),
-        );
-
-        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
-
-        $this->assertSame('api-local', $data['services']['web']['hostname']);
-
-        unlink($overridePath);
-    }
-
     public function testGenerateOverrideSetsHostnameForShellLessServices(): void
     {
         $this->createComposeFile([

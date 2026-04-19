@@ -660,9 +660,8 @@ readonly class DockerComposeManager
     /**
      * Resolves the container hostname for a service.
      *
-     * Priority: hostname in compose.yml (respect user) > .dde/config.yml containers.<name>.hostname
-     * > auto-generated "<projectName>-<serviceName>". Returns null when the compose file already
-     * declares a hostname, so the override leaves it untouched.
+     * Returns null when the compose file already declares a hostname, so the override leaves it
+     * untouched. Otherwise returns a sanitized "<projectName>-<serviceName>" hostname.
      *
      * @param array<string, mixed> $serviceConfig
      */
@@ -670,12 +669,6 @@ readonly class DockerComposeManager
     {
         if (is_string($serviceConfig['hostname'] ?? null) && $serviceConfig['hostname'] !== '') {
             return null;
-        }
-
-        $containerConfig = $config->containers[$serviceName] ?? [];
-
-        if (is_array($containerConfig) && is_string($containerConfig['hostname'] ?? null) && $containerConfig['hostname'] !== '') {
-            return $this->sanitizeHostname($containerConfig['hostname']);
         }
 
         $projectSegment = $this->sanitizeHostname($config->projectName);
