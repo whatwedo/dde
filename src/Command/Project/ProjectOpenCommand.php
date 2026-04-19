@@ -72,7 +72,19 @@ final class ProjectOpenCommand extends AbstractProjectCommand
 
     private function resolveProjectUrl(string $projectName, string $projectDir): string
     {
-        // Prefer the actual hostname from Traefik labels in the compose file
+        $worktreeInfo = $this->worktreeManager->detect($projectDir);
+
+        // Inside a worktree the main compose file still declares the main
+        // project hostname — the worktree hostname is only set in the generated
+        // override. Resolving from the compose file would therefore open the
+        // main project's URL from a worktree checkout. Force the
+        // worktree-specific hostname whenever we are in a worktree.
+        if ($worktreeInfo instanceof \App\Config\WorktreeInfo) {
+            return sprintf('https://%s', $this->worktreeManager->resolveHostname($projectName, $worktreeInfo));
+        }
+
+        // Outside a worktree, prefer the actual hostname from Traefik labels
+        // in the compose file so user-customised domains win.
         $composeFile = $this->dockerComposeManager->findComposeFileOrNull($projectDir);
 
         if ($composeFile !== null) {
@@ -84,9 +96,6 @@ final class ProjectOpenCommand extends AbstractProjectCommand
         }
 
         // Fallback: construct from project name
-        $worktreeInfo = $this->worktreeManager->detect($projectDir);
-        $hostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
-
-        return sprintf('https://%s', $hostname);
+        return sprintf('https://%s', $this->worktreeManager->resolveHostname($projectName, null));
     }
 }

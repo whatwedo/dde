@@ -155,6 +155,81 @@ final class ProjectOpenCommandTest extends TestCase
         $this->assertNotSame(0, $this->commandTester->getStatusCode());
     }
 
+    public function testWorktreeIgnoresMainHostnameFromComposeFile(): void
+    {
+        // Regression: previously resolveProjectUrl preferred Traefik labels in
+        // the compose file. Inside a worktree the base compose file still
+        // declares the MAIN hostname (the worktree override is a separate
+        // generated file), so `dde open` from the worktree opened the main URL
+        // instead of the worktree-specific one.
+        $this->setupProjectFixture();
+
+        $this->worktreeManager
+            ->method('detect')
+            ->willReturn(new WorktreeInfo(
+                mainDirectory: '/tmp/main',
+                worktreeDirectory: '/tmp/test-project-wt-feature-x',
+                branch: 'feature/x',
+                suffix: 'test-project-wt-feature-x',
+            ));
+
+        $this->worktreeManager
+            ->method('resolveHostname')
+            ->willReturn('test-project-wt-feature-x.test');
+
+        // Compose file exists and declares the MAIN hostname — the command
+        // must still surface the worktree hostname.
+        $dockerComposeManager = $this->createStub(\App\Manager\DockerComposeManager::class);
+        $dockerComposeManager->method('findComposeFileOrNull')->willReturn('/tmp/test-project-wt-feature-x/docker-compose.yml');
+
+        $mkcertManager = $this->createStub(\App\Manager\MkcertManager::class);
+        $mkcertManager->method('extractDomainsFromComposeFile')->willReturn(['test-project.test']);
+
+        $processFactory = $this->createMock(\App\Util\ProcessFactory::class);
+        $processFactory->method('create')->willReturnCallback(static function (): Process {
+            $process = new Process(['true']);
+            $process->run();
+
+            return $process;
+        });
+
+        $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
+
+        $command = new ProjectOpenCommand(
+            $this->configManager,
+            $formatterResolver,
+            $dockerComposeManager,
+            $mkcertManager,
+            $this->worktreeManager,
+            new UrlOpenerUtil($processFactory),
+        );
+
+        $application = new Application();
+        $application->getDefinition()->addOption(new InputOption(
+            'output',
+            'o',
+            InputOption::VALUE_REQUIRED,
+            'Output format',
+            'text',
+        ));
+        $application->addCommand($command);
+
+        $tester = new CommandTester($command);
+        $tester->execute([
+            '--output' => 'json',
+        ], [
+            'interactive' => false,
+        ]);
+
+        $decoded = json_decode($tester->getDisplay(), true);
+        $this->assertSame('ok', $decoded['status']);
+        $this->assertSame(
+            'https://test-project-wt-feature-x.test',
+            $decoded['data']['url'],
+            'dde open from a worktree must surface the worktree hostname, not the main hostname from the compose file',
+        );
+    }
+
     private function setupProjectFixture(): void
     {
         $projectConfig = new ProjectConfig(
