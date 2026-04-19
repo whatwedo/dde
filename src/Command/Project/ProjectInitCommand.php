@@ -172,6 +172,7 @@ final class ProjectInitCommand extends AbstractProjectCommand
         );
         $question->setMultiselect(true);
         $question->setErrorMessage('Service "%s" is not available.');
+
         $innerValidator = $question->getValidator();
         $question->setValidator(static function (mixed $selected) use ($innerValidator): mixed {
             if ($selected === null || $selected === '') {
