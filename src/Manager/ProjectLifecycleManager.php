@@ -6,6 +6,7 @@ namespace App\Manager;
 
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
+use App\Parser\DockerComposeParser;
 use App\Service\ServiceRegistry;
 use App\Util\IdentifierSanitizer;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -21,12 +22,13 @@ readonly class ProjectLifecycleManager
         private ServiceRegistry $serviceRegistry,
         private DockerManager $dockerManager,
         private WorktreeManager $worktreeManager,
+        private DockerComposeParser $composeParser = new DockerComposeParser(),
         private Filesystem $filesystem = new Filesystem(),
     ) {
     }
 
     /**
-     * @return array{serviceResults: list<array{name: string, version: string, status: string}>, devLayerResult: array{serviceName: string, imageTag: string}|null}
+     * @return array{serviceResults: list<array{name: string, version: string, status: string}>, devLayerResult: array{serviceName: string, imageTag: string}|null, domains: list<string>}
      */
     public function up(ResolvedConfig $config, string $projectDir, bool $build, ?OutputInterface $output = null): array
     {
@@ -49,6 +51,7 @@ readonly class ProjectLifecycleManager
 
         // 3b. Ensure TLS certificates for worktree domains
         $worktreeInfo = $this->worktreeManager->detect($projectDir);
+        $worktreeHostname = null;
 
         if ($worktreeInfo instanceof WorktreeInfo) {
             $worktreeHostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
@@ -82,9 +85,12 @@ readonly class ProjectLifecycleManager
             $this->filesystem->remove($overrideFile);
         }
 
+        $domains = $this->collectProjectDomains($composeFile, $worktreeHostname);
+
         return [
             'serviceResults' => $serviceResults,
             'devLayerResult' => $devLayerResult,
+            'domains' => $domains,
         ];
     }
 
@@ -133,7 +139,7 @@ readonly class ProjectLifecycleManager
     /**
      * Performs a full restart: down then up.
      *
-     * @return array{serviceResults: list<array{name: string, version: string, status: string}>, devLayerResult: array{serviceName: string, imageTag: string}|null}
+     * @return array{serviceResults: list<array{name: string, version: string, status: string}>, devLayerResult: array{serviceName: string, imageTag: string}|null, domains: list<string>}
      */
     public function restart(ResolvedConfig $config, string $projectDir, bool $build = false, ?OutputInterface $output = null): array
     {
@@ -180,6 +186,27 @@ readonly class ProjectLifecycleManager
         foreach ($this->serviceRegistry->getGlobalServices() as $service) {
             $service->start();
         }
+    }
+
+    /**
+     * Collects the project's reachable domains.
+     *
+     * Mirrors the worktree-first policy of `project:open` (see commit d3d654c):
+     * inside a worktree the compose file still declares the main project
+     * hostname — only the generated override rewrites it — so we surface the
+     * resolved worktree hostname. Outside a worktree we fall back to the
+     * Traefik `Host()` labels in the compose file so user-customised domains
+     * win.
+     *
+     * @return list<string>
+     */
+    private function collectProjectDomains(string $composeFile, ?string $worktreeHostname): array
+    {
+        if ($worktreeHostname !== null) {
+            return [$worktreeHostname];
+        }
+
+        return $this->composeParser->extractTraefikDomains($composeFile);
     }
 
     private function hasForeignContainersOnNetwork(ResolvedConfig $config, string $network): bool

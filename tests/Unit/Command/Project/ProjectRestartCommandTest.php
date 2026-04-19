@@ -64,6 +64,7 @@ final class ProjectRestartCommandTest extends TestCase
                     ],
                 ],
                 'devLayerResult' => null,
+                'domains' => [],
             ]);
 
         $this->commandTester->execute([], [
@@ -91,6 +92,7 @@ final class ProjectRestartCommandTest extends TestCase
                     ],
                 ],
                 'devLayerResult' => null,
+                'domains' => [],
             ]);
 
         $this->commandTester->execute([
@@ -123,6 +125,7 @@ final class ProjectRestartCommandTest extends TestCase
             ->willReturn([
                 'serviceResults' => [],
                 'devLayerResult' => null,
+                'domains' => [],
             ]);
 
         $this->commandTester->execute([
