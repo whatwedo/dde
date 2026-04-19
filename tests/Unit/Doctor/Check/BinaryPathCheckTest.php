@@ -7,11 +7,13 @@ namespace Tests\Unit\Doctor\Check;
 use App\Doctor\Check\BinaryPathCheck;
 use App\Doctor\CheckStatus;
 use App\Util\ProcessFactory;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
+#[AllowMockObjectsWithoutExpectations]
 final class BinaryPathCheckTest extends TestCase
 {
     public function testGetName(): void

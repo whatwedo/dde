@@ -6,9 +6,11 @@ namespace Tests\Unit\Util;
 
 use App\Util\ProcessFactory;
 use App\Util\UrlOpenerUtil;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 
+#[AllowMockObjectsWithoutExpectations]
 final class UrlOpenerUtilTest extends TestCase
 {
     public function testOpenUsesCorrectCommandForCurrentPlatform(): void

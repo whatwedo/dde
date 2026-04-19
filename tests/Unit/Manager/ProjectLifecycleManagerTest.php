@@ -588,7 +588,6 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
 
         $this->composeParser->method('extractTraefikDomains')
-            ->with($projectDir.'/docker-compose.yml')
             ->willReturn(['app.test', 'api.app.test']);
 
         $result = $this->manager->up($config, $projectDir, false);
