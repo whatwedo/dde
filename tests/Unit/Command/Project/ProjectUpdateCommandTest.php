@@ -75,6 +75,7 @@ final class ProjectUpdateCommandTest extends TestCase
             ->willReturn([
                 'serviceResults' => [],
                 'devLayerResult' => null,
+                'domains' => [],
             ]);
 
         $this->commandTester->execute([], [
@@ -102,6 +103,7 @@ final class ProjectUpdateCommandTest extends TestCase
             ->willReturn([
                 'serviceResults' => [],
                 'devLayerResult' => null,
+                'domains' => [],
             ]);
 
         $this->commandTester->execute([
@@ -116,6 +118,57 @@ final class ProjectUpdateCommandTest extends TestCase
         $this->assertSame('ok', $decoded['status']);
         $this->assertSame('test-project', $decoded['data']['project']);
         $this->assertSame('updated', $decoded['data']['status']);
+    }
+
+    public function testSuccessfulUpdateDisplaysDomains(): void
+    {
+        $this->setupProjectFixture();
+
+        $this->lifecycleManager->method('down');
+        $this->dockerComposeManager->method('pull');
+        $this->eventDispatcher->method('dispatch')->willReturnArgument(0);
+
+        $this->lifecycleManager
+            ->method('up')
+            ->willReturn([
+                'serviceResults' => [],
+                'devLayerResult' => null,
+                'domains' => ['app.test', 'admin.app.test'],
+            ]);
+
+        $this->commandTester->execute([]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $display = $this->commandTester->getDisplay();
+        $this->assertStringContainsString('Available at:', $display);
+        $this->assertStringContainsString('https://app.test', $display);
+        $this->assertStringContainsString('https://admin.app.test', $display);
+    }
+
+    public function testSuccessfulUpdateWithJsonOutputIncludesDomains(): void
+    {
+        $this->setupProjectFixture();
+
+        $this->lifecycleManager->method('down');
+        $this->dockerComposeManager->method('pull');
+
+        $this->lifecycleManager
+            ->method('up')
+            ->willReturn([
+                'serviceResults' => [],
+                'devLayerResult' => null,
+                'domains' => ['app.test'],
+            ]);
+
+        $this->commandTester->execute([
+            '--output' => 'json',
+        ], [
+            'interactive' => false,
+        ]);
+
+        $decoded = json_decode($this->commandTester->getDisplay(), true);
+        $this->assertIsArray($decoded);
+        $this->assertSame(['app.test'], $decoded['data']['domains']);
     }
 
     public function testErrorWhenNoProjectDirectoryFound(): void
@@ -179,6 +232,7 @@ final class ProjectUpdateCommandTest extends TestCase
                 return [
                     'serviceResults' => [],
                     'devLayerResult' => null,
+                    'domains' => [],
                 ];
             });
 

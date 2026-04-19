@@ -137,12 +137,33 @@ final class ProjectUpdateCommand extends AbstractProjectCommand
                 'project' => $config->projectName,
                 'status' => 'updated',
                 'services' => $result['serviceResults'],
+                'domains' => $result['domains'],
             ]);
         }
 
         $io->newLine();
         $io->success(sprintf('Project %s updated.', $config->projectName));
 
+        $this->renderDomains($io, $result['domains']);
+
         return self::SUCCESS;
+    }
+
+    /**
+     * @param list<string> $domains
+     */
+    private function renderDomains(SymfonyStyle $io, array $domains): void
+    {
+        if ($domains === []) {
+            return;
+        }
+
+        $io->writeln('Available at:');
+
+        foreach ($domains as $domain) {
+            $io->writeln(sprintf('  <info>https://%s</info>', $domain));
+        }
+
+        $io->newLine();
     }
 }

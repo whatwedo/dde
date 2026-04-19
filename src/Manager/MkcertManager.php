@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Manager;
 
+use App\Parser\DockerComposeParser;
 use App\Util\ProcessFactory;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Exception\ProcessFailedException;
-use Symfony\Component\Yaml\Yaml;
 
 readonly class MkcertManager
 {
@@ -16,6 +16,7 @@ readonly class MkcertManager
         private Filesystem $filesystem,
         private string $dataDir,
         private ClockInterface $clock,
+        private DockerComposeParser $composeParser = new DockerComposeParser(),
         private ProcessFactory $processFactory = new ProcessFactory(),
     ) {
     }
@@ -29,7 +30,7 @@ readonly class MkcertManager
             return;
         }
 
-        $domains = $this->extractDomainsFromComposeFile($composeFile);
+        $domains = $this->composeParser->extractTraefikDomains($composeFile);
 
         if ($domains === []) {
             return;
@@ -94,56 +95,6 @@ readonly class MkcertManager
         }
 
         $this->updateTraefikDynamicConfig();
-    }
-
-    /**
-     * Extracts all unique domains from Traefik Host() labels in a docker-compose file.
-     *
-     * @return list<string>
-     */
-    public function extractDomainsFromComposeFile(string $composeFile): array
-    {
-        if (! $this->filesystem->exists($composeFile)) {
-            return [];
-        }
-
-        $content = $this->filesystem->readFile($composeFile);
-        $config = Yaml::parse($content, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE);
-
-        if (! is_array($config) || ! isset($config['services']) || ! is_array($config['services'])) {
-            return [];
-        }
-
-        $domains = [];
-
-        foreach ($config['services'] as $service) {
-            if (! is_array($service)) {
-                continue;
-            }
-
-            $labels = $service['labels'] ?? [];
-
-            if (! is_array($labels)) {
-                continue;
-            }
-
-            foreach ($labels as $key => $value) {
-                // List format: "traefik.http.routers.xxx.rule=Host(`example.test`)"
-                $label = is_int($key) ? (string) $value : $key.'='.$value;
-
-                if (preg_match_all('/Host\(([^)]+)\)/', $label, $hostMatches)) {
-                    foreach ($hostMatches[1] as $hostContent) {
-                        if (preg_match_all('/`([^`]+)`/', $hostContent, $domainMatches)) {
-                            foreach ($domainMatches[1] as $domain) {
-                                $domains[] = $domain;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return array_values(array_unique($domains));
     }
 
     public function install(): void

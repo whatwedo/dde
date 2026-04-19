@@ -130,6 +130,109 @@ final class DockerComposeParserTest extends TestCase
         $this->assertStringContainsString('apache', $diff);
     }
 
+    public function testExtractTraefikDomainsReturnsEmptyForMissingFile(): void
+    {
+        $this->assertSame([], $this->parser->extractTraefikDomains('/nonexistent/docker-compose.yml'));
+    }
+
+    public function testExtractTraefikDomainsExtractsHostLabels(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`)"
+              api:
+                image: php
+                labels:
+                  traefik.http.routers.api.rule: "Host(`api.test`)"
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        $this->assertSame(['app.test', 'api.test'], $this->parser->extractTraefikDomains($path));
+    }
+
+    public function testExtractTraefikDomainsDeduplicates(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`)"
+              api:
+                image: php
+                labels:
+                  - "traefik.http.routers.api.rule=Host(`app.test`)"
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        $this->assertSame(['app.test'], $this->parser->extractTraefikDomains($path));
+    }
+
+    public function testExtractTraefikDomainsHandlesMultipleHostsInOneRule(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`) || Host(`www.app.test`)"
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        $this->assertSame(['app.test', 'www.app.test'], $this->parser->extractTraefikDomains($path));
+    }
+
+    public function testExtractTraefikDomainsHandlesTraefikV2CommaSyntax(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`,`www.app.test`)"
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        $this->assertSame(['app.test', 'www.app.test'], $this->parser->extractTraefikDomains($path));
+    }
+
+    public function testExtractTraefikDomainsHandlesWhitespace(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host( `app.test` )"
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        $this->assertSame(['app.test'], $this->parser->extractTraefikDomains($path));
+    }
+
+    public function testExtractTraefikDomainsHandlesHostAndPathPrefix(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`) && PathPrefix(`/api`)"
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        $this->assertSame(['app.test'], $this->parser->extractTraefikDomains($path));
+    }
+
     public function testGenerateDiffPreservesLineOrder(): void
     {
         $original = [

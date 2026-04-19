@@ -19,6 +19,7 @@ use App\Manager\SystemServiceManager;
 use App\Manager\WorktreeManager;
 use App\Model\ContainerConfig;
 use App\Model\ServiceDefinition;
+use App\Parser\DockerComposeParser;
 use App\Service\AbstractSystemService;
 use App\Service\ServiceRegistry;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -31,6 +32,8 @@ use Symfony\Component\Filesystem\Filesystem;
 final class ProjectLifecycleManagerTest extends TestCase
 {
     public $certificateManager;
+
+    public DockerComposeParser&Stub $composeParser;
 
     private DockerComposeManager&MockObject $dockerComposeManager;
 
@@ -130,6 +133,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $this->composeParser,
             $this->filesystem,
         );
 
@@ -572,6 +576,98 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->manager->up($config, $projectDir, false);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpReturnsDomainsFromComposeFileOutsideWorktree(): void
+    {
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $this->composeParser->method('extractTraefikDomains')
+            ->with($projectDir.'/docker-compose.yml')
+            ->willReturn(['app.test', 'api.app.test']);
+
+        $result = $this->manager->up($config, $projectDir, false);
+
+        $this->assertSame(['app.test', 'api.app.test'], $result['domains']);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpReturnsEmptyDomainsWhenNoTraefikLabels(): void
+    {
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $this->composeParser->method('extractTraefikDomains')->willReturn([]);
+
+        $result = $this->manager->up($config, $projectDir, false);
+
+        $this->assertSame([], $result['domains']);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpReturnsWorktreeHostnameInsideWorktree(): void
+    {
+        // Regression for #118 + d3d654c: inside a worktree the compose file
+        // still declares the main hostname, so surfacing compose labels would
+        // leak the main URL. The lifecycle must return the worktree hostname.
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project-wt';
+
+        $worktreeManager = $this->createMock(WorktreeManager::class);
+        $worktreeInfo = new \App\Config\WorktreeInfo(
+            mainDirectory: '/tmp/test-project',
+            worktreeDirectory: $projectDir,
+            branch: 'feature/x',
+            suffix: 'test-project-wt',
+        );
+        $worktreeManager->method('detect')->willReturn($worktreeInfo);
+        $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
+
+        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $systemServiceManager = new SystemServiceManager(
+            $this->dockerManager,
+            $serviceRegistry,
+            $this->systemFilesystem,
+            '/tmp/dde-data',
+        );
+
+        $manager = new ProjectLifecycleManager(
+            $this->dockerComposeManager,
+            $systemServiceManager,
+            $this->imageManager,
+            $this->certificateManager,
+            $serviceRegistry,
+            $this->dockerManager,
+            $worktreeManager,
+            $this->composeParser,
+            $this->filesystem,
+        );
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        // The compose file still points at the MAIN hostname — even if the
+        // parser were consulted it would return that, so we assert the
+        // lifecycle surfaces the worktree hostname, not compose labels.
+        $this->composeParser->method('extractTraefikDomains')->willReturn(['test-project.test']);
+
+        $result = $manager->up($config, $projectDir, false);
+
+        $this->assertSame(['test-project-wt.test'], $result['domains']);
+    }
+
     /**
      * @param array<ServiceDefinition> $services
      */
@@ -600,6 +696,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         );
 
         $this->certificateManager = $this->createStub(MkcertManager::class);
+        $this->composeParser = $this->createStub(DockerComposeParser::class);
 
         // networkExists returns false by default (PHPUnit mock default for bool return),
         // so removeNetwork is never called unless a test explicitly stubs networkExists to true.
@@ -613,6 +710,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $this->composeParser,
             $this->filesystem,
         );
     }

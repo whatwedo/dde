@@ -61,6 +61,7 @@ final class ProjectUpCommandTest extends TestCase
                     ],
                 ],
                 'devLayerResult' => null,
+                'domains' => [],
             ]);
 
         $this->commandTester->execute([], [
@@ -88,6 +89,7 @@ final class ProjectUpCommandTest extends TestCase
                     ],
                 ],
                 'devLayerResult' => null,
+                'domains' => [],
             ]);
 
         $this->commandTester->execute([
@@ -108,6 +110,68 @@ final class ProjectUpCommandTest extends TestCase
         $this->assertSame('started', $decoded['data']['services'][0]['status']);
     }
 
+    public function testSuccessfulUpDisplaysDomains(): void
+    {
+        $this->setupProjectFixture();
+
+        $this->lifecycleManager
+            ->method('up')
+            ->willReturn([
+                'serviceResults' => [],
+                'devLayerResult' => null,
+                'domains' => ['app.test', 'api.app.test'],
+            ]);
+
+        $this->commandTester->execute([]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $display = $this->commandTester->getDisplay();
+        $this->assertStringContainsString('Available at:', $display);
+        $this->assertStringContainsString('https://app.test', $display);
+        $this->assertStringContainsString('https://api.app.test', $display);
+    }
+
+    public function testSuccessfulUpOmitsDomainSectionWhenNoDomains(): void
+    {
+        $this->setupProjectFixture();
+
+        $this->lifecycleManager
+            ->method('up')
+            ->willReturn([
+                'serviceResults' => [],
+                'devLayerResult' => null,
+                'domains' => [],
+            ]);
+
+        $this->commandTester->execute([]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $this->assertStringNotContainsString('Available at:', $this->commandTester->getDisplay());
+    }
+
+    public function testSuccessfulUpWithJsonOutputIncludesDomains(): void
+    {
+        $this->setupProjectFixture();
+
+        $this->lifecycleManager
+            ->method('up')
+            ->willReturn([
+                'serviceResults' => [],
+                'devLayerResult' => null,
+                'domains' => ['app.test'],
+            ]);
+
+        $this->commandTester->execute([
+            '--output' => 'json',
+        ], [
+            'interactive' => false,
+        ]);
+
+        $decoded = json_decode($this->commandTester->getDisplay(), true);
+        $this->assertIsArray($decoded);
+        $this->assertSame(['app.test'], $decoded['data']['domains']);
+    }
+
     public function testUpWithBuildFlag(): void
     {
         $this->setupProjectFixture(services: []);
@@ -123,6 +187,7 @@ final class ProjectUpCommandTest extends TestCase
             ->willReturn([
                 'serviceResults' => [],
                 'devLayerResult' => null,
+                'domains' => [],
             ]);
 
         $this->commandTester->execute([

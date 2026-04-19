@@ -182,8 +182,8 @@ final class ProjectOpenCommandTest extends TestCase
         $dockerComposeManager = $this->createStub(\App\Manager\DockerComposeManager::class);
         $dockerComposeManager->method('findComposeFileOrNull')->willReturn('/tmp/test-project-wt-feature-x/docker-compose.yml');
 
-        $mkcertManager = $this->createStub(\App\Manager\MkcertManager::class);
-        $mkcertManager->method('extractDomainsFromComposeFile')->willReturn(['test-project.test']);
+        $composeParser = $this->createStub(\App\Parser\DockerComposeParser::class);
+        $composeParser->method('extractTraefikDomains')->willReturn(['test-project.test']);
 
         $processFactory = $this->createMock(\App\Util\ProcessFactory::class);
         $processFactory->method('create')->willReturnCallback(static function (): Process {
@@ -199,7 +199,7 @@ final class ProjectOpenCommandTest extends TestCase
             $this->configManager,
             $formatterResolver,
             $dockerComposeManager,
-            $mkcertManager,
+            $composeParser,
             $this->worktreeManager,
             new UrlOpenerUtil($processFactory),
         );
@@ -266,14 +266,14 @@ final class ProjectOpenCommandTest extends TestCase
         $dockerComposeManager = $this->createStub(\App\Manager\DockerComposeManager::class);
         $dockerComposeManager->method('findComposeFileOrNull')->willReturn(null);
 
-        $mkcertManager = $this->createStub(\App\Manager\MkcertManager::class);
-        $mkcertManager->method('extractDomainsFromComposeFile')->willReturn([]);
+        $composeParser = $this->createStub(\App\Parser\DockerComposeParser::class);
+        $composeParser->method('extractTraefikDomains')->willReturn([]);
 
         $this->command = new ProjectOpenCommand(
             $this->configManager,
             $formatterResolver,
             $dockerComposeManager,
-            $mkcertManager,
+            $composeParser,
             $this->worktreeManager,
             new UrlOpenerUtil($processFactory),
         );

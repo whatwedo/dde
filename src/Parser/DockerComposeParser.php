@@ -41,6 +41,58 @@ readonly class DockerComposeParser
     }
 
     /**
+     * Extracts all unique domains from Traefik `Host()` labels in a docker-compose file.
+     *
+     * Returns an empty list when the file does not exist or contains no Traefik
+     * host rules. Parses both map- and list-style label definitions.
+     *
+     * @return list<string>
+     */
+    public function extractTraefikDomains(string $path): array
+    {
+        if (! $this->filesystem->exists($path)) {
+            return [];
+        }
+
+        $config = $this->parse($path);
+
+        if (! isset($config['services']) || ! is_array($config['services'])) {
+            return [];
+        }
+
+        $domains = [];
+
+        foreach ($config['services'] as $service) {
+            if (! is_array($service)) {
+                continue;
+            }
+
+            $labels = $service['labels'] ?? [];
+
+            if (! is_array($labels)) {
+                continue;
+            }
+
+            foreach ($labels as $key => $value) {
+                // List format: "traefik.http.routers.xxx.rule=Host(`example.test`)"
+                $label = is_int($key) ? (string) $value : $key.'='.$value;
+
+                if (preg_match_all('/Host\(([^)]+)\)/', $label, $hostMatches)) {
+                    foreach ($hostMatches[1] as $hostContent) {
+                        if (preg_match_all('/`([^`]+)`/', $hostContent, $domainMatches)) {
+                            foreach ($domainMatches[1] as $domain) {
+                                $domains[] = $domain;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($domains));
+    }
+
+    /**
      * @param array<string, mixed> $original
      * @param array<string, mixed> $modified
      */

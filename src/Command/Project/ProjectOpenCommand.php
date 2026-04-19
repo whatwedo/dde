@@ -6,10 +6,10 @@ namespace App\Command\Project;
 
 use App\Command\AbstractProjectCommand;
 use App\Manager\DockerComposeManager;
-use App\Manager\MkcertManager;
 use App\Manager\ProjectConfigManager;
 use App\Manager\WorktreeManager;
 use App\Output\FormatterResolver;
+use App\Parser\DockerComposeParser;
 use App\Util\UrlOpenerUtil;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -27,7 +27,7 @@ final class ProjectOpenCommand extends AbstractProjectCommand
         ProjectConfigManager $configManager,
         FormatterResolver $formatterResolver,
         private readonly DockerComposeManager $dockerComposeManager,
-        private readonly MkcertManager $mkcertManager,
+        private readonly DockerComposeParser $composeParser,
         private readonly WorktreeManager $worktreeManager,
         private readonly UrlOpenerUtil $urlOpenerUtil = new UrlOpenerUtil(),
     ) {
@@ -88,7 +88,7 @@ final class ProjectOpenCommand extends AbstractProjectCommand
         $composeFile = $this->dockerComposeManager->findComposeFileOrNull($projectDir);
 
         if ($composeFile !== null) {
-            $domains = $this->mkcertManager->extractDomainsFromComposeFile($composeFile);
+            $domains = $this->composeParser->extractTraefikDomains($composeFile);
 
             if ($domains !== []) {
                 return sprintf('https://%s', $domains[0]);

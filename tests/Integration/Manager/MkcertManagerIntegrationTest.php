@@ -15,98 +15,6 @@ final class MkcertManagerIntegrationTest extends TestCase
 
     private Filesystem $filesystem;
 
-    public function testExtractDomainsFromSingleHostLabel(): void
-    {
-        $composeFile = $this->writeComposeFile('single-host.yml', <<<'YAML'
-services:
-  web:
-    image: nginx
-    labels:
-      - 'traefik.http.routers.web.rule=Host(`example.test`)'
-YAML);
-
-        $manager = $this->buildMkcertManager();
-
-        self::assertSame(['example.test'], $manager->extractDomainsFromComposeFile($composeFile));
-    }
-
-    public function testExtractDomainsFromMultipleServicesAndHosts(): void
-    {
-        $composeFile = $this->writeComposeFile('multi-service.yml', <<<'YAML'
-services:
-  web:
-    image: nginx
-    labels:
-      - 'traefik.http.routers.web.rule=Host(`app.test`)'
-  api:
-    image: php-fpm
-    labels:
-      - 'traefik.http.routers.api.rule=Host(`api.test`)'
-YAML);
-
-        $manager = $this->buildMkcertManager();
-        $domains = $manager->extractDomainsFromComposeFile($composeFile);
-
-        self::assertContains('app.test', $domains);
-        self::assertContains('api.test', $domains);
-        self::assertCount(2, $domains);
-    }
-
-    public function testExtractDomainsFromMultiHostRule(): void
-    {
-        $composeFile = $this->writeComposeFile('multi-host-rule.yml', <<<'YAML'
-services:
-  web:
-    image: nginx
-    labels:
-      - 'traefik.http.routers.web.rule=Host(`a.test`) || Host(`b.test`)'
-YAML);
-
-        $manager = $this->buildMkcertManager();
-        $domains = $manager->extractDomainsFromComposeFile($composeFile);
-
-        self::assertSame(['a.test', 'b.test'], $domains);
-    }
-
-    public function testExtractDomainsDeduplicates(): void
-    {
-        $composeFile = $this->writeComposeFile('dedup.yml', <<<'YAML'
-services:
-  web:
-    image: nginx
-    labels:
-      - 'traefik.http.routers.web.rule=Host(`shared.test`)'
-  api:
-    image: php-fpm
-    labels:
-      - 'traefik.http.routers.api.rule=Host(`shared.test`)'
-YAML);
-
-        $manager = $this->buildMkcertManager();
-
-        self::assertSame(['shared.test'], $manager->extractDomainsFromComposeFile($composeFile));
-    }
-
-    public function testExtractDomainsFromNonExistentFile(): void
-    {
-        $manager = $this->buildMkcertManager();
-
-        self::assertSame([], $manager->extractDomainsFromComposeFile($this->tempDir.'/does-not-exist.yml'));
-    }
-
-    public function testExtractDomainsFromComposeWithoutLabels(): void
-    {
-        $composeFile = $this->writeComposeFile('no-labels.yml', <<<'YAML'
-services:
-  web:
-    image: nginx
-YAML);
-
-        $manager = $this->buildMkcertManager();
-
-        self::assertSame([], $manager->extractDomainsFromComposeFile($composeFile));
-    }
-
     public function testMkcertRegistryRoundTrip(): void
     {
         $mkcertManager = new MkcertManager($this->filesystem, $this->tempDir, new NativeClock());
@@ -141,19 +49,6 @@ YAML);
         self::assertStringContainsString('certificates:', $content);
         self::assertStringContainsString('/certs/myproject.pem', $content);
         self::assertStringContainsString('/certs/myproject-key.pem', $content);
-    }
-
-    private function writeComposeFile(string $filename, string $content): string
-    {
-        $path = $this->tempDir.'/'.$filename;
-        $this->filesystem->dumpFile($path, $content);
-
-        return $path;
-    }
-
-    private function buildMkcertManager(): MkcertManager
-    {
-        return new MkcertManager($this->filesystem, $this->tempDir, new NativeClock());
     }
 
     protected function setUp(): void
