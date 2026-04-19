@@ -7,7 +7,6 @@ namespace Tests\E2E;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Process\Process;
 
 #[Group('e2e')]
 final class ProjectLifecycleTest extends TestCase
@@ -66,11 +65,8 @@ final class ProjectLifecycleTest extends TestCase
         $this->assertTrue($process->isSuccessful(), 'MariaDB connection from container should succeed: '.$process->getErrorOutput());
         $this->assertStringContainsString('DB_OK', $process->getOutput());
 
-        // 8b. Mailpit: verify no port conflict — global mailpit from system:up should be reused
-        $mailpitProcess = new Process(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}', 'http://127.0.0.1:8025/']);
-        $mailpitProcess->setTimeout(5);
-        $mailpitProcess->run();
-        $this->assertSame('200', trim($mailpitProcess->getOutput()), 'Mailpit should be reachable on port 8025 (served by global dde-mailpit)');
+        // 8b. Mailpit: reachable via Traefik at mail.test (no host port forwarding since refactor)
+        $this->waitForHttpResponse('https://mail.test/', 'Mailpit');
 
         // 9. project:status --output=json
         $result = $this->runConsoleJson('project:status');
