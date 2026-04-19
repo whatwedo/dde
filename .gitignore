@@ -12,7 +12,8 @@ bin/dde.phar
 box.phar
 
 # IDE and local tooling
-.claude/settings.local.json
-.claude/worktrees/
+.claude/*.local.*
+.claude/worktree/
+.claude/plans/
+.claude/specs/
 .idea/
-.worktrees/
