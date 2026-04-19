@@ -231,12 +231,60 @@ readonly class DockerComposeModifier
      */
     public function write(string $path, array $config): void
     {
+        // Normalize service key order so `environment:` always follows `image:`
+        // or `build:` — the spot where readers expect container configuration
+        // to start. This only reorders keys, never changes values.
+        if (isset($config['services']) && is_array($config['services'])) {
+            foreach ($config['services'] as $serviceName => $serviceConfig) {
+                if (is_array($serviceConfig)) {
+                    $config['services'][$serviceName] = $this->reorderServiceKeys($serviceConfig);
+                }
+            }
+        }
+
         $yaml = Yaml::dump($config, 10, 4, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
 
         // Ensure all label list items are single-quoted
         $yaml = $this->quoteLabels($yaml);
 
         $this->filesystem->dumpFile($path, $yaml);
+    }
+
+    /**
+     * Moves the `environment:` entry so it appears directly after `image:` or
+     * `build:`. If the service has neither, the environment entry is appended
+     * at the end. Returns the service as-is when there is no `environment:`.
+     *
+     * @param array<string, mixed> $service
+     *
+     * @return array<string, mixed>
+     */
+    public function reorderServiceKeys(array $service): array
+    {
+        if (! array_key_exists('environment', $service)) {
+            return $service;
+        }
+
+        $environment = $service['environment'];
+        unset($service['environment']);
+
+        $reordered = [];
+        $inserted = false;
+
+        foreach ($service as $key => $value) {
+            $reordered[$key] = $value;
+
+            if (! $inserted && ($key === 'image' || $key === 'build')) {
+                $reordered['environment'] = $environment;
+                $inserted = true;
+            }
+        }
+
+        if (! $inserted) {
+            $reordered['environment'] = $environment;
+        }
+
+        return $reordered;
     }
 
     /**
