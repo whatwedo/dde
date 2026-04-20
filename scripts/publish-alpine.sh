@@ -38,9 +38,17 @@ fi
 POSTINST
     chmod 755 "${WORK}/.post-install"
 
+    cat > "${WORK}/.post-upgrade" <<'POSTUPGRADE'
+#!/bin/sh
+if command -v dde >/dev/null 2>&1 && command -v docker >/dev/null 2>&1; then
+    dde system:update --no-interaction || true
+fi
+POSTUPGRADE
+    chmod 755 "${WORK}/.post-upgrade"
+
     ARCH_DIR="${REPO}/${ARCH}"
     mkdir -p "${ARCH_DIR}"
-    (cd "${WORK}" && tar -czf "${ARCH_DIR}/dde-${VERSION}-r0-${ARCH}.apk" .PKGINFO .post-install usr/)
+    (cd "${WORK}" && tar -czf "${ARCH_DIR}/dde-${VERSION}-r0-${ARCH}.apk" .PKGINFO .post-install .post-upgrade usr/)
     rm -rf "${WORK}"
 
     # Generate APKINDEX
