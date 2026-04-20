@@ -170,7 +170,7 @@ final class ServiceRegistryTest extends TestCase
     {
         $registry = new ServiceRegistry([], $this->createDatabaseAdapterRegistry());
         $this->assertSame('/var/lib/mysql', $registry->getContainerDataMount('mariadb'));
-        $this->assertSame('/var/lib/postgresql', $registry->getContainerDataMount('postgres'));
+        $this->assertSame('/var/lib/postgresql/data', $registry->getContainerDataMount('postgres'));
         $this->assertSame('/data', $registry->getContainerDataMount('valkey'));
     }
 
