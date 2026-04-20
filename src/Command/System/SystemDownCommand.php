@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Command\System;
 
 use App\Command\AbstractSystemCommand;
-use App\Manager\DockerManager;
+use App\Manager\SystemLifecycleManager;
+use App\Model\SystemLifecycleProgress;
 use App\Output\FormatterResolver;
-use App\Service\ServiceRegistry;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -16,13 +16,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'system:down',
-    description: 'Stop all global dde services',
+    description: 'Stop and remove all dde containers',
 )]
 final class SystemDownCommand extends AbstractSystemCommand
 {
     public function __construct(
-        private readonly ServiceRegistry $serviceRegistry,
-        private readonly DockerManager $dockerManager,
+        private readonly SystemLifecycleManager $manager,
         FormatterResolver $formatterResolver,
     ) {
         parent::__construct($formatterResolver);
@@ -33,63 +32,28 @@ final class SystemDownCommand extends AbstractSystemCommand
         $formatter = $this->resolveFormatter($output, $input);
         $io = new SymfonyStyle($input, $output);
 
-        $services = $this->serviceRegistry->getGlobalServices();
-        $services = array_reverse($services);
+        $result = $this->manager->down(
+            $formatter->isInteractive()
+                ? function (SystemLifecycleProgress $event, string $name, ?string $container) use ($io): void {
+                    match ($event) {
+                        SystemLifecycleProgress::Removing => $io->write(sprintf(
+                            '  Removing <info>%s</info>%s... ',
+                            $name,
+                            $container !== null && $container !== $name ? sprintf(' (%s)', $container) : '',
+                        )),
+                        SystemLifecycleProgress::Removed => $io->writeln('<info>done</info>'),
+                        default => null,
+                    };
+                }
+            : null,
+        );
 
-        $results = [];
-
-        foreach ($services as $service) {
-            $wasRunning = $service->isRunning();
-
-            if ($formatter->isInteractive()) {
-                $io->write(sprintf('  Stopping <info>%s</info> (%s)... ', $service->getName(), $service->getContainerName()));
-            }
-
-            $service->remove();
-
-            $status = $wasRunning ? 'stopped' : 'already_stopped';
-
-            if ($formatter->isInteractive()) {
-                $io->writeln($wasRunning ? '<info>done</info>' : '<comment>not running</comment>');
-            }
-
-            $results[] = [
-                'name' => $service->getName(),
-                'status' => $status,
-                'container' => $service->getContainerName(),
-            ];
-        }
-
-        // Stop versioned service containers (mariadb, postgres, valkey, etc.)
-        $serviceContainers = $this->dockerManager->getContainersByLabel('dde.service');
-
-        foreach ($serviceContainers as $container) {
-            if ($formatter->isInteractive()) {
-                $io->write(sprintf('  Stopping <info>%s</info>... ', $container->name));
-            }
-
-            $this->dockerManager->stop($container->name);
-            $this->dockerManager->remove($container->name);
-
-            if ($formatter->isInteractive()) {
-                $io->writeln('<info>done</info>');
-            }
-
-            $results[] = [
-                'name' => $container->name,
-                'status' => 'stopped',
-                'container' => $container->name,
-            ];
-        }
-
-        if (!$formatter->isInteractive()) {
-            return $formatter->success([
-                'services' => $results,
-            ]);
+        if (! $formatter->isInteractive()) {
+            return $formatter->success($result);
         }
 
         $io->newLine();
-        $io->success('All dde services stopped.');
+        $io->success('All dde containers removed.');
 
         return Command::SUCCESS;
     }
