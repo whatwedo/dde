@@ -6,6 +6,8 @@ namespace Tests\Unit\Manager;
 
 use App\Manager\DockerManager;
 use App\Manager\SystemLifecycleManager;
+use App\Model\ContainerInfo;
+use App\Model\ContainerStatus;
 use App\Model\SystemLifecycleProgress;
 use App\Service\ServiceInterface;
 use App\Service\ServiceRegistry;
@@ -121,6 +123,127 @@ final class SystemLifecycleManagerTest extends TestCase
         });
 
         $this->assertSame([SystemLifecycleProgress::Starting, SystemLifecycleProgress::AlreadyRunning], $events);
+    }
+
+    public function testStopHaltsGlobalServicesInReverseOrderAndVersionedContainers(): void
+    {
+        $serviceA = $this->createMock(ServiceInterface::class);
+        $serviceA->method('getName')->willReturn('traefik');
+        $serviceB = $this->createMock(ServiceInterface::class);
+        $serviceB->method('getName')->willReturn('dnsmasq');
+
+        $this->serviceRegistry
+            ->method('getGlobalServices')
+            ->willReturn([$serviceA, $serviceB]);
+
+        $callOrder = [];
+        $serviceA->method('stop')->willReturnCallback(
+            static function () use (&$callOrder): void {
+                $callOrder[] = 'traefik';
+            }
+        );
+        $serviceB->method('stop')->willReturnCallback(
+            static function () use (&$callOrder): void {
+                $callOrder[] = 'dnsmasq';
+            }
+        );
+
+        $versionedContainer = new ContainerInfo(
+            name: 'project-db-mariadb',
+            status: ContainerStatus::RUNNING,
+            image: 'mariadb:10.5',
+            labels: [
+                'dde.service' => 'mariadb',
+            ],
+        );
+
+        $this->dockerManager
+            ->method('getContainersByLabel')
+            ->with('dde.service')
+            ->willReturn([$versionedContainer]);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('stop')
+            ->with('project-db-mariadb');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('remove');
+
+        $result = $this->manager->stop();
+
+        $this->assertSame(['dnsmasq', 'traefik'], $callOrder);
+        $this->assertCount(1, $result['versionedContainers']);
+        $this->assertSame('project-db-mariadb', $result['versionedContainers'][0]['name']);
+    }
+
+    public function testStopEmitsStoppingAndStoppedEventsInReverseOrder(): void
+    {
+        $serviceA = $this->createMock(ServiceInterface::class);
+        $serviceA->method('getName')->willReturn('traefik');
+        $serviceA->method('isRunning')->willReturn(true);
+        $serviceB = $this->createMock(ServiceInterface::class);
+        $serviceB->method('getName')->willReturn('dnsmasq');
+        $serviceB->method('isRunning')->willReturn(false);
+
+        $this->serviceRegistry
+            ->method('getGlobalServices')
+            ->willReturn([$serviceA, $serviceB]);
+
+        $versionedContainer = new ContainerInfo(
+            name: 'project-db-mariadb',
+            status: ContainerStatus::RUNNING,
+            image: 'mariadb:10.5',
+            labels: [
+                'dde.service' => 'mariadb',
+            ],
+        );
+
+        $this->dockerManager
+            ->method('getContainersByLabel')
+            ->with('dde.service')
+            ->willReturn([$versionedContainer]);
+
+        /** @var list<array{event: SystemLifecycleProgress, name: string}> $events */
+        $events = [];
+
+        $this->manager->stop(static function (SystemLifecycleProgress $event, string $name) use (&$events): void {
+            $events[] = [
+                'event' => $event,
+                'name' => $name,
+            ];
+        });
+
+        $this->assertSame(
+            [
+                [
+                    'event' => SystemLifecycleProgress::Stopping,
+                    'name' => 'dnsmasq',
+                ],
+                [
+                    'event' => SystemLifecycleProgress::AlreadyStopped,
+                    'name' => 'dnsmasq',
+                ],
+                [
+                    'event' => SystemLifecycleProgress::Stopping,
+                    'name' => 'traefik',
+                ],
+                [
+                    'event' => SystemLifecycleProgress::Stopped,
+                    'name' => 'traefik',
+                ],
+                [
+                    'event' => SystemLifecycleProgress::Stopping,
+                    'name' => 'project-db-mariadb',
+                ],
+                [
+                    'event' => SystemLifecycleProgress::Stopped,
+                    'name' => 'project-db-mariadb',
+                ],
+            ],
+            $events,
+        );
     }
 
     protected function setUp(): void
