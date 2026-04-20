@@ -32,7 +32,6 @@ Available on every command:
 | `project:up` | `up` | Start the project containers | `--skip-hooks` `--build` |
 | `project:down` | `down` | Stop and remove containers | `--skip-hooks` `--remove-orphans` |
 | `project:stop` | `stop` | Stop containers without removing | |
-| `project:restart` | | Restart containers | `--skip-hooks` `--build` |
 | `project:update` | `update` | Pull images, rebuild, restart | `--skip-hooks` |
 
 ## Project Information
@@ -77,9 +76,12 @@ Available on every command:
 |---------|-------------|---------------------|
 | `system:install` | Install and configure the dde system | |
 | `system:up` | Start all global services | |
-| `system:down` | Stop all global services | |
-| `system:restart` | Restart all global services | |
+| `system:down` | Stop and remove all global services | |
+| `system:stop` | Stop all dde containers without removing | |
+| `system:update` | Rebuild global service images and refresh integrations | |
 | `system:status` | Show status of global services | |
 | `system:service:up` | Start a service manually | `<name>` `--service-version=SERVICE-VERSION` |
 | `system:doctor` | Check the health of the dde system | |
 | `system:cleanup` | Clean up dde-managed Docker resources | `--dry-run` `--force` |
+
+See also: [System-Lifecycle](../guides/system-lifecycle.md) for when to use `system:install` vs. `system:update`, or `system:stop` vs. `system:down`.
