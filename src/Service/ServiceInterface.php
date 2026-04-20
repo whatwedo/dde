@@ -16,6 +16,10 @@ interface ServiceInterface
 
     public function stop(): void;
 
+    public function remove(): void;
+
+    public function build(bool $pull = false): void;
+
     public function status(): ServiceStatus;
 
     public function isRunning(): bool;

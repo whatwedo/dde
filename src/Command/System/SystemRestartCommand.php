@@ -48,7 +48,7 @@ final class SystemRestartCommand extends AbstractSystemCommand
                 $io->write(sprintf('  Stopping <info>%s</info>... ', $service->getName()));
             }
 
-            $service->stop();
+            $service->remove();
 
             if ($formatter->isInteractive()) {
                 $io->writeln('<info>done</info>');

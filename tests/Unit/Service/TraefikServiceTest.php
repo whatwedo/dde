@@ -145,6 +145,11 @@ final class TraefikServiceTest extends TestCase
             ->willReturn(false);
 
         $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-traefik')
+            ->willReturn(false);
+
+        $this->dockerManager
             ->method('networkExists')
             ->with('dde')
             ->willReturn(true);
@@ -159,6 +164,35 @@ final class TraefikServiceTest extends TestCase
         $this->assertFileExists($this->tempDir.'/traefik/traefik.yml');
         $this->assertDirectoryExists($this->tempDir.'/traefik/dynamic');
         $this->assertDirectoryExists($this->tempDir.'/certs');
+    }
+
+    public function testStartReactivatesExistingStoppedContainer(): void
+    {
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-traefik')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-traefik')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('networkExists')
+            ->with('dde')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('start')
+            ->with('dde-traefik');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('run');
+
+        $this->service->start();
     }
 
     public function testStartSkipsWhenAlreadyRunning(): void
@@ -180,8 +214,32 @@ final class TraefikServiceTest extends TestCase
         $this->service->start();
     }
 
-    public function testStopCallsDockerManagerStopAndRemove(): void
+    public function testStopOnlyCallsDockerManagerStopWhenRunning(): void
     {
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-traefik')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('stop')
+            ->with('dde-traefik');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('remove');
+
+        $this->service->stop();
+    }
+
+    public function testRemoveStopsAndRemovesWhenRunning(): void
+    {
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-traefik')
+            ->willReturn(true);
+
         $this->dockerManager
             ->method('isContainerRunning')
             ->with('dde-traefik')
@@ -197,7 +255,7 @@ final class TraefikServiceTest extends TestCase
             ->method('remove')
             ->with('dde-traefik');
 
-        $this->service->stop();
+        $this->service->remove();
     }
 
     public function testStopSkipsWhenNotRunning(): void

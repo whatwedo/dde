@@ -44,6 +44,15 @@ final class SystemRestartCommandTest extends TestCase
                 return ! $stopped;
             });
 
+        // Container exists during stop phase; after remove it is gone so start() takes the run path.
+        $containerExistsFlag = true;
+
+        $this->dockerManager
+            ->method('containerExists')
+            ->willReturnCallback(function () use (&$containerExistsFlag): bool {
+                return $containerExistsFlag;
+            });
+
         $this->dockerManager
             ->method('stop')
             ->willReturnCallback(function () use (&$callOrder, &$stopped): void {
@@ -53,8 +62,9 @@ final class SystemRestartCommandTest extends TestCase
 
         $this->dockerManager
             ->method('remove')
-            ->willReturnCallback(function () use (&$callOrder): void {
+            ->willReturnCallback(function () use (&$callOrder, &$containerExistsFlag): void {
                 $callOrder[] = 'remove';
+                $containerExistsFlag = false;
             });
 
         $this->dockerManager

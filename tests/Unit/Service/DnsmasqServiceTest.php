@@ -117,7 +117,7 @@ final class DnsmasqServiceTest extends TestCase
         $this->dockerManager
             ->expects($this->once())
             ->method('buildImage')
-            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-dnsmasq-'), 'dde-dnsmasq:local');
+            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-dnsmasq-'), 'dde-dnsmasq:local', null, false);
 
         $this->service->buildImage();
 
@@ -138,7 +138,7 @@ final class DnsmasqServiceTest extends TestCase
         $this->dockerManager
             ->expects($this->once())
             ->method('buildImage')
-            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-dnsmasq-'), 'dde-dnsmasq:local');
+            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-dnsmasq-'), 'dde-dnsmasq:local', null, false);
 
         $this->service->buildImage();
     }
@@ -162,9 +162,19 @@ final class DnsmasqServiceTest extends TestCase
         $this->dockerManager
             ->expects($this->once())
             ->method('buildImage')
-            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-dnsmasq-'), 'dde-dnsmasq:local');
+            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-dnsmasq-'), 'dde-dnsmasq:local', null, false);
 
         $this->service->buildImage();
+    }
+
+    public function testBuildWithPullPassesPullFlagToImageBuilder(): void
+    {
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('buildImage')
+            ->with($this->anything(), 'dde-dnsmasq:local', null, true);
+
+        $this->service->build(true);
     }
 
     public function testBuildImageThrowsWhenDockerfileNotFound(): void
@@ -191,9 +201,14 @@ final class DnsmasqServiceTest extends TestCase
             ->willReturn(false);
 
         $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-dnsmasq')
+            ->willReturn(false);
+
+        $this->dockerManager
             ->expects($this->once())
             ->method('buildImage')
-            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-dnsmasq-'), 'dde-dnsmasq:local');
+            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-dnsmasq-'), 'dde-dnsmasq:local', null, false);
 
         $this->dockerManager
             ->expects($this->once())
@@ -223,8 +238,32 @@ final class DnsmasqServiceTest extends TestCase
         $this->service->start();
     }
 
-    public function testStopCallsDockerManagerStopAndRemove(): void
+    public function testStopOnlyCallsDockerManagerStopWhenRunning(): void
     {
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-dnsmasq')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('stop')
+            ->with('dde-dnsmasq');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('remove');
+
+        $this->service->stop();
+    }
+
+    public function testRemoveStopsAndRemovesWhenRunning(): void
+    {
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-dnsmasq')
+            ->willReturn(true);
+
         $this->dockerManager
             ->method('isContainerRunning')
             ->with('dde-dnsmasq')
@@ -240,7 +279,7 @@ final class DnsmasqServiceTest extends TestCase
             ->method('remove')
             ->with('dde-dnsmasq');
 
-        $this->service->stop();
+        $this->service->remove();
     }
 
     public function testIsRunningDelegatesToDockerManager(): void
