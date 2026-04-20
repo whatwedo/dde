@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### BREAKING
+
+- `project:restart` removed — use `project:stop && project:up` to restart with
+  preserved containers, or `project:update` to rebuild with fresh images.
+- `system:restart` removed — use `system:stop && system:up` to restart preserved
+  containers, or `system:update` to rebuild global service images.
+- APT/Arch/Alpine/RPM package upgrades now call `dde system:update` (previously
+  `dde system:install`).
+
+### Added
+
+- `system:update` — rebuilds global service images (`docker build --pull`) and
+  refreshes integrations (shell completion, Claude skill).
+- `system:stop` — stops all dde containers (global + versioned) without
+  removing them.
+- `SystemLifecycleManager` — new internal orchestrator for system:* lifecycle.
+
 ## [2.0.0-alpha.4] - 2026-04-19
 
 ### Added
