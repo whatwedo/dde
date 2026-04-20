@@ -60,6 +60,32 @@ readonly class DockerManager
         return trim($process->getOutput()) === 'true';
     }
 
+    public function containerExists(string $containerName): bool
+    {
+        $process = $this->processFactory->create([
+            'docker', 'ps', '-a',
+            '--filter', sprintf('name=^%s$', $containerName),
+            '--format', '{{.Names}}',
+        ]);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            return false;
+        }
+
+        return trim($process->getOutput()) === $containerName;
+    }
+
+    public function start(string $containerName): void
+    {
+        $process = $this->processFactory->create(['docker', 'start', $containerName]);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new ProcessFailedException($process);
+        }
+    }
+
     /**
      * @return array<ContainerInfo>
      *
