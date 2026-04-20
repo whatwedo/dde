@@ -31,10 +31,14 @@ final class AbstractSystemServiceTest extends TestCase
             ->expects($this->never())
             ->method('run');
 
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('start');
+
         $this->service->start();
     }
 
-    public function testStartCallsRunWhenNotRunning(): void
+    public function testStartCallsRunWhenContainerDoesNotExist(): void
     {
         $this->dockerManager
             ->expects($this->once())
@@ -44,8 +48,44 @@ final class AbstractSystemServiceTest extends TestCase
 
         $this->dockerManager
             ->expects($this->once())
+            ->method('containerExists')
+            ->with('dde-test')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->expects($this->once())
             ->method('run')
             ->with($this->isInstanceOf(ContainerConfig::class));
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('start');
+
+        $this->service->start();
+    }
+
+    public function testStartReactivatesExistingStoppedContainer(): void
+    {
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('isContainerRunning')
+            ->with('dde-test')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('containerExists')
+            ->with('dde-test')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('start')
+            ->with('dde-test');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('run');
 
         $this->service->start();
     }
@@ -69,8 +109,53 @@ final class AbstractSystemServiceTest extends TestCase
         $this->service->stop();
     }
 
-    public function testStopCallsStopAndRemoveWhenRunning(): void
+    public function testStopOnlyCallsStopWhenRunning(): void
     {
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('isContainerRunning')
+            ->with('dde-test')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('stop')
+            ->with('dde-test');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('remove');
+
+        $this->service->stop();
+    }
+
+    public function testRemoveSkipsWhenContainerDoesNotExist(): void
+    {
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('containerExists')
+            ->with('dde-test')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('stop');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('remove');
+
+        $this->service->remove();
+    }
+
+    public function testRemoveStopsAndRemovesWhenRunning(): void
+    {
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('containerExists')
+            ->with('dde-test')
+            ->willReturn(true);
+
         $this->dockerManager
             ->expects($this->once())
             ->method('isContainerRunning')
@@ -87,7 +172,43 @@ final class AbstractSystemServiceTest extends TestCase
             ->method('remove')
             ->with('dde-test');
 
-        $this->service->stop();
+        $this->service->remove();
+    }
+
+    public function testRemoveOnlyRemovesWhenContainerExistsButIsStopped(): void
+    {
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('containerExists')
+            ->with('dde-test')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('isContainerRunning')
+            ->with('dde-test')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('stop');
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('remove')
+            ->with('dde-test');
+
+        $this->service->remove();
+    }
+
+    public function testBuildIsNoOpByDefault(): void
+    {
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('buildImage');
+
+        $this->service->build();
+        $this->service->build(true);
     }
 
     public function testIsRunningDelegatesToDockerManager(): void

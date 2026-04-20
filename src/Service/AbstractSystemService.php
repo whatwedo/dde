@@ -29,6 +29,14 @@ abstract class AbstractSystemService implements ServiceInterface
             return;
         }
 
+        $containerName = $this->getContainerName();
+
+        if ($this->dockerManager->containerExists($containerName)) {
+            $this->dockerManager->start($containerName);
+
+            return;
+        }
+
         $this->dockerManager->run($this->getContainerConfig());
     }
 
@@ -39,7 +47,26 @@ abstract class AbstractSystemService implements ServiceInterface
         }
 
         $this->dockerManager->stop($this->getContainerName());
-        $this->dockerManager->remove($this->getContainerName());
+    }
+
+    public function remove(): void
+    {
+        $containerName = $this->getContainerName();
+
+        if (! $this->dockerManager->containerExists($containerName)) {
+            return;
+        }
+
+        if ($this->isRunning()) {
+            $this->dockerManager->stop($containerName);
+        }
+
+        $this->dockerManager->remove($containerName);
+    }
+
+    public function build(bool $pull = false): void
+    {
+        // Hook for services with a local image build; upstream-image services inherit this no-op.
     }
 
     public function status(): ServiceStatus

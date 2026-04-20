@@ -78,9 +78,38 @@ final class MailpitServiceTest extends TestCase
             ->willReturn(false);
 
         $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-mailpit')
+            ->willReturn(false);
+
+        $this->dockerManager
             ->expects($this->once())
             ->method('run')
             ->with($this->isInstanceOf(ContainerConfig::class));
+
+        $this->service->start();
+    }
+
+    public function testStartReactivatesExistingStoppedContainer(): void
+    {
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-mailpit')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-mailpit')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('start')
+            ->with('dde-mailpit');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('run');
 
         $this->service->start();
     }
@@ -99,8 +128,32 @@ final class MailpitServiceTest extends TestCase
         $this->service->start();
     }
 
-    public function testStopCallsDockerManagerStopAndRemove(): void
+    public function testStopOnlyCallsDockerManagerStopWhenRunning(): void
     {
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-mailpit')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('stop')
+            ->with('dde-mailpit');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('remove');
+
+        $this->service->stop();
+    }
+
+    public function testRemoveStopsAndRemovesWhenRunning(): void
+    {
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-mailpit')
+            ->willReturn(true);
+
         $this->dockerManager
             ->method('isContainerRunning')
             ->with('dde-mailpit')
@@ -116,7 +169,7 @@ final class MailpitServiceTest extends TestCase
             ->method('remove')
             ->with('dde-mailpit');
 
-        $this->service->stop();
+        $this->service->remove();
     }
 
     public function testStopSkipsWhenNotRunning(): void

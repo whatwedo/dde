@@ -67,9 +67,14 @@ final class SshAgentService extends AbstractSystemService
 
     public function start(): void
     {
-        $this->buildImage();
+        $this->build();
 
         parent::start();
+    }
+
+    public function build(bool $pull = false): void
+    {
+        $this->buildImage($pull);
     }
 
     /**
@@ -121,7 +126,7 @@ final class SshAgentService extends AbstractSystemService
         }
     }
 
-    public function buildImage(): void
+    public function buildImage(bool $pull = false): void
     {
         $resourceDir = $this->projectDir.'/resources/docker/ssh-agent';
         $dockerfilePath = $resourceDir.'/Dockerfile';
@@ -144,6 +149,7 @@ final class SshAgentService extends AbstractSystemService
             $this->dataDir.'/ssh-agent/.build-hash',
             $files,
             'dde-ssh-agent-',
+            $pull,
         );
     }
 

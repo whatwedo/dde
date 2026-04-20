@@ -34,6 +34,10 @@ final class SystemDownCommandTest extends TestCase
             ->willReturn(true);
 
         $this->dockerManager
+            ->method('containerExists')
+            ->willReturn(true);
+
+        $this->dockerManager
             ->expects($this->once())
             ->method('stop')
             ->with('dde-traefik');
@@ -59,8 +63,16 @@ final class SystemDownCommandTest extends TestCase
             ->willReturn(false);
 
         $this->dockerManager
+            ->method('containerExists')
+            ->willReturn(false);
+
+        $this->dockerManager
             ->expects($this->never())
             ->method('stop');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('remove');
 
         $this->commandTester->execute([], [
             'interactive' => false,
@@ -73,6 +85,10 @@ final class SystemDownCommandTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('containerExists')
             ->willReturn(true);
 
         $this->dockerManager->method('stop');

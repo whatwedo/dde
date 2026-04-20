@@ -56,9 +56,14 @@ final class DnsmasqService extends AbstractSystemService
     public function start(): void
     {
         $this->ensureConfig();
-        $this->buildImage();
+        $this->build();
 
         parent::start();
+    }
+
+    public function build(bool $pull = false): void
+    {
+        $this->buildImage($pull);
     }
 
     /**
@@ -84,7 +89,7 @@ final class DnsmasqService extends AbstractSystemService
         $this->filesystem->dumpFile($configDir.'/dnsmasq.conf', implode("\n", $lines)."\n");
     }
 
-    public function buildImage(): void
+    public function buildImage(bool $pull = false): void
     {
         $resourceDir = $this->projectDir.'/resources/docker/dnsmasq';
         $dockerfilePath = $resourceDir.'/Dockerfile';
@@ -100,6 +105,7 @@ final class DnsmasqService extends AbstractSystemService
                 'Dockerfile' => $this->filesystem->readFile($dockerfilePath),
             ],
             'dde-dnsmasq-',
+            $pull,
         );
     }
 

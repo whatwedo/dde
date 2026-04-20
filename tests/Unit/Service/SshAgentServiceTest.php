@@ -197,13 +197,24 @@ final class SshAgentServiceTest extends TestCase
         $this->dockerManager
             ->expects($this->once())
             ->method('buildImage')
-            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-ssh-agent-'), 'dde-ssh-agent:local');
+            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-ssh-agent-'), 'dde-ssh-agent:local', null, false);
 
         $service = $this->createService();
         $service->buildImage();
 
         $hashFile = $this->tempDir.'/ssh-agent/.build-hash';
         $this->assertFileExists($hashFile);
+    }
+
+    public function testBuildWithPullPassesPullFlagToImageBuilder(): void
+    {
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('buildImage')
+            ->with($this->anything(), 'dde-ssh-agent:local', null, true);
+
+        $service = $this->createService();
+        $service->build(true);
     }
 
     public function testBuildImageThrowsWhenDockerfileNotFound(): void
@@ -226,9 +237,14 @@ final class SshAgentServiceTest extends TestCase
             ->willReturn(false);
 
         $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-ssh-agent')
+            ->willReturn(false);
+
+        $this->dockerManager
             ->expects($this->once())
             ->method('buildImage')
-            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-ssh-agent-'), 'dde-ssh-agent:local');
+            ->with($this->stringStartsWith(sys_get_temp_dir().'/dde-ssh-agent-'), 'dde-ssh-agent:local', null, false);
 
         $this->dockerManager
             ->expects($this->once())
@@ -258,8 +274,33 @@ final class SshAgentServiceTest extends TestCase
         $service->start();
     }
 
-    public function testStopCallsDockerManagerStopAndRemove(): void
+    public function testStopOnlyCallsDockerManagerStopWhenRunning(): void
     {
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-ssh-agent')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('stop')
+            ->with('dde-ssh-agent');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('remove');
+
+        $service = $this->createService();
+        $service->stop();
+    }
+
+    public function testRemoveStopsAndRemovesWhenRunning(): void
+    {
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-ssh-agent')
+            ->willReturn(true);
+
         $this->dockerManager
             ->method('isContainerRunning')
             ->with('dde-ssh-agent')
@@ -276,7 +317,7 @@ final class SshAgentServiceTest extends TestCase
             ->with('dde-ssh-agent');
 
         $service = $this->createService();
-        $service->stop();
+        $service->remove();
     }
 
     public function testIsRunningDelegatesToDockerManager(): void

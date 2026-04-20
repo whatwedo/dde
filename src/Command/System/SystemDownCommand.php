@@ -45,7 +45,7 @@ final class SystemDownCommand extends AbstractSystemCommand
                 $io->write(sprintf('  Stopping <info>%s</info> (%s)... ', $service->getName(), $service->getContainerName()));
             }
 
-            $service->stop();
+            $service->remove();
 
             $status = $wasRunning ? 'stopped' : 'already_stopped';
 
