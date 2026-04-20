@@ -54,7 +54,11 @@ install -m 755 ${BINARY_PATH} %{buildroot}/usr/bin/dde
 
 %post
 if command -v dde >/dev/null 2>&1 && command -v docker >/dev/null 2>&1; then
-    dde system:install --no-interaction || true
+    if [ "$1" = "1" ]; then
+        dde system:install --no-interaction || true
+    elif [ "$1" = "2" ]; then
+        dde system:update --no-interaction || true
+    fi
 fi
 
 %files
