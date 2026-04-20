@@ -96,3 +96,9 @@ This runs 11 checks covering:
 | Mailpit           | Mailpit container is running                          |
 
 All checks should pass. If any fail, re-run `dde system:install` or consult the error message for guidance.
+
+## Upgrading dde
+
+After `brew upgrade dde` / `apt-get upgrade dde` / …, dde runs `system:update`
+automatically (except on Homebrew, where it is surfaced via caveats) — see
+the [System Lifecycle](../guides/system-lifecycle.md) guide.
