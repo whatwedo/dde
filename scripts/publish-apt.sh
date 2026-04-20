@@ -31,7 +31,11 @@ EOF
 #!/bin/sh
 set -e
 if command -v dde >/dev/null 2>&1 && command -v docker >/dev/null 2>&1; then
-    dde system:install --no-interaction || true
+    if [ -n "$2" ]; then
+        dde system:update --no-interaction || true
+    else
+        dde system:install --no-interaction || true
+    fi
 fi
 POSTINST
     chmod 755 "${PKG}/DEBIAN/postinst"
