@@ -137,18 +137,6 @@ readonly class ProjectLifecycleManager
     }
 
     /**
-     * Performs a full restart: down then up.
-     *
-     * @return array{serviceResults: list<array{name: string, version: string, status: string}>, devLayerResult: array{serviceName: string, imageTag: string}|null, domains: list<string>}
-     */
-    public function restart(ResolvedConfig $config, string $projectDir, bool $build = false, ?OutputInterface $output = null): array
-    {
-        $this->down($config, $projectDir);
-
-        return $this->up($config, $projectDir, $build, output: $output);
-    }
-
-    /**
      * Ensures all declared services are running.
      *
      * @return list<array{name: string, version: string, status: string}>

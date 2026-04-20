@@ -185,45 +185,6 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->manager->down($config, $projectDir);
     }
 
-    #[AllowMockObjectsWithoutExpectations]
-    public function testRestartCallsDownThenUp(): void
-    {
-        $config = $this->createConfig();
-        $projectDir = '/tmp/test-project';
-
-        $this->dockerComposeManager->expects($this->once())
-            ->method('down')
-            ->with($projectDir, [
-                'removeOrphans' => false,
-            ]);
-
-        $this->dockerComposeManager->expects($this->once())
-            ->method('findComposeFile')
-            ->willReturn($projectDir.'/docker-compose.yml');
-
-        $this->imageManager->expects($this->once())
-            ->method('ensureDevLayers')
-            ->willReturn(null);
-
-        $this->dockerComposeManager->expects($this->once())
-            ->method('build');
-
-        $this->dockerComposeManager->expects($this->once())
-            ->method('generateOverride')
-            ->willReturn('/tmp/override.yml');
-
-        $this->dockerComposeManager->expects($this->once())
-            ->method('up');
-
-        $this->filesystem->expects($this->once())
-            ->method('remove');
-
-        $result = $this->manager->restart($config, $projectDir);
-
-        $this->assertArrayHasKey('serviceResults', $result);
-        $this->assertArrayHasKey('devLayerResult', $result);
-    }
-
     public function testEnsureServicesReportsAlreadyRunning(): void
     {
         $config = $this->createConfig([
