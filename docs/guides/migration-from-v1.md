@@ -118,3 +118,40 @@ Any customisations that previously relied on the `dde` user can be implemented u
 | Custom openssl CA             | mkcert root CA                  | Installed via `system:install`           |
 | MailCrab                      | Mailpit                         | Different web UI, same SMTP interface    |
 | nginx-proxy                   | Traefik v3                      | Routing via labels instead of env vars   |
+
+## v2: restart commands removed
+
+`project:restart` and `system:restart` were removed in v2. The lifecycle
+commands are now explicitly symmetric:
+
+### Replacement for `project:restart`
+
+- Restart the existing containers (fast, container state is preserved):
+  ```bash
+  dde project:stop && dde project:up
+  ```
+- Rebuild with fresh images:
+  ```bash
+  dde project:update
+  ```
+
+### Replacement for `system:restart`
+
+- Restart the global services only (containers are preserved):
+  ```bash
+  dde system:stop && dde system:up
+  ```
+- Rebuild the global service images plus skill/completion refresh:
+  ```bash
+  dde system:update
+  ```
+
+### New commands
+
+- `dde project:stop` / `dde system:stop`: halt containers without removing
+  them. Resume quickly via `project:up` / `system:up`.
+- `dde system:update`: removes all dde containers, rebuilds the global
+  service images with `docker build --pull`, and refreshes the integrations
+  that are bound to the dde binary (shell completion, Claude skill).
+  Package managers run this automatically after an `apt` / `dnf` / `pacman` /
+  `apk` upgrade; Homebrew surfaces it in its caveats.
