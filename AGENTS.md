@@ -9,6 +9,7 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
 - Commands: `App\Command\Project\*`, `App\Command\System\*` — thin commands, business logic in managers/services
 - Manager: `App\Manager\` — orchestrate and coordinate
   - `ProjectLifecycleManager` — project up/down orchestration (services, certs, dev layers, overrides)
+  - `SystemLifecycleManager` — system up/down/stop/update orchestration (global services + versioned containers, image rebuild with --pull, post-install refresh for completion + claude-skill)
   - `ProjectInitManager` — `.dde/` directory structure creation
   - `ProjectInitAdaptationManager` — project init adaptation logic
   - `DockerComposeManager` — docker compose CLI calls, override generation
@@ -96,6 +97,8 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
 - `make qa` must stay green after every commit, including bisect-mid-branch checkouts. Rebase with `--exec "make qa"` when in doubt.
 
 ## Documentation
+**All committed Markdown (under `docs/`, `skills/`, `README.md`, `CHANGELOG.md`, `AGENTS.md`) is written in English.** The project is distributed publicly and consumed by an English-speaking audience; keep the docs consistent.
+
 **Every developed feature must be documented in the same branch.** A feature is not complete until the relevant docs are updated. Before merging, ask: "where would a user / maintainer / AI agent look for this?"
 
 Required touch-points per feature:
