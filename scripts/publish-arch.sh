@@ -43,7 +43,9 @@ post_install() {
 }
 
 post_upgrade() {
-    post_install
+    if command -v dde >/dev/null 2>&1 && command -v docker >/dev/null 2>&1; then
+        dde system:update --no-interaction || true
+    fi
 }
 INSTALL
 
