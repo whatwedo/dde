@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Manager;
 
+use App\Manager\ClaudeCodeManager;
+use App\Manager\CompletionManager;
 use App\Manager\DockerManager;
 use App\Manager\SystemLifecycleManager;
 use App\Model\ContainerInfo;
@@ -14,6 +16,7 @@ use App\Service\ServiceRegistry;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Console\Application;
 
 #[AllowMockObjectsWithoutExpectations]
 final class SystemLifecycleManagerTest extends TestCase
@@ -21,6 +24,10 @@ final class SystemLifecycleManagerTest extends TestCase
     private ServiceRegistry&MockObject $serviceRegistry;
 
     private DockerManager&MockObject $dockerManager;
+
+    private CompletionManager&MockObject $completionManager;
+
+    private ClaudeCodeManager&MockObject $claudeCodeManager;
 
     private SystemLifecycleManager $manager;
 
@@ -344,14 +351,184 @@ final class SystemLifecycleManagerTest extends TestCase
         );
     }
 
+    public function testUpdateRunsDownThenBuildWithPullThenUpThenPostInstall(): void
+    {
+        $service = $this->createMock(ServiceInterface::class);
+        $service->method('getName')->willReturn('traefik');
+
+        $this->serviceRegistry
+            ->method('getGlobalServices')
+            ->willReturn([$service]);
+
+        $this->dockerManager
+            ->method('getContainersByLabel')
+            ->willReturn([]);
+
+        $this->dockerManager->method('networkExists')->with('dde')->willReturn(false);
+        $this->dockerManager->method('createNetwork')->with('dde');
+
+        $callOrder = [];
+        $service->method('remove')->willReturnCallback(
+            static function () use (&$callOrder): void {
+                $callOrder[] = 'remove';
+            }
+        );
+        $service->method('build')->willReturnCallback(
+            static function (bool $pull) use (&$callOrder): void {
+                $callOrder[] = $pull ? 'build-pull' : 'build';
+            }
+        );
+        $service->method('start')->willReturnCallback(
+            static function () use (&$callOrder): void {
+                $callOrder[] = 'start';
+            }
+        );
+
+        $this->completionManager
+            ->expects($this->once())
+            ->method('installCompletion');
+
+        $this->claudeCodeManager
+            ->method('isClaudeCodeInstalled')
+            ->willReturn(true);
+
+        $this->claudeCodeManager
+            ->expects($this->once())
+            ->method('installSkill');
+
+        $result = $this->manager->update(new Application());
+
+        $this->assertSame(['remove', 'build-pull', 'start'], $callOrder);
+        $this->assertSame([], $result['postInstallWarnings']);
+    }
+
+    public function testUpdateSkipsClaudeSkillWhenClaudeNotInstalled(): void
+    {
+        $this->serviceRegistry->method('getGlobalServices')->willReturn([]);
+        $this->dockerManager->method('getContainersByLabel')->willReturn([]);
+        $this->dockerManager->method('networkExists')->with('dde')->willReturn(true);
+
+        $this->claudeCodeManager
+            ->method('isClaudeCodeInstalled')
+            ->willReturn(false);
+
+        $this->claudeCodeManager
+            ->expects($this->never())
+            ->method('installSkill');
+
+        $this->manager->update(new Application());
+    }
+
+    public function testUpdateCollectsPostInstallErrorsAsWarnings(): void
+    {
+        $this->serviceRegistry->method('getGlobalServices')->willReturn([]);
+        $this->dockerManager->method('getContainersByLabel')->willReturn([]);
+        $this->dockerManager->method('networkExists')->with('dde')->willReturn(true);
+
+        $this->completionManager
+            ->method('installCompletion')
+            ->willThrowException(new \RuntimeException('completion broken'));
+
+        $this->claudeCodeManager->method('isClaudeCodeInstalled')->willReturn(false);
+
+        $result = $this->manager->update(new Application());
+
+        $this->assertCount(1, $result['postInstallWarnings']);
+        $this->assertStringContainsString('completion broken', $result['postInstallWarnings'][0]);
+    }
+
+    public function testUpdateEmitsBuildAndPostInstallEvents(): void
+    {
+        $service = $this->createMock(ServiceInterface::class);
+        $service->method('getName')->willReturn('traefik');
+
+        $this->serviceRegistry
+            ->method('getGlobalServices')
+            ->willReturn([$service]);
+
+        $this->dockerManager->method('getContainersByLabel')->willReturn([]);
+        $this->dockerManager->method('networkExists')->with('dde')->willReturn(true);
+
+        $this->claudeCodeManager->method('isClaudeCodeInstalled')->willReturn(false);
+
+        /** @var list<SystemLifecycleProgress> $events */
+        $events = [];
+
+        $this->manager->update(
+            new Application(),
+            static function (SystemLifecycleProgress $event) use (&$events): void {
+                $events[] = $event;
+            },
+        );
+
+        $this->assertSame(
+            [
+                // down(): remove traefik
+                SystemLifecycleProgress::Removing,
+                SystemLifecycleProgress::Removed,
+                // build traefik
+                SystemLifecycleProgress::Building,
+                SystemLifecycleProgress::Built,
+                // up(): start traefik
+                SystemLifecycleProgress::Starting,
+                SystemLifecycleProgress::Started,
+                // post-install: traefik-network
+                SystemLifecycleProgress::PostInstallStarting,
+                SystemLifecycleProgress::PostInstallOk,
+                // post-install: shell-completion
+                SystemLifecycleProgress::PostInstallStarting,
+                SystemLifecycleProgress::PostInstallOk,
+            ],
+            $events,
+        );
+    }
+
+    public function testUpdatePostInstallFailedCarriesErrorDetail(): void
+    {
+        $this->serviceRegistry->method('getGlobalServices')->willReturn([]);
+        $this->dockerManager->method('getContainersByLabel')->willReturn([]);
+        $this->dockerManager->method('networkExists')->with('dde')->willReturn(true);
+
+        $this->completionManager
+            ->method('installCompletion')
+            ->willThrowException(new \RuntimeException('completion broken'));
+
+        $this->claudeCodeManager->method('isClaudeCodeInstalled')->willReturn(false);
+
+        /** @var list<array{event: SystemLifecycleProgress, name: string, detail: ?string}> $failures */
+        $failures = [];
+
+        $this->manager->update(
+            new Application(),
+            static function (SystemLifecycleProgress $event, string $name, ?string $container, ?string $detail) use (&$failures): void {
+                if ($event === SystemLifecycleProgress::PostInstallFailed) {
+                    $failures[] = [
+                        'event' => $event,
+                        'name' => $name,
+                        'detail' => $detail,
+                    ];
+                }
+            },
+        );
+
+        $this->assertCount(1, $failures);
+        $this->assertSame('shell-completion', $failures[0]['name']);
+        $this->assertSame('completion broken', $failures[0]['detail']);
+    }
+
     protected function setUp(): void
     {
         $this->serviceRegistry = $this->createMock(ServiceRegistry::class);
         $this->dockerManager = $this->createMock(DockerManager::class);
+        $this->completionManager = $this->createMock(CompletionManager::class);
+        $this->claudeCodeManager = $this->createMock(ClaudeCodeManager::class);
 
         $this->manager = new SystemLifecycleManager(
             $this->serviceRegistry,
             $this->dockerManager,
+            $this->completionManager,
+            $this->claudeCodeManager,
+            '/tmp/dde-config',
         );
     }
 }

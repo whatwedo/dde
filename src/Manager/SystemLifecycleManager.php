@@ -8,12 +8,16 @@ use App\Model\SystemLifecycleProgress;
 use App\Service\AbstractSystemService;
 use App\Service\ServiceInterface;
 use App\Service\ServiceRegistry;
+use Symfony\Component\Console\Application;
 
 readonly class SystemLifecycleManager
 {
     public function __construct(
         private ServiceRegistry $serviceRegistry,
         private DockerManager $dockerManager,
+        private CompletionManager $completionManager,
+        private ClaudeCodeManager $claudeCodeManager,
+        private string $configDir,
     ) {
     }
 
@@ -177,6 +181,67 @@ readonly class SystemLifecycleManager
         ];
     }
 
+    /**
+     * @param (\Closure(SystemLifecycleProgress, string, ?string, ?string): void)|null $onProgress
+     *
+     * @return array{
+     *     globalServices: list<array{name: string, status: string}>,
+     *     versionedContainers: list<array{name: string, status: string}>,
+     *     postInstallWarnings: list<string>,
+     * }
+     */
+    public function update(Application $application, ?\Closure $onProgress = null): array
+    {
+        $down = $this->down($onProgress);
+
+        foreach ($this->serviceRegistry->getGlobalServices() as $service) {
+            $container = $this->resolveContainerName($service);
+
+            if ($onProgress instanceof \Closure) {
+                $onProgress(SystemLifecycleProgress::Building, $service->getName(), $container, null);
+            }
+
+            $service->build(pull: true);
+
+            if ($onProgress instanceof \Closure) {
+                $onProgress(SystemLifecycleProgress::Built, $service->getName(), $container, null);
+            }
+        }
+
+        $up = $this->up($onProgress);
+
+        $warnings = [];
+
+        $warnings = $this->runPostInstallStep(
+            'traefik-network',
+            fn () => $this->ensureDdeNetwork(),
+            $warnings,
+            $onProgress,
+        );
+
+        $warnings = $this->runPostInstallStep(
+            'shell-completion',
+            fn () => $this->completionManager->installCompletion($this->configDir, $application),
+            $warnings,
+            $onProgress,
+        );
+
+        if ($this->claudeCodeManager->isClaudeCodeInstalled()) {
+            $warnings = $this->runPostInstallStep(
+                'claude-skill',
+                fn () => $this->claudeCodeManager->installSkill(),
+                $warnings,
+                $onProgress,
+            );
+        }
+
+        return [
+            'globalServices' => $up['globalServices'],
+            'versionedContainers' => $down['versionedContainers'],
+            'postInstallWarnings' => $warnings,
+        ];
+    }
+
     private function ensureDdeNetwork(): void
     {
         if (! $this->dockerManager->networkExists('dde')) {
@@ -191,5 +256,36 @@ readonly class SystemLifecycleManager
         }
 
         return null;
+    }
+
+    /**
+     * @param list<string>                                                             $warnings
+     * @param (\Closure(SystemLifecycleProgress, string, ?string, ?string): void)|null $onProgress
+     *
+     * @return list<string>
+     */
+    private function runPostInstallStep(string $name, \Closure $callback, array $warnings, ?\Closure $onProgress = null): array
+    {
+        if ($onProgress instanceof \Closure) {
+            $onProgress(SystemLifecycleProgress::PostInstallStarting, $name, null, null);
+        }
+
+        try {
+            $callback();
+
+            if ($onProgress instanceof \Closure) {
+                $onProgress(SystemLifecycleProgress::PostInstallOk, $name, null, null);
+            }
+
+            return $warnings;
+        } catch (\Throwable $throwable) {
+            if ($onProgress instanceof \Closure) {
+                $onProgress(SystemLifecycleProgress::PostInstallFailed, $name, null, $throwable->getMessage());
+            }
+
+            $warnings[] = sprintf('%s: %s', $name, $throwable->getMessage());
+
+            return $warnings;
+        }
     }
 }
