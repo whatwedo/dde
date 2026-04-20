@@ -91,7 +91,7 @@ final class ProjectLifecycleTest extends TestCase
         $result = $this->runConsoleJson('project:status');
         $this->assertSame('ok', $result['status'], 'project:status should succeed');
 
-        // 13. Hooks: create a post-up hook, restart, verify it ran
+        // 13. Hooks: create a post-up hook, stop + up, verify it ran
         $hookDir = $this->projectDir.'/.dde/hooks/project.up.post';
         $this->filesystem->mkdir($hookDir);
         $hookFile = $hookDir.'/01-e2e.sh';
@@ -99,8 +99,11 @@ final class ProjectLifecycleTest extends TestCase
         $this->filesystem->dumpFile($hookFile, "#!/bin/bash\necho 'HOOK_OK' > ".$hookOutputFile."\n");
         chmod($hookFile, 0o755);
 
-        $result = $this->runConsoleJson('project:restart', timeout: 180);
-        $this->assertSame('ok', $result['status'], 'project:restart should succeed');
+        $result = $this->runConsoleJson('project:stop', timeout: 60);
+        $this->assertSame('ok', $result['status'], 'project:stop should succeed');
+
+        $result = $this->runConsoleJson('project:up', timeout: 180);
+        $this->assertSame('ok', $result['status'], 'project:up after stop should succeed');
         $this->assertFileExists($hookOutputFile, 'post-up hook should have created output file');
         $this->assertSame('HOOK_OK', trim((string) file_get_contents($hookOutputFile)));
 
