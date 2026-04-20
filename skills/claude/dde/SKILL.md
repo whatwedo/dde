@@ -45,21 +45,21 @@ Options:
 ## Project lifecycle
 
 ```bash
-dde project:up              # Start the project (if already running, no-op)
-dde project:down            # Stop and remove containers
-dde project:restart         # Restart containers
-dde project:update          # Full rebuild: pull images, rebuild, restart
-dde project:logs --tail=50  # Show recent logs
+dde project:up                        # Start the project (if already running, no-op)
+dde project:stop                      # Stop containers without removing them
+dde project:down                      # Stop and remove containers
+dde project:update                    # Full rebuild: pull images, rebuild, restart
+dde project:logs --tail=50            # Show recent logs
 ```
 
 **When to use which command:**
 - "start the project" → `dde project:up`
 - "rebuild", "update", "pull latest", "refresh environment" → `dde project:update`
-- "restart" (no rebuild) → `dde project:restart`
+- "restart" (no rebuild, preserve containers) → `dde project:stop && dde project:up`
 
-Options for up/down/restart/update:
+Options for up/down/update:
 - `--skip-hooks` — Skip pre/post hook scripts
-- `--build` — Force rebuild images (up/restart only)
+- `--build` — Force rebuild images (up only)
 
 ## System services
 
@@ -68,9 +68,25 @@ dde runs global services (Traefik, dnsmasq, Mailpit, SSH-Agent). Manage them wit
 ```bash
 dde system:status --output=json   # Show status of all services
 dde system:up                      # Start all services
-dde system:down                    # Stop all services
+dde system:stop                    # Stop all dde containers without removing them
+dde system:down                    # Stop and remove all services
+dde system:update                  # Rebuild global service images and refresh integrations
 dde system:doctor --output=json   # Run health checks
 ```
+
+### When to suggest `system:update`
+
+When the user has installed a new dde release (for example via `brew upgrade
+dde` or `apt upgrade dde`), the follow-up command is `dde system:update`.
+Most package managers call it automatically via their post-install hook, but
+Homebrew surfaces it only as caveats — there the user has to run the
+command manually.
+
+`system:update` removes every dde container, rebuilds the global service
+images with `--pull`, and refreshes the integrations that are bound to the
+dde binary (shell completion, this skill). It does **not** touch the root
+CA, DNS configuration, or the default certificate — those are owned by
+`system:install` (one-off).
 
 ## Database operations
 
