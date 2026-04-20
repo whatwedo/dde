@@ -53,8 +53,11 @@ class Dde < Formula
 
   def caveats
     <<~EOS
-      To finish installing dde, run:
+      After installing dde for the first time, run:
         dde system:install
+
+      After upgrading dde, run:
+        dde system:update
     EOS
   end
 
