@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Command\System;
 
 use App\Command\AbstractSystemCommand;
-use App\Model\ServiceStartStatus;
+use App\Manager\SystemLifecycleManager;
+use App\Model\SystemLifecycleProgress;
 use App\Output\FormatterResolver;
-use App\Service\ServiceRegistry;
 use App\Service\SshAgentService;
-use App\Service\TraefikService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -24,8 +23,7 @@ use Symfony\Component\Process\Process;
 final class SystemUpCommand extends AbstractSystemCommand
 {
     public function __construct(
-        private readonly ServiceRegistry $serviceRegistry,
-        private readonly TraefikService $traefikService,
+        private readonly SystemLifecycleManager $manager,
         private readonly SshAgentService $sshAgentService,
         FormatterResolver $formatterResolver,
     ) {
@@ -37,37 +35,23 @@ final class SystemUpCommand extends AbstractSystemCommand
         $formatter = $this->resolveFormatter($output, $input);
         $io = new SymfonyStyle($input, $output);
 
-        if ($formatter->isInteractive()) {
-            $io->writeln('Ensuring dde network...');
-        }
+        $result = $this->manager->up(
+            $formatter->isInteractive()
+                ? function (SystemLifecycleProgress $event, string $name, ?string $container) use ($io): void {
+                    match ($event) {
+                        SystemLifecycleProgress::Starting => $io->write(sprintf(
+                            '  Starting <info>%s</info>%s... ',
+                            $name,
+                            $container !== null && $container !== $name ? sprintf(' (%s)', $container) : '',
+                        )),
+                        SystemLifecycleProgress::Started => $io->writeln('<info>done</info>'),
+                        SystemLifecycleProgress::AlreadyRunning => $io->writeln('<comment>already running</comment>'),
+                        default => null,
+                    };
+                }
+            : null,
+        );
 
-        $this->traefikService->ensureNetwork();
-
-        $results = [];
-
-        foreach ($this->serviceRegistry->getGlobalServices() as $service) {
-            $wasRunning = $service->isRunning();
-
-            if ($formatter->isInteractive()) {
-                $io->write(sprintf('  Starting <info>%s</info> (%s)... ', $service->getName(), $service->getContainerName()));
-            }
-
-            $service->start();
-
-            $status = $wasRunning ? ServiceStartStatus::ALREADY_RUNNING : ServiceStartStatus::STARTED;
-
-            if ($formatter->isInteractive()) {
-                $io->writeln($wasRunning ? '<comment>already running</comment>' : '<info>done</info>');
-            }
-
-            $results[] = [
-                'name' => $service->getName(),
-                'status' => $status->value,
-                'container' => $service->getContainerName(),
-            ];
-        }
-
-        // Add SSH keys interactively after all services are started (requires TTY for passphrase prompts)
         if ($input->isInteractive() && Process::isTtySupported() && $this->sshAgentService->isRunning() && $this->sshAgentService->getLoadedKeyCount() === 0) {
             $keys = $this->sshAgentService->getConfiguredKeys();
 
@@ -79,9 +63,9 @@ final class SystemUpCommand extends AbstractSystemCommand
             }
         }
 
-        if (!$formatter->isInteractive()) {
+        if (! $formatter->isInteractive()) {
             return $formatter->success([
-                'services' => $results,
+                'services' => $result['globalServices'],
             ]);
         }
 
