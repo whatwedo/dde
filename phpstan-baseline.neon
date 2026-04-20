@@ -19,12 +19,6 @@ parameters:
 			path: tests/Unit/Command/AbstractBaseCommandTest.php
 
 		-
-			message: '#^Negated boolean expression is always true\.$#'
-			identifier: booleanNot.alwaysTrue
-			count: 1
-			path: tests/Unit/Command/System/SystemRestartCommandTest.php
-
-		-
 			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertNotNull\(\) with Symfony\\Component\\DependencyInjection\\ContainerInterface will always evaluate to true\.$#'
 			identifier: method.alreadyNarrowedType
 			count: 1
