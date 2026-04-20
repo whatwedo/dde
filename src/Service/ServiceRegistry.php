@@ -8,7 +8,7 @@ use App\Database\DatabaseAdapterRegistry;
 use App\Model\ServiceDefinition;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
-final readonly class ServiceRegistry
+readonly class ServiceRegistry
 {
     /**
      * @var array<string, array{image: string, defaultVersion: string, knownVersions: list<string>, defaultPort: int, dataPath: string, dataMount: string, environment: array<string, string>}>
