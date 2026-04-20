@@ -31,10 +31,11 @@ final readonly class ServiceRegistry
             'knownVersions' => ['15', '16', '17', '18.3'],
             'defaultPort' => 5432,
             'dataPath' => 'pgdata',
-            'dataMount' => '/var/lib/postgresql',
+            'dataMount' => '/var/lib/postgresql/data',
             'environment' => [
                 'POSTGRES_USER' => 'postgres',
                 'POSTGRES_PASSWORD' => 'postgres',
+                'PGDATA' => '/var/lib/postgresql/data',
             ],
         ],
         'valkey' => [
