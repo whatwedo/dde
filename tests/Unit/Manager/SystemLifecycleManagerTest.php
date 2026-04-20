@@ -246,6 +246,104 @@ final class SystemLifecycleManagerTest extends TestCase
         );
     }
 
+    public function testDownRemovesGlobalServicesAndVersionedContainers(): void
+    {
+        $service = $this->createMock(ServiceInterface::class);
+        $service->method('getName')->willReturn('traefik');
+
+        $this->serviceRegistry
+            ->method('getGlobalServices')
+            ->willReturn([$service]);
+
+        $service->expects($this->once())->method('remove');
+
+        $versionedContainer = new ContainerInfo(
+            name: 'project-db-mariadb',
+            status: ContainerStatus::RUNNING,
+            image: 'mariadb:10.5',
+            labels: [
+                'dde.service' => 'mariadb',
+            ],
+        );
+
+        $this->dockerManager
+            ->method('getContainersByLabel')
+            ->with('dde.service')
+            ->willReturn([$versionedContainer]);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('stop')
+            ->with('project-db-mariadb');
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('remove')
+            ->with('project-db-mariadb');
+
+        $result = $this->manager->down();
+
+        $this->assertSame('traefik', $result['globalServices'][0]['name']);
+        $this->assertSame('removed', $result['globalServices'][0]['status']);
+        $this->assertSame('removed', $result['versionedContainers'][0]['status']);
+    }
+
+    public function testDownEmitsRemovingAndRemovedEvents(): void
+    {
+        $service = $this->createMock(ServiceInterface::class);
+        $service->method('getName')->willReturn('traefik');
+
+        $this->serviceRegistry
+            ->method('getGlobalServices')
+            ->willReturn([$service]);
+
+        $versionedContainer = new ContainerInfo(
+            name: 'project-db-mariadb',
+            status: ContainerStatus::RUNNING,
+            image: 'mariadb:10.5',
+            labels: [
+                'dde.service' => 'mariadb',
+            ],
+        );
+
+        $this->dockerManager
+            ->method('getContainersByLabel')
+            ->with('dde.service')
+            ->willReturn([$versionedContainer]);
+
+        /** @var list<array{event: SystemLifecycleProgress, name: string}> $events */
+        $events = [];
+
+        $this->manager->down(static function (SystemLifecycleProgress $event, string $name) use (&$events): void {
+            $events[] = [
+                'event' => $event,
+                'name' => $name,
+            ];
+        });
+
+        $this->assertSame(
+            [
+                [
+                    'event' => SystemLifecycleProgress::Removing,
+                    'name' => 'traefik',
+                ],
+                [
+                    'event' => SystemLifecycleProgress::Removed,
+                    'name' => 'traefik',
+                ],
+                [
+                    'event' => SystemLifecycleProgress::Removing,
+                    'name' => 'project-db-mariadb',
+                ],
+                [
+                    'event' => SystemLifecycleProgress::Removed,
+                    'name' => 'project-db-mariadb',
+                ],
+            ],
+            $events,
+        );
+    }
+
     protected function setUp(): void
     {
         $this->serviceRegistry = $this->createMock(ServiceRegistry::class);

@@ -120,6 +120,63 @@ readonly class SystemLifecycleManager
         ];
     }
 
+    /**
+     * @param (\Closure(SystemLifecycleProgress, string, ?string, ?string): void)|null $onProgress
+     *
+     * @return array{
+     *     globalServices: list<array{name: string, status: string}>,
+     *     versionedContainers: list<array{name: string, status: string}>,
+     * }
+     */
+    public function down(?\Closure $onProgress = null): array
+    {
+        $globalServices = [];
+
+        foreach (array_reverse($this->serviceRegistry->getGlobalServices()) as $service) {
+            $container = $this->resolveContainerName($service);
+
+            if ($onProgress instanceof \Closure) {
+                $onProgress(SystemLifecycleProgress::Removing, $service->getName(), $container, null);
+            }
+
+            $service->remove();
+
+            if ($onProgress instanceof \Closure) {
+                $onProgress(SystemLifecycleProgress::Removed, $service->getName(), $container, null);
+            }
+
+            $globalServices[] = [
+                'name' => $service->getName(),
+                'status' => 'removed',
+            ];
+        }
+
+        $versionedContainers = [];
+
+        foreach ($this->dockerManager->getContainersByLabel('dde.service') as $container) {
+            if ($onProgress instanceof \Closure) {
+                $onProgress(SystemLifecycleProgress::Removing, $container->name, $container->name, null);
+            }
+
+            $this->dockerManager->stop($container->name);
+            $this->dockerManager->remove($container->name);
+
+            if ($onProgress instanceof \Closure) {
+                $onProgress(SystemLifecycleProgress::Removed, $container->name, $container->name, null);
+            }
+
+            $versionedContainers[] = [
+                'name' => $container->name,
+                'status' => 'removed',
+            ];
+        }
+
+        return [
+            'globalServices' => $globalServices,
+            'versionedContainers' => $versionedContainers,
+        ];
+    }
+
     private function ensureDdeNetwork(): void
     {
         if (! $this->dockerManager->networkExists('dde')) {
