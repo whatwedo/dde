@@ -6,16 +6,15 @@ namespace Tests\Unit\Command\System;
 
 use App\Command\System\SystemUpCommand;
 use App\Config\GlobalConfig;
-use App\Database\DatabaseAdapterRegistry;
 use App\Manager\DockerManager;
 use App\Manager\GlobalConfigManager;
-use App\Model\ContainerConfig;
+use App\Manager\SystemLifecycleManager;
+use App\Model\UserContext;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
-use App\Service\ServiceRegistry;
+use App\Service\ImageBuilder;
 use App\Service\SshAgentService;
-use App\Service\TraefikService;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -27,42 +26,22 @@ use Symfony\Component\Filesystem\Filesystem;
 #[AllowMockObjectsWithoutExpectations]
 final class SystemUpCommandTest extends TestCase
 {
-    private DockerManager&MockObject $dockerManager;
+    private SystemLifecycleManager&MockObject $manager;
 
     private CommandTester $commandTester;
 
     public function testExecuteStartsServices(): void
     {
-        $this->dockerManager
-            ->method('networkExists')
-            ->willReturn(true);
-
-        $this->dockerManager
-            ->method('isContainerRunning')
-            ->willReturn(false);
-
-        $this->dockerManager
-            ->method('run')
-            ->with($this->isInstanceOf(ContainerConfig::class));
-
-        $this->commandTester->execute([], [
-            'interactive' => false,
-        ]);
-
-        $this->assertSame(0, $this->commandTester->getStatusCode());
-        $display = $this->commandTester->getDisplay();
-        $this->assertStringContainsString('started', $display);
-    }
-
-    public function testExecuteReportsAlreadyRunning(): void
-    {
-        $this->dockerManager
-            ->method('networkExists')
-            ->willReturn(true);
-
-        $this->dockerManager
-            ->method('isContainerRunning')
-            ->willReturn(true);
+        $this->manager
+            ->expects($this->once())
+            ->method('up')
+            ->with($this->isInstanceOf(\Closure::class))
+            ->willReturn([
+                'globalServices' => [[
+                    'name' => 'traefik',
+                    'status' => 'started',
+                ]],
+            ]);
 
         $this->commandTester->execute([], [
             'interactive' => false,
@@ -73,16 +52,15 @@ final class SystemUpCommandTest extends TestCase
 
     public function testExecuteJsonOutput(): void
     {
-        $this->dockerManager
-            ->method('networkExists')
-            ->willReturn(true);
-
-        $this->dockerManager
-            ->method('isContainerRunning')
-            ->willReturn(false);
-
-        $this->dockerManager
-            ->method('run');
+        $this->manager
+            ->method('up')
+            ->with($this->isNull())
+            ->willReturn([
+                'globalServices' => [[
+                    'name' => 'traefik',
+                    'status' => 'already_running',
+                ]],
+            ]);
 
         $this->commandTester->execute([
             '--output' => 'json',
@@ -94,69 +72,38 @@ final class SystemUpCommandTest extends TestCase
         $decoded = json_decode($this->commandTester->getDisplay(), true);
         $this->assertIsArray($decoded);
         $this->assertSame('ok', $decoded['status']);
-        $this->assertArrayHasKey('data', $decoded);
-        $this->assertArrayHasKey('services', $decoded['data']);
-        $this->assertNotEmpty($decoded['data']['services']);
-        $this->assertSame('started', $decoded['data']['services'][0]['status']);
-    }
-
-    public function testEnsureNetworkCalledFirst(): void
-    {
-        // First call from command, second from TraefikService::start()
-        $this->dockerManager
-            ->method('networkExists')
-            ->with('dde')
-            ->willReturnOnConsecutiveCalls(false, true);
-
-        $this->dockerManager
-            ->expects($this->once())
-            ->method('createNetwork')
-            ->with('dde');
-
-        $this->dockerManager
-            ->method('isContainerRunning')
-            ->willReturn(false);
-
-        $this->dockerManager
-            ->method('run');
-
-        $this->commandTester->execute([], [
-            'interactive' => false,
-        ]);
-
-        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $this->assertSame('traefik', $decoded['data']['services'][0]['name']);
+        $this->assertSame('already_running', $decoded['data']['services'][0]['status']);
     }
 
     protected function setUp(): void
     {
-        $this->dockerManager = $this->createMock(DockerManager::class);
+        $this->manager = $this->createMock(SystemLifecycleManager::class);
+
         $tempDir = sys_get_temp_dir().'/dde-test-cmd-'.bin2hex(random_bytes(8));
         mkdir($tempDir, 0o777, true);
 
-        $traefikService = new TraefikService(
-            dockerManager: $this->dockerManager,
-            filesystem: new Filesystem(),
-            dataDir: $tempDir,
-        );
-
-        $registry = new ServiceRegistry([$traefikService], new DatabaseAdapterRegistry([]));
-        $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
+        $dockerManager = $this->createStub(DockerManager::class);
 
         $globalConfigManager = $this->createStub(GlobalConfigManager::class);
         $globalConfigManager->method('load')->willReturn(new GlobalConfig());
 
         $sshAgentService = new SshAgentService(
-            dockerManager: $this->dockerManager,
+            dockerManager: $dockerManager,
             filesystem: new Filesystem(),
-            imageBuilder: new \App\Service\ImageBuilder($this->dockerManager, new Filesystem()),
-            userContext: new \App\Model\UserContext('1000', '1000'),
+            imageBuilder: new ImageBuilder($dockerManager, new Filesystem()),
+            userContext: new UserContext('1000', '1000'),
             globalConfigManager: $globalConfigManager,
             projectDir: $tempDir,
             userHomeDir: $tempDir,
             dataDir: $tempDir,
         );
 
-        $command = new SystemUpCommand($registry, $traefikService, $sshAgentService, $formatterResolver);
+        $command = new SystemUpCommand(
+            $this->manager,
+            $sshAgentService,
+            new FormatterResolver(new TextFormatter(), new JsonFormatter()),
+        );
 
         $application = new Application();
         $application->getDefinition()->addOption(new InputOption(
