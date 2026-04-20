@@ -383,9 +383,19 @@ readonly class DockerManager
         return $ports;
     }
 
-    public function buildImage(string $contextDir, string $tag, ?OutputInterface $output = null): void
+    public function buildImage(string $contextDir, string $tag, ?OutputInterface $output = null, bool $pull = false): void
     {
-        $process = $this->processFactory->create(['docker', 'build', '--progress', 'plain', '-t', $tag, $contextDir], $contextDir, null);
+        $command = ['docker', 'build', '--progress', 'plain'];
+
+        if ($pull) {
+            $command[] = '--pull';
+        }
+
+        $command[] = '-t';
+        $command[] = $tag;
+        $command[] = $contextDir;
+
+        $process = $this->processFactory->create($command, $contextDir, null);
 
         $outputBuffer = '';
         $process->run(static function (string $_type, string $buffer) use (&$outputBuffer): void {

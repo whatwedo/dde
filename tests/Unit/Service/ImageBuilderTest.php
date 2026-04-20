@@ -70,6 +70,38 @@ final class ImageBuilderTest extends TestCase
         $this->assertSame(hash('xxh128', implode('', $files)), trim($this->filesystem->readFile($hashFile)));
     }
 
+    public function testRebuildsEvenWhenHashMatchesWhenPullRequested(): void
+    {
+        $files = [
+            'Dockerfile' => 'FROM alpine:latest',
+        ];
+        $currentHash = hash('xxh128', implode('', $files));
+        $hashFile = $this->tempDir.'/test/.build-hash';
+
+        $this->filesystem->mkdir(\dirname($hashFile));
+        $this->filesystem->dumpFile($hashFile, $currentHash);
+
+        // With $pull=true the hash/imageExists short-circuit must be skipped entirely
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('imageExists');
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('buildImage')
+            ->with(
+                $this->stringStartsWith(sys_get_temp_dir().'/dde-test-'),
+                'my-image:local',
+                null,
+                true,
+            );
+
+        $this->imageBuilder->buildIfChanged('my-image:local', $hashFile, $files, 'dde-test-', true);
+
+        // Hash file is still up to date so a subsequent $pull=false call can short-circuit again
+        $this->assertSame($currentHash, trim($this->filesystem->readFile($hashFile)));
+    }
+
     public function testBuildsWhenNoHashFile(): void
     {
         $files = [
