@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [2.0.0-alpha.5] - 2026-04-21
 
 ### BREAKING
 
@@ -19,7 +19,15 @@ All notable changes to this project will be documented in this file.
   refreshes integrations (shell completion, Claude skill).
 - `system:stop` — stops all dde containers (global + versioned) without
   removing them.
-- `SystemLifecycleManager` — new internal orchestrator for system:* lifecycle.
+
+### Changed
+
+- Homebrew formula now installs `mkcert` as a dependency.
+
+### Fixed
+
+- PostgreSQL services now use `/var/lib/postgresql/data` as the data directory,
+  matching the upstream image default.
 
 ## [2.0.0-alpha.4] - 2026-04-19
 
