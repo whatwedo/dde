@@ -6,7 +6,10 @@ title: "Installation"
 ## Prerequisites
 
 - **Docker Desktop** (macOS) or **Docker Engine** (Linux) -- must be installed and running
-- **mkcert** -- for generating locally-trusted TLS certificates (`brew install mkcert` on macOS, `apt install mkcert` on Linux)
+- **mkcert** -- for generating locally-trusted TLS certificates
+  - macOS: `brew install mkcert`
+  - debian based linux: `apt install mkcert`
+  - arch: `pacman -S mkcert`
 - **macOS** (x86_64 or arm64) or **Linux** (x86_64 or arm64)
 
 ## Installation
