@@ -14,6 +14,8 @@ hero:
       variant: minimal
 ---
 
+![Architecture](./_img/architecture.svg)
+
 ## Features
 
 - **Automatic HTTPS** — Traefik v3 reverse proxy with mkcert-generated certificates trusted by your OS. No browser warnings.

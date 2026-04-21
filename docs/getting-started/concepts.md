@@ -5,6 +5,8 @@ title: "Core Concepts"
 
 ## System services vs. project containers
 
+![Architecture](../_img/architecture.svg)
+
 dde manages two layers of Docker containers:
 
 **System services** are long-running, shared infrastructure containers managed by `system:install`. They run independently of any project and are shared across all projects on the machine:
