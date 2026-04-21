@@ -18,3 +18,4 @@ box.phar
 .claude/specs/
 .idea/
 data
+*.svg.bkp
