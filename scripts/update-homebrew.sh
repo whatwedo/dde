@@ -23,6 +23,8 @@ class Dde < Formula
   version "${VERSION_CLEAN}"
   license "AGPL-3.0-or-later"
 
+  depends_on "mkcert"
+
   on_macos do
     on_arm do
       url "https://packages.dde.sh/homebrew/${VERSION_CLEAN}/dde-darwin-arm64"
