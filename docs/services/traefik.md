@@ -16,7 +16,7 @@ Traefik v3 serves as the reverse proxy for all dde projects, routing HTTP and HT
 
 Traefik lives on the shared `dde` network. Every project container is also attached to this network by the compose overlay that `project:up` generates, so Traefik can reach each container directly — no per-project routing configuration is required.
 
-In parallel, each project also gets its own `dde-services-<project>` network used only to connect the container to its versioned services (`mariadb`, `postgres`, …). Traefik is not attached to it. See [Core Concepts → Networking](../getting-started/concepts.md#networking) for the full picture.
+In parallel, each project (or worktree) also gets its own `dde-services-<project>` (main checkout) or `dde-services-<project>-<suffix>` (worktree) network used only to connect the container to its versioned services (`mariadb`, `postgres`, …). Traefik is not attached to it. See [Core Concepts → Networking](../getting-started/concepts.md#networking) for the full picture.
 
 ## TLS
 
