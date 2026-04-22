@@ -74,7 +74,7 @@ dde project:init
 dde project:up
 ```
 
-`project:init` creates the `.dde/` directory, detects your `docker-compose.yml`, adds the dde network and Traefik labels, and configures SSH agent volume mounts.
+`project:init` creates the `.dde/` directory, detects your `docker-compose.yml`, and adds Traefik labels. It also strips v1 boilerplate (the explicit `dde` external network, the SSH-Agent volume mount and `SSH_AUTH_SOCK`, legacy `DDE_UID`/`DDE_GID` build args, fixed `container_name`) — in v2, networks and the SSH-Agent socket are injected by the runtime overlay, so the committed compose file stays clean.
 
 Open `https://my-app.test` in your browser to verify.
 
