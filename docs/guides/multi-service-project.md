@@ -64,16 +64,11 @@ services:
   valkey:
     image: valkey/valkey:9-alpine
 
-networks:
-  default:
-    name: dde
-    external: true
-
 volumes:
   mariadb_data:
-  dde_ssh-agent_socket-dir:
-    external: true
 ```
+
+Note that the file declares no `networks:` block and no `dde_ssh-agent_socket-dir` volume — both the shared `dde` network, the per-project `dde-services-<project>` network, and the SSH-Agent volume are injected by the overlay that `project:up` generates.
 
 ## 2. Initialize the Project
 
@@ -102,9 +97,11 @@ containers:
 
 When `dde project:up` runs, it generates a docker-compose override for **every service** in the compose file. For each service, the override:
 
+- Attaches the container to the shared `dde` network and the per-project `dde-services-<project>` network
 - Sets the entrypoint to `/dde/entrypoint.sh`
 - Mounts the built-in and project adapters
-- Sets `DDE_UID` and `DDE_GID` environment variables
+- Sets `DDE_UID`, `DDE_GID`, and `SSH_AUTH_SOCK` environment variables
+- Mounts the shared SSH-Agent socket volume
 - Adds a `dde.managed=true` label
 - Preserves the original entrypoint and command from the Docker image
 

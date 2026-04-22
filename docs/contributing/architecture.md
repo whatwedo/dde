@@ -88,7 +88,7 @@ System services represent the infrastructure containers managed by `system:up`/`
 
 ### Modifier (`App\Util\DockerComposeModifier`)
 
-- `DockerComposeModifier` -- applies persistent modifications to a project's docker-compose.yml during `project:init`: external `dde` network, Traefik labels, SSH-Agent volume mount, database environment variables, `VIRTUAL_HOST`/`VIRTUAL_PORT` migration, v1 build args removal
+- `DockerComposeModifier` -- applies persistent modifications to a project's docker-compose.yml during `project:init`: adds Traefik labels, injects `DATABASE_URL`/`MAILER_DSN` for detected dde services, migrates `VIRTUAL_HOST`/`VIRTUAL_PORT` (v1) to labels, and removes v1 boilerplate (external `dde` network, SSH-Agent volume mount + `SSH_AUTH_SOCK`, `DDE_UID`/`DDE_GID` build args, fixed `container_name`) that is now injected by the runtime overlay instead
 
 ### Adapters (`App\Adapter\`)
 

@@ -101,15 +101,16 @@ containers:
 
 The `.gitignore` file excludes `data/` and `snapshots/` so that database files and snapshots are not committed to version control. Everything else -- including `config.yml`, hooks, adapters, and plugins -- is intended to be committed and shared with the team.
 
-## The dde network
+## Networking
 
-All project containers and system services are connected to a shared Docker network called `dde`. This network enables:
+dde uses two Docker networks per project, both attached to every project container:
 
-- Traefik to discover and route traffic to project containers
-- Project containers to reach system services (e.g., the SSH agent)
-- Cross-project communication when needed
+- **`dde`** — a single, machine-wide network shared by **all** projects. Traefik lives on this network and uses it to reach every project container for HTTP/HTTPS routing. It is created by `system:install`.
+- **`dde-services-<project>`** — a per-project network. The versioned service containers picked in `.dde/config.yml` (e.g. `mariadb`, `postgres`, `valkey`, `mailpit`) are connected here under their canonical service names, so your application reaches them as `mariadb`, `postgres`, etc. — the same hostnames a classic single-project compose file would use. The network is created on-demand by `project:up` and removed by `project:down` once no project (including sibling worktrees) is still attached.
 
-The network is created automatically by `system:install` and attached to project containers via the docker-compose override that `project:up` generates.
+Neither network is declared in your committed `docker-compose.yml`. Both are **injected into the compose overlay** that `project:up` generates and torn down on `project:down`, so the project file stays free of dde infrastructure. If `.dde/config.yml` declares no services, only the shared `dde` network is attached.
+
+This split is what lets multiple projects use the same versioned service container (one `mariadb:11.8` serves all projects that asked for it) while keeping the service hostnames stable inside each project: `my-app` and `other-app` both talk to `mariadb`, but each sees only its own per-project network.
 
 ## Output formats
 
