@@ -181,17 +181,11 @@ final class WorktreeServiceVersioningTest extends TestCase
 
     private function createWorktree(string $branch): void
     {
-        $process = new Process(['git', 'checkout', '-b', $branch], $this->mainRepoDir);
-        $process->run();
-        $this->assertTrue($process->isSuccessful(), 'git checkout -b should succeed');
-
-        $process = new Process(['git', 'checkout', 'main'], $this->mainRepoDir);
-        $process->run();
+        (new Process(['git', 'checkout', '-b', $branch], $this->mainRepoDir))->mustRun();
+        (new Process(['git', 'checkout', 'main'], $this->mainRepoDir))->mustRun();
 
         $this->worktreeDir = $this->mainRepoDir.'-wt-'.$branch;
-        $process = new Process(['git', 'worktree', 'add', $this->worktreeDir, $branch], $this->mainRepoDir);
-        $process->run();
-        $this->assertTrue($process->isSuccessful(), 'git worktree add should succeed: '.$process->getErrorOutput());
+        (new Process(['git', 'worktree', 'add', $this->worktreeDir, $branch], $this->mainRepoDir))->mustRun();
     }
 
     /**
