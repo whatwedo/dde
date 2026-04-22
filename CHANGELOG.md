@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- `project:db*` commands (`project:db`, `project:db:open`, `project:db:export`, `project:db:import`, `project:db:snapshot:create`, `project:db:snapshot:restore`) now target the worktree-suffixed database when run from inside a git worktree, matching the `DATABASE_URL` the compose override rewrites for the application container. An explicit `--database` value is still forwarded verbatim.
+
 ## [2.0.0-alpha.5] - 2026-04-21
 
 ### BREAKING

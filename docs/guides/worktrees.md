@@ -90,6 +90,10 @@ The final database name is clamped to 63 characters (MySQL/PostgreSQL identifier
 
 > **You are responsible for creating the worktree database.** dde does not create it automatically. Use `dde database:snapshot` on the main project and restore the dump into the worktree DB, or run your project's migration command inside the worktree container.
 
+### Database commands target the worktree DB
+
+Every `project:db*` command run from inside a worktree automatically targets the worktree-suffixed database, matching the rewritten `DATABASE_URL`. This covers `project:db`, `project:db:open`, `project:db:export`, `project:db:import`, `project:db:snapshot:create`, and `project:db:snapshot:restore`. Pass `--database <name>` to override the automatic selection (the explicit value is forwarded verbatim, with no suffix applied).
+
 ## Parallel Execution
 
 Main and worktree can run side-by-side. The Traefik routers emitted by dde are **unique per hostname**, so there is no router-name collision between the two containers. The override file is written with YAML's `!override` tag, so the labels from the base `docker-compose.yml` are **replaced** (not merged) on the worktree container.
