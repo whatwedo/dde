@@ -8,29 +8,27 @@
   "minimumReleaseAge": "4 days",
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
+  "platformAutomerge": true,
   "packageRules": [
     {
-      "description": "Group all minor and patch updates together",
+      "description": "Group and automerge all minor and patch updates when CI passes",
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch"
-    },
-    {
-      "description": "Automerge minor/patch updates for GitHub Actions",
-      "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "groupSlug": "all-minor-patch",
       "automerge": true
     },
     {
-      "description": "Separate major updates — one PR per package",
+      "description": "Separate major updates — one PR per package for manual review",
       "matchUpdateTypes": ["major"],
       "groupName": null
     },
     {
-      "description": "Group all Symfony packages together",
+      "description": "Group and automerge Symfony minor/patch updates together",
       "matchPackagePrefixes": ["symfony/"],
+      "matchUpdateTypes": ["minor", "patch"],
       "groupName": "symfony",
-      "groupSlug": "symfony"
+      "groupSlug": "symfony",
+      "automerge": true
     }
   ],
   "vulnerabilityAlerts": {
