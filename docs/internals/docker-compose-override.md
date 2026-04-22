@@ -26,7 +26,7 @@ networks:
     external: true
 ```
 
-In v2, the `dde` network (and the per-project `dde-services-<project>` network) are injected by the runtime overlay, not declared in the committed file. `DockerComposeModifier::removeDdeNetworkBoilerplate()` handles the cleanup.
+In v2, the `dde` network (and the per-project `dde-services-<project>` (main) or `dde-services-<project>-<suffix>` (worktree) network) are injected by the runtime overlay, not declared in the committed file. `DockerComposeModifier::removeDdeNetworkBoilerplate()` handles the cleanup.
 
 ### 2. Traefik Labels
 
@@ -142,7 +142,7 @@ services:
       dde-services-myproject: null
 ```
 
-`dde` is the shared machine-wide network used by Traefik. `dde-services-<project>` is the per-project network where versioned service containers (`mariadb`, `postgres`, …) are reachable under their canonical names. The per-project network is omitted when `.dde/config.yml` declares no services, in which case only `dde` is injected.
+`dde` is the shared machine-wide network used by Traefik. `dde-services-<project>` (main checkout) or `dde-services-<project>-<suffix>` (worktree) is the per-project network where versioned service containers (`mariadb`, `postgres`, …) are reachable under their canonical names. The worktree variant lets a branch run a different service version than main without alias collisions. The per-project network is omitted when `.dde/config.yml` declares no services, in which case only `dde` is injected.
 
 ### 4. SSH-Agent Volume
 
