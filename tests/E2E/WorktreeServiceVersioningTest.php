@@ -114,14 +114,17 @@ final class WorktreeServiceVersioningTest extends TestCase
         //       - assert the main network exists by exact name
         //       - assert a worktree-suffixed network exists (pattern: dde-services-e2e-pgver-<anything>)
         //       - capture the actual worktree network name for the "gone after down" assertion
-        $networks = (new Process(['docker', 'network', 'ls', '--format', '{{.Name}}']))->mustRun()->getOutput();
-        $this->assertMatchesRegularExpression('/\bdde-services-e2e-pgver\b/', $networks, 'main network must exist');
-        $this->assertMatchesRegularExpression('/\bdde-services-e2e-pgver-\S+/', $networks, 'worktree network must exist');
-
-        // Capture the actual worktree network name so we can assert it disappears after down
-        $matched = preg_match('/\bdde-services-e2e-pgver-(\S+)/', $networks, $worktreeNetworkMatch);
-        $this->assertSame(1, $matched, 'could not parse worktree network name from docker network ls output');
-        $worktreeNetworkName = $worktreeNetworkMatch[0];
+        $networks = array_values(array_filter(
+            array_map('trim', explode("\n", (new Process(['docker', 'network', 'ls', '--format', '{{.Name}}']))->mustRun()->getOutput())),
+            static fn (string $n): bool => $n !== '',
+        ));
+        $this->assertContains('dde-services-e2e-pgver', $networks, 'main network must exist');
+        $worktreeNetworkCandidates = array_values(array_filter(
+            $networks,
+            static fn (string $n): bool => str_starts_with($n, 'dde-services-e2e-pgver-'),
+        ));
+        $this->assertCount(1, $worktreeNetworkCandidates, 'worktree network must exist exactly once');
+        $worktreeNetworkName = $worktreeNetworkCandidates[0];
 
         // 4d. The canonical DNS alias `postgres` resolves to the correct version
         //     in each network. This is the actual mechanism the feature fixes:
@@ -149,9 +152,12 @@ final class WorktreeServiceVersioningTest extends TestCase
         $mainVersionAfterWorktreeDown = $this->queryPostgresVersion(self::MAIN_PG_VERSION);
         $this->assertSame($mainVersionBefore, $mainVersionAfterWorktreeDown, 'main postgres must survive worktree project:down');
 
-        $networksAfterWorktreeDown = (new Process(['docker', 'network', 'ls', '--format', '{{.Name}}']))->mustRun()->getOutput();
-        $this->assertMatchesRegularExpression('/\bdde-services-e2e-pgver\b/', $networksAfterWorktreeDown, 'main network must still exist after worktree down');
-        $this->assertStringNotContainsString($worktreeNetworkName, $networksAfterWorktreeDown, 'worktree network must be gone after worktree down');
+        $networksAfterWorktreeDown = array_values(array_filter(
+            array_map('trim', explode("\n", (new Process(['docker', 'network', 'ls', '--format', '{{.Name}}']))->mustRun()->getOutput())),
+            static fn (string $n): bool => $n !== '',
+        ));
+        $this->assertContains('dde-services-e2e-pgver', $networksAfterWorktreeDown, 'main network must still exist after worktree down');
+        $this->assertNotContains($worktreeNetworkName, $networksAfterWorktreeDown, 'worktree network must be gone after worktree down');
 
         // Tear down main
         $result = $this->runConsoleJsonInDir($this->mainRepoDir, 'project:down', timeout: 60);
@@ -226,7 +232,7 @@ final class WorktreeServiceVersioningTest extends TestCase
 
     /**
      * Wait for a postgres container to become ready.
-     * Uses a 120-second budget: 60 attempts × 2-second sleep.
+     * Poll `pg_isready` once per second up to `$maxAttempts` times (default 120).
      */
     private function waitForPostgresContainer(string $version, int $maxAttempts = 120): void
     {
