@@ -84,6 +84,11 @@ readonly class ProjectConfigManager
         return $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
     }
 
+    public function resolveDatabaseName(string $baseDatabaseName, ?WorktreeInfo $worktreeInfo, string $projectName): string
+    {
+        return $this->worktreeManager->resolveDatabaseName($baseDatabaseName, $worktreeInfo, $projectName);
+    }
+
     public function sanitizeWorktreeSuffix(string $dirName, string $projectName): string
     {
         return IdentifierSanitizer::forHostname($dirName, $projectName);

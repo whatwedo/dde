@@ -8,6 +8,7 @@ use App\Command\Project\Database\DbCommand;
 use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
+use App\Config\WorktreeInfo;
 use App\Database\DatabaseAdapterRegistry;
 use App\Database\MariaDbAdapter;
 use App\Database\PostgresAdapter;
@@ -216,6 +217,10 @@ final class DbCommandTest extends TestCase
 
         $this->configManager->method('findProjectDirectory')->willReturn($this->tempDir);
         $this->configManager->method('resolveConfig')->willReturn($resolvedConfig);
+        $this->configManager->method('resolveDatabaseName')
+            ->willReturnCallback(
+                static fn (string $base, ?WorktreeInfo $info, string $projectName): string => $base,
+            );
     }
 
     protected function setUp(): void
