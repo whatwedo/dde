@@ -77,9 +77,9 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
 - YAML compose output: use `Symfony\Component\Yaml\Tag\TaggedValue` (`!override`) to force key replacement when the base file's list-form values would otherwise be merged.
 
 ## Quality
-- ECS: `make ecs` (whatwedo/php-coding-standard, whatwedo-symfony set)
+- ECS: `make ecs` (whatwedo/php-coding-standard, whatwedo-symfony set) — **runs `ecs check --fix` and rewrites files in place.** CI runs `ecs check` (no `--fix`) and fails on any diff. After every `make ecs` / `make qa` run, `git status` **must** be clean before committing or pushing; stage and amend any auto-fixed files first. A green local `make qa` with dirty working tree means CI will fail.
 - PHPStan: `make phpstan` (Level 8)
-- Rector: `make rector` (PHP 8.5 + Symfony 8 sets)
+- Rector: `make rector` (PHP 8.5 + Symfony 8 sets) — dry-run in `make qa`; never run `rector process` (mutating) on a feature branch without an explicit review checkpoint.
 - Tests: `make test` (PHPUnit, Unit + Integration, excludes e2e)
 - Tests: `make test-e2e` (only e2e)
 
@@ -95,6 +95,7 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
 - Every E2E test must own its setUp/tearDown: isolated `tempDir`, `DDE_CONFIG_DIR` / `DDE_DATA_DIR` pointing at a random path, containers cleaned up with `$this->cleanupLeftoverContainers()`.
 - When a fix addresses a real-world bug, add a **regression test** that would have caught the bug (verify by reverting the fix and watching the test fail).
 - `make qa` must stay green after every commit, including bisect-mid-branch checkouts. Rebase with `--exec "make qa"` when in doubt.
+- After pushing, verify CI with `gh pr checks <number>` (or `gh run watch`). A green local `make qa` does not guarantee CI green — the ECS auto-fix trap above is the canonical example. Treat "pushed" as "in progress" until CI reports pass.
 
 ## Documentation
 **All committed Markdown (under `docs/`, `skills/`, `README.md`, `CHANGELOG.md`, `AGENTS.md`) is written in English.** The project is distributed publicly and consumed by an English-speaking audience; keep the docs consistent.
