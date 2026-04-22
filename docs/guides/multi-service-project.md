@@ -3,7 +3,7 @@ title: "Guide: Multi-Service Project"
 ---
 
 
-This guide covers projects with multiple application containers -- for example a web frontend, a background worker, and a scheduler.
+This guide covers projects with multiple application containers — for example a web frontend, a background worker, a scheduler, and a project-local third-party container that is not part of dde's [built-in service catalogue](../services/overview.md) (databases, caches, mail).
 
 ## Prerequisites
 
@@ -54,26 +54,23 @@ services:
       - .:/var/www
     command: ["supercronic", "/etc/crontab"]
 
-  mariadb:
-    image: mariadb:latest
-    environment:
-      MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+  storage:
+    image: dxflrs/garage:v1.0.1
     volumes:
-      - mariadb_data:/var/lib/mysql
-
-  valkey:
-    image: valkey/valkey:9-alpine
-
-networks:
-  default:
-    name: dde
-    external: true
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+      - ./garage.toml:/etc/garage.toml:ro
 
 volumes:
-  mariadb_data:
-  dde_ssh-agent_socket-dir:
-    external: true
+  garage_meta:
+  garage_data:
 ```
+
+A few things to notice:
+
+- Shared infrastructure like a database, cache, or mail server is **not** declared inline. Those belong in `.dde/config.yml` under `services:` (see next step) so dde can run them as versioned, machine-wide containers instead of spinning up a dedicated copy per project.
+- `storage` is a project-local third-party container ([Garage](https://garagehq.deuxfleurs.fr/), an S3-compatible object store). It is declared inline precisely because it is not part of dde's built-in service catalogue. The application reaches it at `storage:3900` over the per-project network, just like any compose-defined sibling.
+- The file declares no `networks:` block and no `dde_ssh-agent_socket-dir` volume — both the shared `dde` network, the per-project `dde-services-<project>` network, and the SSH-Agent volume are injected by the overlay that `project:up` generates.
 
 ## 2. Initialize the Project
 
@@ -100,15 +97,19 @@ containers:
 
 ## 4. How dde Handles Multiple Services
 
-When `dde project:up` runs, it generates a docker-compose override for **every service** in the compose file. For each service, the override:
+When `dde project:up` runs, it generates a docker-compose override for **every service** in the compose file. Every service gets:
 
-- Sets the entrypoint to `/dde/entrypoint.sh`
-- Mounts the built-in and project adapters
-- Sets `DDE_UID` and `DDE_GID` environment variables
-- Adds a `dde.managed=true` label
-- Preserves the original entrypoint and command from the Docker image
+- Attached to the shared `dde` network and the per-project `dde-services-<project>` network
+- A `dde.managed=true` label
 
-This means all containers (web, worker, scheduler) get the `dde` user created with matching UID/GID, regardless of which container is set as the default.
+In addition, services whose image has a shell (`web`, `worker`, `scheduler` in this example) also get:
+
+- The entrypoint set to `/dde/entrypoint.sh`, with the original entrypoint and command from the image preserved as the new `command`
+- The built-in and project adapters mounted
+- `DDE_UID`, `DDE_GID`, and `SSH_AUTH_SOCK` environment variables
+- The shared SSH-Agent socket volume mounted at `/tmp/ssh-agent`
+
+This means all shell-bearing application containers (web, worker, scheduler) get the `dde` user created with matching UID/GID, regardless of which one is configured as the default container. Shell-less images like the `storage` (Garage) container are left otherwise untouched — the dde entrypoint would fail on them, and there is no interactive shell to attach SSH keys to anyway.
 
 ## 5. Execute Commands in Specific Containers
 
