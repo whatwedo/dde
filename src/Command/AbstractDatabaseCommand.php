@@ -40,6 +40,11 @@ abstract class AbstractDatabaseCommand extends AbstractProjectCommand
 
     /**
      * Resolves the database name from --database option, config, or project name.
+     *
+     * Inside a git worktree the resolved default is extended with the worktree
+     * suffix so the commands target the same database the compose override
+     * points the application at (see `WorktreeManager::resolveDatabaseName`).
+     * An explicit `--database` value is passed through unchanged.
      */
     protected function resolveDatabase(InputInterface $input, ResolvedConfig $config, string $serviceName): string
     {
@@ -49,6 +54,20 @@ abstract class AbstractDatabaseCommand extends AbstractProjectCommand
             return $database;
         }
 
+        $baseDatabase = $this->resolveBaseDatabase($config, $serviceName);
+
+        $worktreeInfo = $this->configManager->detectWorktree($this->getProjectDirectory());
+
+        return $this->configManager->resolveDatabaseName($baseDatabase, $worktreeInfo, $config->projectName);
+    }
+
+    protected function sanitizeDatabaseName(string $name): string
+    {
+        return IdentifierSanitizer::forDatabase($name);
+    }
+
+    private function resolveBaseDatabase(ResolvedConfig $config, string $serviceName): string
+    {
         // Check containers.[serviceName].default_database_name in config
         $containerConfig = $config->containers[$serviceName] ?? [];
 
@@ -65,11 +84,6 @@ abstract class AbstractDatabaseCommand extends AbstractProjectCommand
 
         // Default: project name (sanitized for DB name)
         return $this->sanitizeDatabaseName($config->projectName);
-    }
-
-    protected function sanitizeDatabaseName(string $name): string
-    {
-        return IdentifierSanitizer::forDatabase($name);
     }
 
     private function withResolvedVersion(ServiceDefinition $service, ResolvedConfig $config): ServiceDefinition

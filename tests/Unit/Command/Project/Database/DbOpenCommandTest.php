@@ -8,6 +8,7 @@ use App\Command\Project\Database\DbOpenCommand;
 use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
+use App\Config\WorktreeInfo;
 use App\Database\DatabaseAdapterInterface;
 use App\Database\DatabaseAdapterRegistry;
 use App\Database\MariaDbAdapter;
@@ -148,6 +149,64 @@ final class DbOpenCommandTest extends TestCase
         $this->assertStringContainsString('mysql://', $display);
     }
 
+    public function testInsideWorktreeDsnTargetsWorktreeDatabase(): void
+    {
+        $this->setupWorktreeProjectFixture();
+        $this->databaseManager->method('resolveContainerName')->willReturn('dde-mariadb-11.8');
+        $this->databaseManager->method('isContainerRunning')->willReturn(true);
+        $this->databaseManager->method('resolveHostPort')->willReturn(3306);
+
+        $capturedDatabase = null;
+        $this->adapter->method('getDsn')
+            ->willReturnCallback(
+                function (string $host, int $port, ?string $database) use (&$capturedDatabase): string {
+                    $capturedDatabase = $database;
+
+                    return 'mysql://root:root@'.$host.':'.$port.'/'.$database;
+                },
+            );
+
+        $this->commandTester->execute([
+            '--output' => 'json',
+        ], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $this->assertSame('test_project_feature_x', $capturedDatabase);
+    }
+
+    public function testExplicitDatabaseOptionSkipsWorktreeSuffix(): void
+    {
+        $this->setupWorktreeProjectFixture();
+        $this->databaseManager->method('resolveContainerName')->willReturn('dde-mariadb-11.8');
+        $this->databaseManager->method('isContainerRunning')->willReturn(true);
+        $this->databaseManager->method('resolveHostPort')->willReturn(3306);
+
+        $capturedDatabase = null;
+        $this->adapter->method('getDsn')
+            ->willReturnCallback(
+                function (string $host, int $port, ?string $database) use (&$capturedDatabase): string {
+                    $capturedDatabase = $database;
+
+                    return 'mysql://root:root@'.$host.':'.$port.'/'.$database;
+                },
+            );
+
+        $this->commandTester->execute([
+            '--database' => 'custom_db',
+            '--output' => 'json',
+        ], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        // Even though detectWorktree returns a WorktreeInfo, the explicit
+        // --database value must be passed through unchanged (the `_feature_x`
+        // suffix from setupWorktreeProjectFixture must not appear).
+        $this->assertSame('custom_db', $capturedDatabase);
+    }
+
     public function testHostPortIsPassedToDsn(): void
     {
         $this->setupProjectFixture();
@@ -184,6 +243,23 @@ final class DbOpenCommandTest extends TestCase
 
         $this->configManager->method('findProjectDirectory')->willReturn($this->tempDir);
         $this->configManager->method('resolveConfig')->willReturn($resolvedConfig);
+        $this->configManager->method('resolveDatabaseName')
+            ->willReturnCallback(
+                static fn (string $base, ?WorktreeInfo $info, string $projectName): string
+                    => $info instanceof WorktreeInfo ? $base.'_feature_x' : $base,
+            );
+    }
+
+    private function setupWorktreeProjectFixture(): void
+    {
+        $this->setupProjectFixture();
+
+        $this->configManager->method('detectWorktree')->willReturn(new WorktreeInfo(
+            mainDirectory: '/main',
+            worktreeDirectory: $this->tempDir,
+            branch: 'feature/x',
+            suffix: 'test-project-feature-x',
+        ));
     }
 
     protected function setUp(): void
