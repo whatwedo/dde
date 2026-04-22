@@ -100,11 +100,15 @@ readonly class ProjectLifecycleManager
     }
 
     /**
-     * Performs the full "down" sequence: compose down, then remove per-project network.
+     * Performs the full "down" sequence: compose down, then remove the per-project network.
      * Services are shared infrastructure managed by system:up/system:down and must not be stopped here.
      *
      * compose down must run first so project containers are removed and automatically disconnected
      * from the per-project network before we attempt to remove it.
+     *
+     * In a worktree, the per-project network is worktree-scoped
+     * (`dde-services-<project>-<suffix>`), so teardown does not affect the main
+     * checkout or any sibling worktree.
      */
     public function down(ResolvedConfig $config, string $projectDir, bool $removeOrphans = false): void
     {
@@ -114,19 +118,10 @@ readonly class ProjectLifecycleManager
             'removeOrphans' => $removeOrphans,
         ]);
 
-        $projectNetwork = self::buildProjectNetworkName($config->projectName);
+        $worktreeInfo = $this->worktreeManager->detect($projectDir);
+        $projectNetwork = self::buildProjectNetworkName($config->projectName, $worktreeInfo);
 
         if (! $this->dockerManager->networkExists($projectNetwork)) {
-            return;
-        }
-
-        // Main and worktree share the same project network (same project name).
-        // If the compose-down above left containers from another project attached,
-        // disconnecting our service containers would strip their network aliases
-        // (e.g. `mariadb`) and break the still-running project. In that case we
-        // leave both the service connections and the network alone — the last
-        // project to go down cleans up.
-        if ($this->hasForeignContainersOnNetwork($config, $projectNetwork)) {
             return;
         }
 
@@ -208,19 +203,6 @@ readonly class ProjectLifecycleManager
         }
 
         return $this->composeParser->extractTraefikDomains($composeFile);
-    }
-
-    private function hasForeignContainersOnNetwork(ResolvedConfig $config, string $network): bool
-    {
-        $attached = $this->dockerManager->getConnectedContainerNames($network);
-        $serviceContainers = [];
-
-        foreach ($config->services as $service) {
-            $version = $config->getServiceVersion($service->name);
-            $serviceContainers[] = ServiceRegistry::buildContainerName($service->name, $version);
-        }
-
-        return array_diff($attached, $serviceContainers) !== [];
     }
 
     /**

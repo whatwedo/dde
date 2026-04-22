@@ -412,12 +412,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->with('dde-services-test-project')
             ->willReturn(true);
 
-        // Only the MariaDB service is left on the network → safe to clean up.
-        $this->dockerManager->expects($this->once())
-            ->method('getConnectedContainerNames')
-            ->with('dde-services-test-project')
-            ->willReturn(['dde-mariadb-10.6']);
-
         $this->dockerManager->expects($this->once())
             ->method('disconnectContainerFromNetwork')
             ->with('dde-mariadb-10.6', 'dde-services-test-project');
@@ -444,7 +438,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->with('dde-services-test-project')
             ->willReturn(false);
 
-        $this->dockerManager->expects($this->never())->method('getConnectedContainerNames');
         $this->dockerManager->expects($this->never())->method('disconnectContainerFromNetwork');
         $this->dockerManager->expects($this->never())->method('removeNetwork');
 
@@ -453,41 +446,59 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->manager->down($config, $projectDir);
     }
 
-    public function testDownSkipsDisconnectAndRemoveWhenForeignContainersStillAttached(): void
+    #[AllowMockObjectsWithoutExpectations]
+    public function testDownInWorktreeRemovesOnlyWorktreeNetwork(): void
     {
-        // Regression: running `dde down` in a worktree while the main project
-        // is still up used to disconnect the shared MariaDB service container
-        // from the per-project network. MariaDB would lose its `mariadb` alias
-        // and the still-running main web container could no longer reach it.
-        // Teardown must bail out entirely when foreign containers are present.
         $config = $this->createConfig([
-            new ServiceDefinition(name: 'mariadb', version: '10.6'),
+            new ServiceDefinition(name: 'postgres', version: '18'),
         ]);
-        $projectDir = '/tmp/test-project-wt-feature';
+        $projectDir = '/tmp/test-project-wt';
+
+        $worktreeManager = $this->createMock(WorktreeManager::class);
+        $worktreeInfo = new \App\Config\WorktreeInfo(
+            mainDirectory: '/tmp/test-project',
+            worktreeDirectory: $projectDir,
+            branch: 'feature/pg18',
+            suffix: 'test-project-wt',
+        );
+        $worktreeManager->method('detect')->willReturn($worktreeInfo);
+
+        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $systemServiceManager = new SystemServiceManager(
+            $this->dockerManager,
+            $serviceRegistry,
+            $this->systemFilesystem,
+            '/tmp/dde-data',
+        );
+
+        $manager = new ProjectLifecycleManager(
+            $this->dockerComposeManager,
+            $systemServiceManager,
+            $this->imageManager,
+            $this->certificateManager,
+            $serviceRegistry,
+            $this->dockerManager,
+            $worktreeManager,
+            $this->composeParser,
+            $this->filesystem,
+        );
 
         $this->dockerManager->expects($this->once())
             ->method('networkExists')
-            ->with('dde-services-test-project')
+            ->with('dde-services-test-project-wt')
             ->willReturn(true);
 
         $this->dockerManager->expects($this->once())
-            ->method('getConnectedContainerNames')
-            ->with('dde-services-test-project')
-            ->willReturn([
-                'dde-mariadb-10.6',
-                'test-project-web-1',
-            ]);
+            ->method('disconnectContainerFromNetwork')
+            ->with('dde-postgres-18', 'dde-services-test-project-wt');
 
-        $this->dockerManager->expects($this->never())
-            ->method('disconnectContainerFromNetwork');
+        $this->dockerManager->expects($this->once())
+            ->method('removeNetwork')
+            ->with('dde-services-test-project-wt');
 
-        $this->dockerManager->expects($this->never())
-            ->method('removeNetwork');
+        $this->dockerComposeManager->expects($this->once())->method('down');
 
-        $this->dockerComposeManager->expects($this->once())
-            ->method('down');
-
-        $this->manager->down($config, $projectDir);
+        $manager->down($config, $projectDir);
     }
 
     /**
