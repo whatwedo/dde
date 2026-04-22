@@ -93,8 +93,10 @@ The `ProjectLifecycleManager::up()` method calls `ImageManager::ensureDevLayers(
 
 1. Returns `null` early if the project name is empty
 2. Checks if the layer is already cached (returns `null` if so)
-3. Finds the first service with an `image` key in the compose file
+3. Finds the first service with an `image` key whose base image has a usable shell (`DockerManager::imageHasShell()`); services without `image:` and services pointing at shell-less / distroless / scratch images are skipped, because the dev-layer Dockerfile runs `apt-get` / `adduser` and cannot succeed without `/bin/sh`
 4. Builds the dev layer for that service
-5. Returns an array with the service name and image tag
+5. Returns an array with the service name and image tag, or `null` when no shell-bearing `image:` service exists
+
+This mirrors the shell-check `DockerComposeManager::generateOverride()` already applies before injecting the entrypoint, SSH-Agent socket or `env_file`.
 
 The result is included in the return value of `ProjectLifecycleManager::up()` for informational purposes. To actually use the dev layer at runtime, the project config should set the container image explicitly (e.g. `containers.web.image: dde-myproject:dev`), which the runtime override will pick up via `DockerComposeManager::generateOverride()`.

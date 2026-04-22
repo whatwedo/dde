@@ -112,7 +112,13 @@ readonly class ImageManager
                 continue;
             }
 
-            $imageTag = $this->buildDevLayer($serviceConfig['image'], $config->projectName, $output);
+            $baseImage = $serviceConfig['image'];
+
+            if (! $this->dockerManager->imageHasShell($baseImage)) {
+                continue;
+            }
+
+            $imageTag = $this->buildDevLayer($baseImage, $config->projectName, $output);
 
             return [
                 'serviceName' => (string) $serviceName,
