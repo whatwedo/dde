@@ -123,6 +123,24 @@ final class WorktreeServiceVersioningTest extends TestCase
         $this->assertSame(1, $matched, 'could not parse worktree network name from docker network ls output');
         $worktreeNetworkName = $worktreeNetworkMatch[0];
 
+        // 4d. The canonical DNS alias `postgres` resolves to the correct version
+        //     in each network. This is the actual mechanism the feature fixes:
+        //     previously both postgres-18.3 and postgres-17 tried to claim
+        //     `postgres` on the shared network, producing non-deterministic DNS.
+        $mainAliases = $this->networkAliasesFor('dde-services-e2e-pgver', 'dde-postgres-'.self::MAIN_PG_VERSION);
+        $this->assertContains(
+            'postgres',
+            $mainAliases,
+            'main network must bind the canonical `postgres` alias to the default-version container',
+        );
+
+        $worktreeAliases = $this->networkAliasesFor($worktreeNetworkName, 'dde-postgres-'.self::WORKTREE_PG_VERSION);
+        $this->assertContains(
+            'postgres',
+            $worktreeAliases,
+            'worktree network must bind the canonical `postgres` alias to the alternate-version container',
+        );
+
         // 5. Worktree teardown: removes only the worktree network; main stays reachable
         $result = $this->runConsoleJsonInDir($this->worktreeDir, 'project:down', timeout: 60);
         $this->assertSame('ok', $result['status'], 'worktree project:down should succeed');
@@ -227,6 +245,31 @@ final class WorktreeServiceVersioningTest extends TestCase
         }
 
         $this->fail(sprintf('PostgreSQL container %s did not become ready within %d seconds', $containerName, $maxAttempts));
+    }
+
+    /**
+     * Returns the canonical network aliases that $containerName has inside $networkName.
+     * Uses `docker inspect <container>` and reads .NetworkSettings.Networks.<network>.Aliases,
+     * which is the authoritative source for per-network aliases as set in docker-compose.
+     *
+     * @return list<string>
+     */
+    private function networkAliasesFor(string $networkName, string $containerName): array
+    {
+        $process = new Process([
+            'docker', 'inspect', $containerName,
+            '--format', '{{json .NetworkSettings.Networks}}',
+        ]);
+        $process->mustRun();
+
+        /** @var array<string, array{Aliases?: list<string>}> $networks */
+        $networks = json_decode($process->getOutput(), true, 512, JSON_THROW_ON_ERROR);
+
+        if (!isset($networks[$networkName])) {
+            return [];
+        }
+
+        return $networks[$networkName]['Aliases'] ?? [];
     }
 
     protected function setUp(): void
