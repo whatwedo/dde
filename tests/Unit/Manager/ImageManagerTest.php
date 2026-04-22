@@ -10,6 +10,8 @@ use App\Model\UserContext;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Yaml\Yaml;
 
 #[AllowMockObjectsWithoutExpectations]
 final class ImageManagerTest extends TestCase
@@ -17,6 +19,11 @@ final class ImageManagerTest extends TestCase
     private ImageManager $manager;
 
     private DockerManager&MockObject $dockerManager;
+
+    /**
+     * @var list<string>
+     */
+    private array $tempComposeFiles = [];
 
     #[AllowMockObjectsWithoutExpectations]
     public function testHasLabelReturnsTrueWhenLabelExists(): void
@@ -258,9 +265,157 @@ final class ImageManagerTest extends TestCase
         $this->assertNull($result);
     }
 
+    public function testEnsureDevLayersSkipsShellLessServiceAndPicksShellBearingOne(): void
+    {
+        $config = new \App\Config\ResolvedConfig(
+            globalConfig: new \App\Config\GlobalConfig(),
+            projectConfig: new \App\Config\ProjectConfig(name: 'shell-check'),
+        );
+
+        $composeFile = $this->writeComposeFile([
+            'services' => [
+                'storage' => [
+                    'image' => 'dxflrs/garage:v1.0.1',
+                ],
+                'web' => [
+                    'image' => 'php:8.3-fpm',
+                ],
+            ],
+        ]);
+
+        $this->dockerManager->method('imageExists')
+            ->with('dde-shell-check:dev')
+            ->willReturn(false);
+
+        $this->dockerManager->method('imageHasShell')
+            ->willReturnMap([
+                ['dxflrs/garage:v1.0.1', false],
+                ['php:8.3-fpm', true],
+            ]);
+
+        $this->dockerManager->method('runEphemeral')
+            ->willReturn(new \Symfony\Component\Process\Process(['true']));
+
+        $this->dockerManager->expects($this->once())
+            ->method('buildImage')
+            ->with(
+                $this->callback(fn (string $dir): bool => is_dir($dir) && file_exists($dir.'/Dockerfile')),
+                'dde-shell-check:dev',
+                null,
+            );
+
+        $result = $this->manager->ensureDevLayers($config, $composeFile);
+
+        $this->assertNotNull($result);
+        $this->assertSame('web', $result['serviceName']);
+        $this->assertSame('dde-shell-check:dev', $result['imageTag']);
+    }
+
+    public function testEnsureDevLayersReturnsNullWhenAllServicesAreShellLess(): void
+    {
+        $config = new \App\Config\ResolvedConfig(
+            globalConfig: new \App\Config\GlobalConfig(),
+            projectConfig: new \App\Config\ProjectConfig(name: 'all-shell-less'),
+        );
+
+        $composeFile = $this->writeComposeFile([
+            'services' => [
+                'storage' => [
+                    'image' => 'dxflrs/garage:v1.0.1',
+                ],
+                'vault' => [
+                    'image' => 'hashicorp/vault:scratch',
+                ],
+            ],
+        ]);
+
+        $this->dockerManager->method('imageExists')
+            ->with('dde-all-shell-less:dev')
+            ->willReturn(false);
+
+        $this->dockerManager->method('imageHasShell')
+            ->willReturn(false);
+
+        $this->dockerManager->expects($this->never())
+            ->method('buildImage');
+
+        $result = $this->manager->ensureDevLayers($config, $composeFile);
+
+        $this->assertNull($result);
+    }
+
+    public function testEnsureDevLayersIgnoresServicesWithoutImageField(): void
+    {
+        $config = new \App\Config\ResolvedConfig(
+            globalConfig: new \App\Config\GlobalConfig(),
+            projectConfig: new \App\Config\ProjectConfig(name: 'build-first'),
+        );
+
+        $composeFile = $this->writeComposeFile([
+            'services' => [
+                'web' => [
+                    'build' => [
+                        'context' => '.',
+                    ],
+                ],
+                'storage' => [
+                    'image' => 'php:8.3-fpm',
+                ],
+            ],
+        ]);
+
+        $this->dockerManager->method('imageExists')
+            ->with('dde-build-first:dev')
+            ->willReturn(false);
+
+        $this->dockerManager->method('imageHasShell')
+            ->with('php:8.3-fpm')
+            ->willReturn(true);
+
+        $this->dockerManager->method('runEphemeral')
+            ->willReturn(new \Symfony\Component\Process\Process(['true']));
+
+        $this->dockerManager->expects($this->once())
+            ->method('buildImage')
+            ->with(
+                $this->callback(fn (string $dir): bool => is_dir($dir) && file_exists($dir.'/Dockerfile')),
+                'dde-build-first:dev',
+                null,
+            );
+
+        $result = $this->manager->ensureDevLayers($config, $composeFile);
+
+        $this->assertNotNull($result);
+        $this->assertSame('storage', $result['serviceName']);
+        $this->assertSame('dde-build-first:dev', $result['imageTag']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function writeComposeFile(array $data): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'dde-compose-').'.yml';
+        (new Filesystem())->dumpFile($path, Yaml::dump($data, 4));
+        $this->tempComposeFiles[] = $path;
+
+        return $path;
+    }
+
     protected function setUp(): void
     {
         $this->dockerManager = $this->createMock(DockerManager::class);
         $this->manager = new ImageManager($this->dockerManager, new UserContext());
+    }
+
+    protected function tearDown(): void
+    {
+        foreach ($this->tempComposeFiles as $path) {
+            if (file_exists($path)) {
+                unlink($path);
+            }
+        }
+
+        $this->tempComposeFiles = [];
     }
 }
