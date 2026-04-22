@@ -35,22 +35,27 @@ readonly class ProjectLifecycleManager
         // 0. Ensure global system services are running (auto system:up)
         $this->ensureGlobalServices();
 
-        // 1. Ensure declared services are running
+        // 1. Detect worktree up-front — the per-project network name depends on it.
+        $worktreeInfo = $this->worktreeManager->detect($projectDir);
+
+        // 2. Ensure declared services are running
         $serviceResults = $this->ensureServices($config);
 
-        // 2. Ensure per-project network exists and connect services to it
-        //    Use null when no services are configured so generateOverride does not inject
-        //    a non-existent external network reference.
-        $projectNetwork = $config->services !== [] ? self::buildProjectNetworkName($config->projectName) : null;
+        // 3. Ensure per-project network exists and connect services to it.
+        //    Worktrees get their own network (`dde-services-<project>-<suffix>`) so
+        //    they can bind the canonical service alias (e.g. `postgres`) to a
+        //    different version than the main checkout without DNS collisions.
+        $projectNetwork = $config->services !== []
+            ? self::buildProjectNetworkName($config->projectName, $worktreeInfo)
+            : null;
         $this->ensureProjectNetwork($config, $projectNetwork);
 
-        // 3. Ensure TLS certificates for project domains
+        // 4. Ensure TLS certificates for project domains
         $composeFile = $this->dockerComposeManager->findComposeFile($projectDir);
         $projectName = $config->projectName;
         $this->mkcertManager->ensureForComposeFile($projectName, $composeFile);
 
-        // 3b. Ensure TLS certificates for worktree domains
-        $worktreeInfo = $this->worktreeManager->detect($projectDir);
+        // 4b. Ensure TLS certificates for worktree domains
         $worktreeHostname = null;
 
         if ($worktreeInfo instanceof WorktreeInfo) {
@@ -59,21 +64,21 @@ readonly class ProjectLifecycleManager
             $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, [$worktreeHostname]);
         }
 
-        // 4. Image layer check — build dev layer for project containers
+        // 5. Image layer check — build dev layer for project containers
         $devLayerResult = $this->imageManager->ensureDevLayers($config, $composeFile, $output);
 
-        // 5. Pre-build compose images
+        // 6. Pre-build compose images
         $this->dockerComposeManager->build($projectDir, [], $output);
 
-        // 6. Pull missing images silently — avoids flooding the GUI with pull/extract spam
+        // 7. Pull missing images silently — avoids flooding the GUI with pull/extract spam
         if ($this->dockerComposeManager->needsPull($projectDir)) {
             $this->dockerComposeManager->pull($projectDir);
         }
 
-        // 7. Generate override (inject worktree info + per-project network)
+        // 8. Generate override (inject worktree info + per-project network)
         $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork);
 
-        // 8. Docker compose up
+        // 9. Docker compose up
         $composeFiles = [$composeFile, $overrideFile];
 
         try {

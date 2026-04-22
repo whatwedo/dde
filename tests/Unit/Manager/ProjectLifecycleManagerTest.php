@@ -628,6 +628,70 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->assertSame(['test-project-wt.test'], $result['domains']);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpCreatesWorktreeSpecificNetworkAndConnectsServices(): void
+    {
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'postgres', version: '18'),
+        ]);
+        $projectDir = '/tmp/test-project-wt';
+
+        $worktreeManager = $this->createMock(WorktreeManager::class);
+        $worktreeInfo = new \App\Config\WorktreeInfo(
+            mainDirectory: '/tmp/test-project',
+            worktreeDirectory: $projectDir,
+            branch: 'feature/pg18',
+            suffix: 'test-project-wt',
+        );
+        $worktreeManager->method('detect')->willReturn($worktreeInfo);
+        $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
+
+        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $systemServiceManager = new SystemServiceManager(
+            $this->dockerManager,
+            $serviceRegistry,
+            $this->systemFilesystem,
+            '/tmp/dde-data',
+        );
+
+        $manager = new ProjectLifecycleManager(
+            $this->dockerComposeManager,
+            $systemServiceManager,
+            $this->imageManager,
+            $this->certificateManager,
+            $serviceRegistry,
+            $this->dockerManager,
+            $worktreeManager,
+            $this->composeParser,
+            $this->filesystem,
+        );
+
+        $this->dockerManager->method('isContainerRunning')->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('networkExists')
+            ->with('dde-services-test-project-wt')
+            ->willReturn(false);
+
+        $this->dockerManager->expects($this->once())
+            ->method('createNetwork')
+            ->with('dde-services-test-project-wt');
+
+        $this->dockerManager->expects($this->once())
+            ->method('connectContainerToNetwork')
+            ->with('dde-postgres-18', 'dde-services-test-project-wt', ['postgres']);
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->expects($this->once())
+            ->method('generateOverride')
+            ->with($config, $projectDir, $worktreeInfo, 'dde-services-test-project-wt')
+            ->willReturn('/tmp/override.yml');
+
+        $manager->up($config, $projectDir, false);
+    }
+
     public function testBuildProjectNetworkNameAppendsSanitisedWorktreeSuffix(): void
     {
         $worktreeInfo = new \App\Config\WorktreeInfo(
