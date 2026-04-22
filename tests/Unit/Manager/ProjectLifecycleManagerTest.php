@@ -628,6 +628,29 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->assertSame(['test-project-wt.test'], $result['domains']);
     }
 
+    public function testBuildProjectNetworkNameAppendsSanitisedWorktreeSuffix(): void
+    {
+        $worktreeInfo = new \App\Config\WorktreeInfo(
+            mainDirectory: '/tmp/test-project',
+            worktreeDirectory: '/tmp/test-project-wt-feature',
+            branch: 'feature/x',
+            suffix: 'test-project-wt-feature',
+        );
+
+        $this->assertSame(
+            'dde-services-test-project-wt-feature',
+            ProjectLifecycleManager::buildProjectNetworkName('test-project', $worktreeInfo),
+        );
+    }
+
+    public function testBuildProjectNetworkNameWithoutWorktreeKeepsOldName(): void
+    {
+        $this->assertSame(
+            'dde-services-test-project',
+            ProjectLifecycleManager::buildProjectNetworkName('test-project'),
+        );
+    }
+
     /**
      * @param array<ServiceDefinition> $services
      */

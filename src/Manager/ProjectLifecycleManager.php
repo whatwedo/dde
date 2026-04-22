@@ -160,9 +160,17 @@ readonly class ProjectLifecycleManager
         return $serviceResults;
     }
 
-    public static function buildProjectNetworkName(string $projectName): string
+    public static function buildProjectNetworkName(string $projectName, ?WorktreeInfo $worktreeInfo = null): string
     {
-        return 'dde-services-'.$projectName;
+        $base = 'dde-services-'.$projectName;
+
+        if (! $worktreeInfo instanceof WorktreeInfo) {
+            return $base;
+        }
+
+        $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
+
+        return $base.'-'.$suffix;
     }
 
     /**
