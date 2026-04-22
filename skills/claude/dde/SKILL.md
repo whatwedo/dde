@@ -167,7 +167,7 @@ dde project:db:import /tmp/seed.sql
 
 ### Running main and worktree in parallel
 
-Both can be `project:up` at the same time. The shared `mariadb`/`postgres` service is kept reachable through a reference-counted per-project network, and `project:down` in one worktree never kills the other.
+Both can be `project:up` at the same time: each worktree owns its own per-project Docker network (`dde-services-<project>-<suffix>`; main keeps `dde-services-<project>`), and the shared `mariadb`/`postgres` service container is attached to every network that needs it under the canonical alias. `project:down` in one worktree removes only that worktree's network — main and sibling worktrees are unaffected.
 
 ## Debugging
 
