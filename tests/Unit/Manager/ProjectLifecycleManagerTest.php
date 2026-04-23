@@ -558,6 +558,15 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willReturn($projectDir.'/docker-compose.yml');
         $this->imageManager->method('ensureDevLayers')->willReturn(null);
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+        $this->dockerComposeManager->method('ps')
+            ->willReturn([
+                [
+                    'Service' => 'web',
+                ],
+                [
+                    'Service' => 'api',
+                ],
+            ]);
 
         $this->composeParser->method('extractTraefikDomains')
             ->willReturn(['app.test', 'api.app.test']);
@@ -577,12 +586,137 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willReturn($projectDir.'/docker-compose.yml');
         $this->imageManager->method('ensureDevLayers')->willReturn(null);
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+        $this->dockerComposeManager->method('ps')->willReturn([]);
 
         $this->composeParser->method('extractTraefikDomains')->willReturn([]);
 
         $result = $this->manager->up($config, $projectDir, false);
 
         $this->assertSame([], $result['domains']);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpOnlyReturnsDomainsBelongingToRunningServices(): void
+    {
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        // Only 'web' is running — 'api' is excluded by a profile
+        $this->dockerComposeManager->method('ps')
+            ->willReturn([
+                [
+                    'Service' => 'web',
+                ],
+            ]);
+
+        $this->composeParser->method('extractTraefikDomains')
+            ->with($projectDir.'/docker-compose.yml', ['web'])
+            ->willReturn(['app.test']);
+
+        $result = $this->manager->up($config, $projectDir, false);
+
+        $this->assertSame(['app.test'], $result['domains']);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpHandlesMalformedPsOutputGracefully(): void
+    {
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        // Simulate malformed / mixed ps output:
+        //  - missing Service key (ignored)
+        //  - non-string Service value (ignored)
+        //  - empty-string service (ignored)
+        //  - lowercase key variant (accepted — docker compose emits this in newer versions)
+        //  - canonical camel-case key (accepted)
+        $this->dockerComposeManager->method('ps')
+            ->willReturn([
+                [
+                    'Name' => 'project-web-1',
+                ],
+                [
+                    'Service' => 123,
+                ],
+                [
+                    'Service' => '',
+                ],
+                [
+                    'service' => 'worker',
+                ],
+                [
+                    'Service' => 'api',
+                ],
+            ]);
+
+        $this->composeParser->method('extractTraefikDomains')
+            ->with($projectDir.'/docker-compose.yml', ['worker', 'api'])
+            ->willReturn(['worker.test', 'api.test']);
+
+        $result = $this->manager->up($config, $projectDir, false);
+
+        $this->assertSame(['worker.test', 'api.test'], $result['domains']);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpSkipsPsInsideWorktree(): void
+    {
+        // Inside a worktree the hostname wins over compose labels, so the
+        // extra `ps` round-trip is unnecessary and would introduce a new
+        // failure mode if `ps` ever errored (e.g. JSON-parse failure).
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project-wt';
+
+        $worktreeManager = $this->createMock(WorktreeManager::class);
+        $worktreeInfo = new \App\Config\WorktreeInfo(
+            mainDirectory: '/tmp/test-project',
+            worktreeDirectory: $projectDir,
+            branch: 'feature/x',
+            suffix: 'test-project-wt',
+        );
+        $worktreeManager->method('detect')->willReturn($worktreeInfo);
+        $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
+
+        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $systemServiceManager = new SystemServiceManager(
+            $this->dockerManager,
+            $serviceRegistry,
+            $this->systemFilesystem,
+            '/tmp/dde-data',
+        );
+
+        $manager = new ProjectLifecycleManager(
+            $this->dockerComposeManager,
+            $systemServiceManager,
+            $this->imageManager,
+            $this->certificateManager,
+            $serviceRegistry,
+            $this->dockerManager,
+            $worktreeManager,
+            $this->composeParser,
+            $this->filesystem,
+        );
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $this->dockerComposeManager->expects($this->never())->method('ps');
+
+        $result = $manager->up($config, $projectDir, false);
+
+        $this->assertSame(['test-project-wt.test'], $result['domains']);
     }
 
     #[AllowMockObjectsWithoutExpectations]

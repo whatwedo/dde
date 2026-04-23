@@ -78,19 +78,28 @@ readonly class ProjectLifecycleManager
         // 8. Generate override (inject worktree info + per-project network)
         $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork);
 
-        // 9. Docker compose up
+        // 9. Docker compose up, then query running services while the override
+        //    file still exists — `finally` deletes it afterwards. Inside a
+        //    worktree the hostname wins over compose labels anyway, so skip
+        //    the extra `ps` round-trip and avoid introducing a new failure
+        //    mode where a JSON-parse error in `ps` would tear down `up()`.
         $composeFiles = [$composeFile, $overrideFile];
+        $runningServices = [];
 
         try {
             $this->dockerComposeManager->up($projectDir, [
                 'composeFiles' => $composeFiles,
                 'build' => $build,
             ], $output);
+
+            if ($worktreeHostname === null) {
+                $runningServices = $this->getRunningServiceNames($projectDir, $composeFiles);
+            }
         } finally {
             $this->filesystem->remove($overrideFile);
         }
 
-        $domains = $this->collectProjectDomains($composeFile, $worktreeHostname);
+        $domains = $this->collectProjectDomains($composeFile, $worktreeHostname, $runningServices);
 
         return [
             'serviceResults' => $serviceResults,
@@ -194,15 +203,52 @@ readonly class ProjectLifecycleManager
      * Traefik `Host()` labels in the compose file so user-customised domains
      * win.
      *
+     * Only domains belonging to actually running services are returned so that
+     * inactive profiles do not produce misleading URLs.
+     *
+     * @param list<string> $runningServices
+     *
      * @return list<string>
      */
-    private function collectProjectDomains(string $composeFile, ?string $worktreeHostname): array
+    private function collectProjectDomains(string $composeFile, ?string $worktreeHostname, array $runningServices): array
     {
         if ($worktreeHostname !== null) {
             return [$worktreeHostname];
         }
 
-        return $this->composeParser->extractTraefikDomains($composeFile);
+        return $this->composeParser->extractTraefikDomains($composeFile, $runningServices);
+    }
+
+    /**
+     * Returns the service names of currently running containers for the project.
+     *
+     * `docker compose ps --format json` varies across versions: older releases
+     * emit camel-case keys (`Service`), newer ones lower-case (`service`).
+     * ProjectInfoManager / ProjectStatusCommand / ProjectShellCommand already
+     * accept both spellings — match that convention so this method does not
+     * silently return an empty list against a lowercase-key environment.
+     *
+     * @param list<string> $composeFiles
+     *
+     * @return list<string>
+     */
+    private function getRunningServiceNames(string $projectDir, array $composeFiles): array
+    {
+        $containers = $this->dockerComposeManager->ps($projectDir, [
+            'composeFiles' => $composeFiles,
+        ]);
+
+        $services = [];
+
+        foreach ($containers as $container) {
+            $service = $container['Service'] ?? $container['service'] ?? null;
+
+            if (is_string($service) && $service !== '') {
+                $services[] = $service;
+            }
+        }
+
+        return array_values(array_unique($services));
     }
 
     /**
