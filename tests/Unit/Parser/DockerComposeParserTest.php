@@ -233,6 +233,54 @@ final class DockerComposeParserTest extends TestCase
         $this->assertSame(['app.test'], $this->parser->extractTraefikDomains($path));
     }
 
+    public function testExtractTraefikDomainsFiltersOnlySpecifiedServices(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`)"
+              api:
+                image: php
+                labels:
+                  traefik.http.routers.api.rule: "Host(`api.test`)"
+              worker:
+                image: php
+                labels:
+                  - "traefik.http.routers.worker.rule=Host(`worker.test`)"
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        $this->assertSame(
+            ['app.test', 'worker.test'],
+            $this->parser->extractTraefikDomains($path, ['web', 'worker']),
+        );
+    }
+
+    public function testExtractTraefikDomainsReturnsAllWhenFilterIsNull(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`)"
+              api:
+                image: php
+                labels:
+                  traefik.http.routers.api.rule: "Host(`api.test`)"
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        $this->assertSame(
+            ['app.test', 'api.test'],
+            $this->parser->extractTraefikDomains($path),
+        );
+    }
+
     public function testGenerateDiffPreservesLineOrder(): void
     {
         $original = [
