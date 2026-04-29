@@ -91,6 +91,7 @@ abstract class AbstractSystemService implements ServiceInterface
         return [
             'dde.managed' => 'true',
             'dde.service' => $this->getName(),
+            'com.docker.compose.project' => 'dde',
         ];
     }
 }

@@ -253,6 +253,14 @@ final class AbstractSystemServiceTest extends TestCase
         $this->assertSame('test', $config->labels['dde.service']);
     }
 
+    public function testGetDefaultLabelsIncludesComposeProjectLabel(): void
+    {
+        $config = $this->service->getContainerConfig();
+
+        $this->assertArrayHasKey('com.docker.compose.project', $config->labels);
+        $this->assertSame('dde', $config->labels['com.docker.compose.project']);
+    }
+
     protected function setUp(): void
     {
         $this->dockerManager = $this->createMock(DockerManager::class);

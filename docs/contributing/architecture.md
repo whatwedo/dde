@@ -144,6 +144,15 @@ System services represent the infrastructure containers managed by `system:up`/`
 - `UrlOpenerUtil` -- opens URLs in the default browser (cross-platform)
 - `DiffUtil` -- generates unified diffs for file comparisons
 
+## Container Labels
+
+Every container created via `DockerManager::run()` (i.e. all dde-managed system containers — Traefik, dnsmasq, Mailpit, SSH-Agent, and the versioned service containers like `dde-postgres-18.3`) carries:
+
+- `dde.managed=true` -- marker used by `CleanupManager` and `dde system:down/cleanup` to find every dde container, regardless of name.
+- `dde.service=<name>` -- service identity (`traefik`, `mailpit`, `postgres`, …).
+- `dde.version=<version>` -- only on versioned services from `SystemServiceManager`.
+- `com.docker.compose.project=dde` -- groups dde-managed system containers under a single `dde` project in the Docker Desktop UI. dde does not actually use docker compose for these containers, but Docker Desktop only inspects this label for grouping.
+
 ## Design Principles
 
 1. **Thin commands**: Commands only handle CLI I/O. All logic lives in managers and services.
