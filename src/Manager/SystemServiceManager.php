@@ -75,6 +75,7 @@ final readonly class SystemServiceManager
                 'dde.managed' => 'true',
                 'dde.service' => $service,
                 'dde.version' => $version,
+                'com.docker.compose.project' => 'dde',
             ],
             restartPolicy: 'unless-stopped',
         );

@@ -45,6 +45,7 @@ final class SystemServiceManagerTest extends TestCase
         $this->assertSame('true', $config->labels['dde.managed']);
         $this->assertSame('mariadb', $config->labels['dde.service']);
         $this->assertSame('11.8', $config->labels['dde.version']);
+        $this->assertSame('dde', $config->labels['com.docker.compose.project']);
         $this->assertSame('unless-stopped', $config->restartPolicy);
     }
 
