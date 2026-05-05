@@ -144,6 +144,8 @@ services:
 
 `dde` is the shared machine-wide network used by Traefik. `dde-services-<project>` (main checkout) or `dde-services-<project>-<suffix>` (worktree) is the per-project network where versioned service containers (`mariadb`, `postgres`, …) are reachable under their canonical names. The worktree variant lets a branch run a different service version than main without alias collisions. The per-project network is omitted when `.dde/config.yml` declares no services, in which case only `dde` is injected.
 
+When a project switches a service version (e.g. `mariadb 11.8` → `10.11`), `project:up` detaches the previously attached `dde-<service>-*` container of the same service type before connecting the new one. Without this cleanup the canonical alias (`mariadb`) would resolve to two containers and Docker DNS would round-robin between them, randomly routing application traffic to the wrong database. Containers of unrelated service types and project app containers are left untouched.
+
 ### 4. SSH-Agent Volume
 
 For every shell-bearing service, the override mounts the shared SSH-Agent socket directory and declares the backing volume at the top level:

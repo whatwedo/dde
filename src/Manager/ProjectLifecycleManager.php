@@ -255,6 +255,13 @@ readonly class ProjectLifecycleManager
      * Creates the per-project network if it does not exist, then connects all
      * configured service containers to it with their service name as alias.
      * Receives null when no services are configured, in which case it is a no-op.
+     *
+     * Before connecting, any previously attached `dde-<service>-*` container
+     * whose version differs from the configured one is detached. Without this
+     * step a project that switches a service version (e.g. mariadb 11.8 → 10.11)
+     * would keep the old container connected under the canonical alias as
+     * well, and Docker DNS would round-robin between both — randomly routing
+     * traffic to the wrong database.
      */
     private function ensureProjectNetwork(ResolvedConfig $config, ?string $projectNetwork): void
     {
@@ -262,14 +269,48 @@ readonly class ProjectLifecycleManager
             return;
         }
 
-        if (! $this->dockerManager->networkExists($projectNetwork)) {
+        $networkExisted = $this->dockerManager->networkExists($projectNetwork);
+
+        if (! $networkExisted) {
             $this->dockerManager->createNetwork($projectNetwork);
         }
 
+        $desiredContainers = [];
+
         foreach ($config->services as $service) {
             $version = $config->getServiceVersion($service->name);
-            $containerName = ServiceRegistry::buildContainerName($service->name, $version);
-            $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$service->name]);
+            $desiredContainers[$service->name] = ServiceRegistry::buildContainerName($service->name, $version);
+        }
+
+        if ($networkExisted) {
+            $this->detachStaleServiceContainers($projectNetwork, $desiredContainers);
+        }
+
+        foreach ($desiredContainers as $serviceName => $containerName) {
+            $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$serviceName]);
+        }
+    }
+
+    /**
+     * Disconnects any `dde-<service>-*` container attached to the network whose
+     * version does not match the configured one. Containers belonging to other
+     * service types and non-dde containers (e.g. project app containers) are
+     * left untouched.
+     *
+     * @param array<string, string> $desiredContainers service name => desired container name
+     */
+    private function detachStaleServiceContainers(string $projectNetwork, array $desiredContainers): void
+    {
+        $connected = $this->dockerManager->getConnectedContainerNames($projectNetwork);
+
+        foreach ($desiredContainers as $serviceName => $desired) {
+            $prefix = sprintf('dde-%s-', $serviceName);
+
+            foreach ($connected as $name) {
+                if ($name !== $desired && str_starts_with($name, $prefix)) {
+                    $this->dockerManager->disconnectContainerFromNetwork($name, $projectNetwork);
+                }
+            }
         }
     }
 }
