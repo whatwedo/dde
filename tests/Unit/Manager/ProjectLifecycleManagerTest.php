@@ -400,6 +400,129 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->manager->up($config, $projectDir, false);
     }
 
+    public function testUpDisconnectsStaleServiceContainerOfDifferentVersion(): void
+    {
+        // Regression: when a project switches MariaDB version (e.g. from 11.8
+        // default to 10.11), the previously attached `dde-mariadb-11.8` stays
+        // connected to the project network with alias `mariadb`. Docker DNS
+        // then round-robins between the stale and the desired container,
+        // randomly routing app traffic to the wrong database. ensureProjectNetwork
+        // must detach any same-service-type container of a different version
+        // before attaching the configured one.
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'mariadb', version: '10.11'),
+        ]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->method('isContainerRunning')->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('networkExists')
+            ->with('dde-services-test-project')
+            ->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('getConnectedContainerNames')
+            ->with('dde-services-test-project')
+            ->willReturn(['dde-mariadb-11.8', 'dde-postgres-18', 'test-project-web-1']);
+
+        // Stale mariadb of the wrong version must be detached. The unrelated
+        // postgres container and the app container must be left alone.
+        $this->dockerManager->expects($this->once())
+            ->method('disconnectContainerFromNetwork')
+            ->with('dde-mariadb-11.8', 'dde-services-test-project');
+
+        $this->dockerManager->expects($this->once())
+            ->method('connectContainerToNetwork')
+            ->with('dde-mariadb-10.11', 'dde-services-test-project', ['mariadb']);
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $this->manager->up($config, $projectDir, false);
+    }
+
+    public function testUpKeepsServiceContainerOfMatchingVersionAttached(): void
+    {
+        // When the configured service container is already attached at the
+        // correct version, ensureProjectNetwork must not disconnect it. The
+        // subsequent connect call is a no-op (DockerManager swallows the
+        // "already exists in network" error) but the disconnect path must
+        // not run for the matching version.
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'mariadb', version: '10.11'),
+        ]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->method('isContainerRunning')->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('networkExists')
+            ->with('dde-services-test-project')
+            ->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('getConnectedContainerNames')
+            ->with('dde-services-test-project')
+            ->willReturn(['dde-mariadb-10.11']);
+
+        $this->dockerManager->expects($this->never())
+            ->method('disconnectContainerFromNetwork');
+
+        $this->dockerManager->expects($this->once())
+            ->method('connectContainerToNetwork')
+            ->with('dde-mariadb-10.11', 'dde-services-test-project', ['mariadb']);
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $this->manager->up($config, $projectDir, false);
+    }
+
+    public function testUpSkipsStaleScanWhenNetworkIsFreshlyCreated(): void
+    {
+        // A freshly created network has no containers attached, so probing it
+        // for stale containers would only waste a `docker network inspect`
+        // call. Verify ensureProjectNetwork skips getConnectedContainerNames
+        // when the network had to be created.
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'mariadb', version: '10.11'),
+        ]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->method('isContainerRunning')->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('networkExists')
+            ->with('dde-services-test-project')
+            ->willReturn(false);
+
+        $this->dockerManager->expects($this->once())
+            ->method('createNetwork')
+            ->with('dde-services-test-project');
+
+        $this->dockerManager->expects($this->never())
+            ->method('getConnectedContainerNames');
+
+        $this->dockerManager->expects($this->never())
+            ->method('disconnectContainerFromNetwork');
+
+        $this->dockerManager->expects($this->once())
+            ->method('connectContainerToNetwork')
+            ->with('dde-mariadb-10.11', 'dde-services-test-project', ['mariadb']);
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $this->manager->up($config, $projectDir, false);
+    }
+
     public function testDownDisconnectsServicesAndRemovesNetwork(): void
     {
         $config = $this->createConfig([
