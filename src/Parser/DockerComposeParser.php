@@ -46,9 +46,15 @@ readonly class DockerComposeParser
      * Returns an empty list when the file does not exist or contains no Traefik
      * host rules. Parses both map- and list-style label definitions.
      *
+     * When $onlyServices is provided, only labels from those service names are
+     * considered — useful for filtering by actually running containers (e.g.
+     * when profiles exclude some services).
+     *
+     * @param list<string>|null $onlyServices service names to include (null = all)
+     *
      * @return list<string>
      */
-    public function extractTraefikDomains(string $path): array
+    public function extractTraefikDomains(string $path, ?array $onlyServices = null): array
     {
         if (! $this->filesystem->exists($path)) {
             return [];
@@ -62,7 +68,11 @@ readonly class DockerComposeParser
 
         $domains = [];
 
-        foreach ($config['services'] as $service) {
+        foreach ($config['services'] as $serviceName => $service) {
+            if ($onlyServices !== null && ! in_array($serviceName, $onlyServices, true)) {
+                continue;
+            }
+
             if (! is_array($service)) {
                 continue;
             }
