@@ -123,7 +123,7 @@ System services represent the infrastructure containers managed by `system:up`/`
 
 - `PluginLoader` -- scans `~/.dde/plugins/` (global) and `.dde/plugins/` (project) for annotated shell scripts
 - `PluginDefinition` -- parsed plugin metadata (command name, description, script path)
-- `PluginProxyCommand` -- wraps a plugin script as a Symfony Console command, registered as `project:exec:{name}`
+- `PluginProxyCommand` -- wraps a plugin script as a Symfony Console command, registered as `project:{name}`
 - `PluginCommandLoader` -- lazy command loader that integrates plugins into the Symfony application
 
 ### Output (`App\Output\`)

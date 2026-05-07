@@ -27,7 +27,7 @@ final class PluginProxyCommandTest extends TestCase
 
         $command = new PluginProxyCommand($plugin);
 
-        $this->assertSame('project:exec:web:hash-pw', $command->getName());
+        $this->assertSame('project:web:hash-pw', $command->getName());
     }
 
     public function testDescriptionMatchesPluginDescription(): void

@@ -23,7 +23,7 @@ final class PluginCommandLoaderTest extends TestCase
 
         $names = $loader->getNames();
 
-        $this->assertSame(['project:exec:web:hello', 'project:exec:db:dump'], $names);
+        $this->assertSame(['project:web:hello', 'project:db:dump'], $names);
     }
 
     public function testHasReturnsTrueForExistingCommand(): void
@@ -32,7 +32,7 @@ final class PluginCommandLoaderTest extends TestCase
             new PluginDefinition(command: 'web:hello', description: 'Say hello', scriptPath: '/tmp/hello.sh'),
         ]);
 
-        $this->assertTrue($loader->has('project:exec:web:hello'));
+        $this->assertTrue($loader->has('project:web:hello'));
     }
 
     public function testHasReturnsFalseForUnknownCommand(): void
@@ -48,10 +48,10 @@ final class PluginCommandLoaderTest extends TestCase
             new PluginDefinition(command: 'web:hello', description: 'Say hello', scriptPath: '/tmp/hello.sh'),
         ]);
 
-        $command = $loader->get('project:exec:web:hello');
+        $command = $loader->get('project:web:hello');
 
         $this->assertInstanceOf(PluginProxyCommand::class, $command);
-        $this->assertSame('project:exec:web:hello', $command->getName());
+        $this->assertSame('project:web:hello', $command->getName());
     }
 
     public function testGetThrowsCommandNotFoundExceptionForUnknownCommand(): void

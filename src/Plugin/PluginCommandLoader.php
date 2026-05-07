@@ -61,7 +61,7 @@ final class PluginCommandLoader implements CommandLoaderInterface
         $definitions = $this->pluginLoader->loadPlugins($projectDir);
 
         foreach ($definitions as $definition) {
-            $commandName = 'project:exec:'.$definition->command;
+            $commandName = 'project:'.$definition->command;
             $this->plugins[$commandName] = $definition;
         }
 

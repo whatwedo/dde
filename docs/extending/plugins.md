@@ -36,7 +36,7 @@ Everything after the annotations is the script body, executed when the command i
 dde project:exec -s web echo "Hello from the web container"
 ```
 
-This registers as `dde project:exec:hello`.
+This registers as `dde project:hello`.
 
 ### With Arguments
 
@@ -52,7 +52,7 @@ dde project:exec -s web -- php bin/console security:hash-password "$1"
 Invoke with:
 
 ```bash
-dde project:exec:web:hash-pw "my-secret-password"
+dde project:web:hash-pw "my-secret-password"
 ```
 
 ### Namespace Convention
@@ -64,19 +64,23 @@ Use colons in the `@command` name to create logical groupings:
 # @description Clear all application caches
 ```
 
-This registers as `dde project:exec:cache:clear`.
+This registers as `dde project:cache:clear`.
 
 ## Command Registration
 
-Plugins are registered under the `project:exec:` namespace. The full command name is `project:exec:<@command-value>`.
+Plugins are registered under the `project:` namespace. The full command name is `project:<@command-value>`.
 
 | `@command` value | Registered as |
 |------------------|---------------|
-| `hello` | `dde project:exec:hello` |
-| `web:hash-pw` | `dde project:exec:web:hash-pw` |
-| `cache:clear` | `dde project:exec:cache:clear` |
+| `hello` | `dde project:hello` |
+| `web:hash-pw` | `dde project:web:hash-pw` |
+| `cache:clear` | `dde project:cache:clear` |
 
 All plugin commands appear in `dde list` output with their `@description` text.
+
+### Reserved Names
+
+Built-in `project:*` commands always take precedence. A plugin whose `@command` resolves to an existing built-in name (e.g. `up`, `down`, `exec`, `db`, `db:export`, `service:list`) is silently shadowed and unreachable. Pick a name that does not collide with the output of `dde list project`.
 
 ## Execution
 
