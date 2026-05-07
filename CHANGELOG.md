@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- Mailpit retains all messages instead of capping at the most recent 500. The container now starts with `MP_MAX_MESSAGES=0`; users on existing installations pick this up after the next `dde system:update`. (#143)
 - `project:db*` commands (`project:db`, `project:db:open`, `project:db:export`, `project:db:import`, `project:db:snapshot:create`, `project:db:snapshot:restore`) now target the worktree-suffixed database when run from inside a git worktree, matching the `DATABASE_URL` the compose override rewrites for the application container. An explicit `--database` value is still forwarded verbatim.
 
 ## [2.0.0-alpha.5] - 2026-04-21
