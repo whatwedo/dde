@@ -124,7 +124,7 @@ final class ProjectLifecycleTest extends TestCase
         ]));
         chmod($pluginDir.'/hello.sh', 0o755);
 
-        $process = $this->runConsole('project:exec:web:hello');
+        $process = $this->runConsole('project:web:hello');
         $this->assertTrue($process->isSuccessful(), 'plugin command should succeed');
         $this->assertStringContainsString('PLUGIN_OK', $process->getOutput());
 

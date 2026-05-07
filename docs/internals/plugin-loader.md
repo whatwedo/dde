@@ -30,7 +30,7 @@ echo "Deploying..."
 
 Required annotations:
 
-- `@command` -- the command name (registered as `project:exec:{name}`)
+- `@command` -- the command name (registered as `project:{name}`)
 
 Optional annotations:
 
@@ -71,7 +71,7 @@ final readonly class PluginDefinition
 
 Each plugin is wrapped in a `PluginProxyCommand`, which is a standard Symfony Console command:
 
-- Registered as `project:exec:{command}` (e.g. `project:exec:deploy`)
+- Registered as `project:{command}` (e.g. `project:deploy`). Built-in `project:*` commands take precedence — colliding plugin names are silently shadowed.
 - Accepts optional arguments via an `args` variadic argument
 - Executes the shell script via `symfony/process`
 - Supports TTY mode for interactive scripts
@@ -121,7 +121,7 @@ echo "Arguments: $@"
 Use it:
 
 ```bash
-dde project:exec:hello world
+dde project:hello world
 # Output:
 # Hello from dde plugin!
 # Arguments: world

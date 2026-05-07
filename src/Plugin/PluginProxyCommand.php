@@ -18,7 +18,7 @@ final class PluginProxyCommand extends Command
         private readonly PluginDefinition $plugin,
         private readonly ProcessFactory $processFactory = new ProcessFactory(),
     ) {
-        parent::__construct('project:exec:'.$plugin->command);
+        parent::__construct('project:'.$plugin->command);
     }
 
     protected function configure(): void
