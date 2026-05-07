@@ -70,6 +70,17 @@ final class MailpitServiceTest extends TestCase
         $this->assertSame(['mail'], $config->networkAliases);
     }
 
+    public function testGetContainerConfigDisablesMailpitMessageCap(): void
+    {
+        // Mailpit defaults to retaining only the most recent 500 messages.
+        // Setting MP_MAX_MESSAGES=0 removes the cap so a development run can
+        // inspect every mail it produced. Regression test for #143.
+        $config = $this->service->getContainerConfig();
+
+        $this->assertArrayHasKey('MP_MAX_MESSAGES', $config->environment);
+        $this->assertSame('0', $config->environment['MP_MAX_MESSAGES']);
+    }
+
     public function testStartCallsDockerManagerRun(): void
     {
         $this->dockerManager

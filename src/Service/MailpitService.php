@@ -29,6 +29,13 @@ final class MailpitService extends AbstractSystemService
             image: $this->getImageName(),
             containerName: $this->getContainerName(),
             ports: [],
+            // Disable Mailpit's default 500-message cap so a development run that
+            // sends thousands of mails (batch jobs, broken loops, fixture imports)
+            // is fully inspectable. With MP_MAX_MESSAGES=0 messages are retained
+            // until the user clears them manually from the UI.
+            environment: [
+                'MP_MAX_MESSAGES' => '0',
+            ],
             labels: [
                 ...$this->getDefaultLabels(),
                 'traefik.enable' => 'true',
