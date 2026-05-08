@@ -677,6 +677,152 @@ final class DockerComposeManagerTest extends TestCase
         unlink($overridePath);
     }
 
+    public function testGenerateOverrideWorktreeRewritesEnvFileValues(): void
+    {
+        file_put_contents($this->tempDir.'/.env', <<<'ENV'
+APP_URL=https://meseto.test
+E2E_TARGET_URL=https://preview.meseto.test
+APP_SECRET=untouched-by-rewrite
+ENV);
+
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'env_file' => [
+                    '.env',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/meseto',
+            worktreeDirectory: '/projects/meseto-wt-feature',
+            branch: 'feature/test',
+            suffix: 'meseto-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $env = $data['services']['web']['environment'];
+
+        // Both the bare project host and the subdomain host must be rewritten.
+        $this->assertSame('https://meseto-wt-feature.test', $env['APP_URL']);
+        $this->assertSame('https://preview.meseto-wt-feature.test', $env['E2E_TARGET_URL']);
+
+        // Untouched values must NOT leak into the override (no rewrite => no override).
+        $this->assertArrayNotHasKey('APP_SECRET', $env);
+
+        unlink($this->tempDir.'/.env');
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeMergesEnvFileWithInlineEnvironment(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "APP_URL=https://meseto.test\n");
+
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'env_file' => ['.env'],
+                'environment' => [
+                    'APP_URL=https://override.meseto.test',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/meseto',
+            worktreeDirectory: '/projects/meseto-wt-feature',
+            branch: 'feature/test',
+            suffix: 'meseto-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        // Inline environment wins over env_file when both define APP_URL.
+        $this->assertSame('https://override.meseto-wt-feature.test', $data['services']['web']['environment']['APP_URL']);
+
+        unlink($this->tempDir.'/.env');
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeAcceptsStringEnvFile(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "APP_URL=https://meseto.test\n");
+
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'env_file' => '.env',
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/meseto',
+            worktreeDirectory: '/projects/meseto-wt-feature',
+            branch: 'feature/test',
+            suffix: 'meseto-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $this->assertSame('https://meseto-wt-feature.test', $data['services']['web']['environment']['APP_URL']);
+
+        unlink($this->tempDir.'/.env');
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeAcceptsEnvFileMapForm(): void
+    {
+        file_put_contents($this->tempDir.'/.env', "APP_URL=https://meseto.test\n");
+
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'env_file' => [
+                    [
+                        'path' => '.env',
+                        'required' => true,
+                    ],
+                    [
+                        'path' => 'missing.env',
+                        'required' => false,
+                    ],
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/meseto',
+            worktreeDirectory: '/projects/meseto-wt-feature',
+            branch: 'feature/test',
+            suffix: 'meseto-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $this->assertSame('https://meseto-wt-feature.test', $data['services']['web']['environment']['APP_URL']);
+
+        unlink($this->tempDir.'/.env');
+        unlink($overridePath);
+    }
+
     public function testGenerateOverrideSetsHostnameFromProjectAndServiceName(): void
     {
         $this->createComposeFile([

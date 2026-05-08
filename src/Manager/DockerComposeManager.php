@@ -9,11 +9,14 @@ use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Model\UserContext;
 use App\Service\TraefikService;
+use App\Util\ComposeEnvEntryParser;
 use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
 use App\Util\TempFileUtil;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
+use Symfony\Component\Dotenv\Dotenv;
+use Symfony\Component\Dotenv\Exception\FormatException;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Tag\TaggedValue;
@@ -352,8 +355,25 @@ readonly class DockerComposeManager
             ];
 
             if ($worktreeInfo instanceof WorktreeInfo) {
+                $envFileValues = $this->readEnvFileValues($serviceConfig['env_file'] ?? null, $projectDir);
+
+                // Inline environment wins over env_file values when both declare the
+                // same key — mirrors the precedence Compose applies at runtime.
+                $combinedEnv = $envFileValues;
+
+                foreach ($serviceConfig['environment'] ?? [] as $key => $value) {
+                    $extracted = ComposeEnvEntryParser::extract($key, $value);
+
+                    if ($extracted === null) {
+                        continue;
+                    }
+
+                    [$envKey, $envValue] = $extracted;
+                    $combinedEnv[$envKey] = $envValue;
+                }
+
                 $envOverrides = $this->worktreeManager->computeEnvironmentOverrides(
-                    $serviceConfig['environment'] ?? [],
+                    $combinedEnv,
                     $config->projectName,
                     $worktreeInfo,
                 );
@@ -556,6 +576,58 @@ readonly class DockerComposeManager
         }
 
         return $services;
+    }
+
+    /**
+     * Resolves the `env_file:` directive of a compose service into a flat
+     * KEY => VALUE map. Supports the three forms accepted by Compose v2:
+     * a single string, a list of strings, and a list of `{path, required}`
+     * maps. Missing optional files are silently skipped; missing required
+     * files are not enforced here because Compose itself will fail later
+     * with a clearer error.
+     *
+     * @return array<string, string>
+     */
+    private function readEnvFileValues(mixed $envFile, string $projectDir): array
+    {
+        if ($envFile === null) {
+            return [];
+        }
+
+        $entries = is_array($envFile) ? $envFile : [$envFile];
+        $merged = [];
+
+        foreach ($entries as $entry) {
+            if (is_array($entry)) {
+                $path = is_string($entry['path'] ?? null) ? $entry['path'] : null;
+            } elseif (is_string($entry)) {
+                $path = $entry;
+            } else {
+                $path = null;
+            }
+
+            if ($path === null) {
+                continue;
+            }
+
+            $absolute = $this->filesystem->isAbsolutePath($path) ? $path : $projectDir.'/'.$path;
+
+            if (! $this->filesystem->exists($absolute)) {
+                continue;
+            }
+
+            try {
+                $values = (new Dotenv())->parse((string) file_get_contents($absolute), $absolute);
+            } catch (FormatException) {
+                continue;
+            }
+
+            foreach ($values as $key => $value) {
+                $merged[$key] = $value;
+            }
+        }
+
+        return $merged;
     }
 
     /**

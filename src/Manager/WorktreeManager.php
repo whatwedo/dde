@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Manager;
 
 use App\Config\WorktreeInfo;
+use App\Util\ComposeEnvEntryParser;
 use App\Util\IdentifierSanitizer;
 use App\Util\ProcessFactory;
 
@@ -114,7 +115,7 @@ readonly class WorktreeManager
         $overrides = [];
 
         foreach ($existingEnv as $key => $value) {
-            $extracted = $this->extractKeyValue($key, $value);
+            $extracted = ComposeEnvEntryParser::extract($key, $value);
 
             if ($extracted === null) {
                 continue;
@@ -187,32 +188,6 @@ readonly class WorktreeManager
         }
 
         return $realA === $realB;
-    }
-
-    /**
-     * @return array{0: string, 1: string}|null
-     */
-    private function extractKeyValue(int|string $key, mixed $value): ?array
-    {
-        if (is_int($key)) {
-            if (! is_string($value)) {
-                return null;
-            }
-
-            $eq = strpos($value, '=');
-
-            if ($eq === false) {
-                return null;
-            }
-
-            return [substr($value, 0, $eq), substr($value, $eq + 1)];
-        }
-
-        if (! is_string($value)) {
-            return null;
-        }
-
-        return [$key, $value];
     }
 
     private function rewriteDatabaseUrl(string $value, string $dbSuffix): string
