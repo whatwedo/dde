@@ -21,12 +21,14 @@ Both worktrees stay reachable at the same time. Each gets its own per-project Do
 
 ## How Detection Works
 
-When `dde project:up` runs, `WorktreeManager::detect()` executes `git worktree list --porcelain` in the project directory. A worktree is detected when:
+When `dde project:up` runs, `WorktreeManager::detect()` executes `git worktree list --porcelain` and compares the **current working directory** against every entry in the output. The worktree whose real path is the longest prefix of CWD wins. This deliberately decouples worktree detection from the directory where dde found `.dde/config.yml`:
 
 1. The `git worktree list` command succeeds and returns at least two entries.
-2. The current project directory matches a **non-main** worktree entry (the first entry is always the main worktree).
+2. CWD lives inside a **non-main** worktree entry (the first entry is always the main worktree). Nested worktrees (e.g. one created at `<main>/.claude/worktrees/<name>`) are resolved correctly because the longest-prefix match prefers the inner worktree over its parent.
 
-If the project directory is the main worktree or the repository has no worktrees, detection returns `null` and standard hostname resolution applies.
+If CWD is inside the main worktree, the repository has no worktrees, or CWD is outside any registered worktree, detection returns `null` and standard hostname resolution applies.
+
+**Why CWD, not the project directory?** Worktrees often share their `.dde/` directory with the main checkout — either because the worktree's branch hasn't committed `.dde/` yet, or because it sits nested inside the main and `dde`'s walk-up resolves to the main's `.dde/` first. In both cases the project directory points at the main, but the user is physically inside a worktree and expects worktree-isolated hostnames and databases. Detecting from CWD makes that work without forcing every worktree to carry its own `.dde/`.
 
 ## Hostname Generation
 
