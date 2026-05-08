@@ -717,9 +717,12 @@ readonly class DockerComposeManager
     /**
      * Overrides Traefik labels from compose.yml for worktree usage.
      *
-     * Replaces both the Host() value and the router name so main and worktree
-     * containers can coexist without Traefik reporting "router defined multiple
-     * times with different configurations".
+     * Rewrites every `Host(`<x>.<project>.test`)` value (including the bare
+     * `Host(`<project>.test`)`) and every router/service identifier derived
+     * from the project hostname to the worktree variant. Two substring
+     * substitutions are sufficient because dde-style router names are produced
+     * via `TraefikService::generateRouterName()` (`str_replace('.', '-', ...)`),
+     * so the dot-converted prefix is unique per hostname suffix.
      *
      * @param array<int|string, mixed> $existingLabels
      *
@@ -727,10 +730,11 @@ readonly class DockerComposeManager
      */
     private function overrideTraefikLabels(array $existingLabels, string $projectHostname, string $worktreeHostname, string $serviceName): array
     {
+        $hostnameDotForm = str_replace('.', '-', $projectHostname);
+        $worktreeDotForm = str_replace('.', '-', $worktreeHostname);
+
         $overrideLabels = [];
         $hasTraefikLabels = false;
-        $oldRouterName = $this->traefikService->generateRouterName($projectHostname, $serviceName);
-        $newRouterName = $this->traefikService->generateRouterName($worktreeHostname, $serviceName);
 
         foreach ($existingLabels as $key => $value) {
             $label = is_int($key) ? (string) $value : $key.'='.$value;
@@ -741,20 +745,10 @@ readonly class DockerComposeManager
 
             $hasTraefikLabels = true;
 
-            // 1. Rename router/service in label key so the worktree container registers
-            //    routers under its own unique name (avoids Traefik conflict warnings).
-            $label = (string) preg_replace(
-                '/(traefik\.http\.(?:routers|services)\.)'.preg_quote($oldRouterName, '/').'(\.|-tls\.)/',
-                '$1'.$newRouterName.'$2',
-                $label,
-            );
-
-            // 2. Rewrite Host() rule value to the worktree hostname
-            $label = (string) preg_replace(
-                '/Host\(`'.preg_quote($projectHostname, '/').'`\)/',
-                sprintf('Host(`%s`)', $worktreeHostname),
-                $label,
-            );
+            // Order matters: replace the dot-form first so the host rule
+            // rewrite below cannot reach into router-name segments.
+            $label = str_replace($hostnameDotForm, $worktreeDotForm, $label);
+            $label = str_replace($projectHostname, $worktreeHostname, $label);
 
             $overrideLabels[] = $label;
         }

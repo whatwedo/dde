@@ -542,6 +542,62 @@ final class DockerComposeManagerTest extends TestCase
         unlink($overridePath);
     }
 
+    public function testGenerateOverrideWorktreeRewritesSubdomainTraefikLabels(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.meseto-test-web.rule=Host(`meseto.test`)',
+                    'traefik.http.routers.meseto-test-web-tls.rule=Host(`meseto.test`)',
+                    'traefik.http.routers.meseto-test-web-tls.tls=true',
+                ],
+            ],
+            'preview' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.preview-meseto-test-preview.rule=Host(`preview.meseto.test`)',
+                    'traefik.http.routers.preview-meseto-test-preview-tls.rule=Host(`preview.meseto.test`)',
+                    'traefik.http.routers.preview-meseto-test-preview-tls.tls=true',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/meseto',
+            worktreeDirectory: '/projects/meseto-wt-feature',
+            branch: 'feature/test',
+            suffix: 'meseto-wt-feature',
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('meseto-feature.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $previewLabels = $data['services']['preview']['labels']->getValue();
+
+        // Subdomain Host() rule must be rewritten to the worktree variant.
+        $this->assertContains(
+            'traefik.http.routers.preview-meseto-feature-test-preview.rule=Host(`preview.meseto-feature.test`)',
+            $previewLabels,
+        );
+        $this->assertContains(
+            'traefik.http.routers.preview-meseto-feature-test-preview-tls.rule=Host(`preview.meseto-feature.test`)',
+            $previewLabels,
+        );
+
+        foreach ($previewLabels as $label) {
+            $this->assertStringNotContainsString('Host(`preview.meseto.test`)', $label, 'Old subdomain host must be gone');
+            $this->assertStringNotContainsString('routers.preview-meseto-test-preview', $label, 'Old subdomain router must be renamed');
+        }
+
+        unlink($overridePath);
+    }
+
     public function testGenerateOverrideWorktreeFallbackWhenNoTraefikLabels(): void
     {
         $this->createComposeFile([
