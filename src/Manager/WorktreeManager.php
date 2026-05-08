@@ -15,8 +15,30 @@ readonly class WorktreeManager
     ) {
     }
 
-    public function detect(string $projectDir): ?WorktreeInfo
+    /**
+     * Detects which git worktree the user is physically in.
+     *
+     * `$projectDir` is where dde found `.dde/config.yml` (via walk-up from CWD)
+     * — used here only as the working directory for `git worktree list`.
+     * `$cwd` is the directory we should match against the worktree list to
+     * decide which worktree we are in. They are NOT the same when the
+     * worktree shares its parent's `.dde/` (e.g. a worktree nested inside
+     * the main checkout under `.claude/worktrees/<name>` or any worktree
+     * whose branch hasn't committed `.dde/` yet) — walk-up resolves to the
+     * main and `$projectDir` lies about which worktree we are in. Defaults
+     * to `getcwd()` so production callers do not need to think about it.
+     */
+    public function detect(string $projectDir, ?string $cwd = null): ?WorktreeInfo
     {
+        if ($cwd === null) {
+            $resolved = getcwd();
+            $cwd = $resolved !== false ? $resolved : null;
+        }
+
+        if ($cwd === null) {
+            return null;
+        }
+
         $process = $this->processFactory->create(['git', 'worktree', 'list', '--porcelain'], $projectDir, 10);
 
         try {
@@ -41,30 +63,33 @@ readonly class WorktreeManager
             return null;
         }
 
-        $realProjectDir = realpath($projectDir);
+        $realCwd = realpath($cwd);
 
-        if ($realProjectDir === false) {
+        if ($realCwd === false) {
+            return null;
+        }
+
+        // Longest-prefix match handles worktrees nested inside another
+        // worktree's directory: the inner one wins because its real path is
+        // a longer prefix of CWD than the outer one.
+        $currentWorktree = $this->findWorktreeContaining($realCwd, $worktrees);
+
+        if ($currentWorktree === null) {
             return null;
         }
 
         $mainWorktree = $worktrees[0];
 
-        if ($this->pathsEqual($realProjectDir, $mainWorktree['path'])) {
+        if ($this->pathsEqual($currentWorktree['path'], $mainWorktree['path'])) {
             return null;
         }
 
-        foreach ($worktrees as $worktree) {
-            if ($this->pathsEqual($realProjectDir, $worktree['path'])) {
-                return new WorktreeInfo(
-                    mainDirectory: $mainWorktree['path'],
-                    worktreeDirectory: $realProjectDir,
-                    branch: $worktree['branch'],
-                    suffix: basename($realProjectDir),
-                );
-            }
-        }
-
-        return null;
+        return new WorktreeInfo(
+            mainDirectory: $mainWorktree['path'],
+            worktreeDirectory: $currentWorktree['path'],
+            branch: $currentWorktree['branch'],
+            suffix: basename($currentWorktree['path']),
+        );
     }
 
     public function resolveHostname(string $projectName, ?WorktreeInfo $worktreeInfo): string
@@ -175,6 +200,48 @@ readonly class WorktreeManager
         }
 
         return $worktrees;
+    }
+
+    /**
+     * Returns the worktree entry whose real path is the longest prefix of
+     * `$realPath`. Falls back to a string comparison when an entry's real
+     * path can't be resolved (matches the same `realpath`-with-string-fallback
+     * policy used by `pathsEqual`). Returns `null` when no entry contains the
+     * path at all.
+     *
+     * @param list<array{path: string, branch: string}> $worktrees
+     *
+     * @return array{path: string, branch: string}|null
+     */
+    private function findWorktreeContaining(string $realPath, array $worktrees): ?array
+    {
+        $best = null;
+        $bestLength = -1;
+
+        foreach ($worktrees as $worktree) {
+            $resolved = realpath($worktree['path']);
+            $candidate = $resolved !== false ? $resolved : rtrim($worktree['path'], '/');
+
+            if ($candidate === '') {
+                continue;
+            }
+
+            if ($realPath !== $candidate && ! str_starts_with($realPath, $candidate.'/')) {
+                continue;
+            }
+
+            $length = strlen($candidate);
+
+            if ($length > $bestLength) {
+                $best = [
+                    'path' => $candidate,
+                    'branch' => $worktree['branch'],
+                ];
+                $bestLength = $length;
+            }
+        }
+
+        return $best;
     }
 
     private function pathsEqual(string $a, string $b): bool
