@@ -17,7 +17,7 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
   - `ImageManager` — image label inspection, dev layer build, cache
   - `GlobalConfigManager` — global `~/.dde/config.yml` loading
   - `ProjectConfigManager` — project `.dde/config.yml` loading, merge with global, project directory detection
-  - `WorktreeManager` — git worktree detection, hostname / DB-name resolution, environment override computation
+  - `WorktreeManager` — git worktree detection, hostname resolution / rewriting (incl. subdomains), DB-name resolution, environment override computation (incl. `env_file` values)
   - `DatabaseManager` — DB shell, export, import, snapshot, port resolution
   - `SystemServiceManager` — versionable service lifecycle (start, stop, port allocation)
   - `ServiceConfigManager` — service container config generation
@@ -40,7 +40,7 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
 - Plugins: `App\Plugin\` — `PluginLoader`, `PluginDefinition`, `PluginProxyCommand`, `PluginCommandLoader`
 - Output: `App\Output\` — `OutputFormatterInterface` with `TextFormatter`/`JsonFormatter`, `FormatterResolver`
 - EventListener: `App\EventListener\` — `OutputFormatListener` (validates `--output` option)
-- Util: `App\Util\` — `DockerComposeModifier`, `DiffUtil`, `IdentifierSanitizer` (slug sanitisation for hostname + DB identifiers), `NdJsonParser`, `ProcessFactory`, `ShellDetectorUtil`, `TempFileUtil`, `UrlOpenerUtil`
+- Util: `App\Util\` — `ComposeEnvEntryParser` (compose `environment:` entry normalisation), `DockerComposeModifier`, `DiffUtil`, `IdentifierSanitizer` (slug sanitisation for hostname + DB identifiers), `NdJsonParser`, `ProcessFactory`, `ShellDetectorUtil`, `TempFileUtil`, `UrlOpenerUtil`
 - Exception: `App\Exception\` — `HookFailedException`
 
 ## Build
