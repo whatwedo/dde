@@ -61,7 +61,21 @@ readonly class ProjectLifecycleManager
         if ($worktreeInfo instanceof WorktreeInfo) {
             $worktreeHostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
             $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
-            $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, [$worktreeHostname]);
+
+            $mainDomains = $this->composeParser->extractTraefikDomains($composeFile);
+            $worktreeDomains = [];
+
+            foreach ($mainDomains as $domain) {
+                $worktreeDomains[] = $this->worktreeManager->rewriteHostname($domain, $projectName, $worktreeInfo);
+            }
+
+            // Always include the bare worktree hostname so the cert covers it even
+            // when the compose file declares no Traefik labels at all (the override
+            // generator falls back to generated labels in that case).
+            $worktreeDomains[] = $worktreeHostname;
+            $worktreeDomains = array_values(array_unique($worktreeDomains));
+
+            $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, $worktreeDomains);
         }
 
         // 5. Image layer check — build dev layer for project containers
