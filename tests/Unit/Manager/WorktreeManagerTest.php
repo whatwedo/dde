@@ -70,7 +70,7 @@ final class WorktreeManagerTest extends TestCase
             $tempMain,
         ));
 
-        $result = $this->manager->detect($tempMain);
+        $result = $this->manager->detect($tempMain, $tempMain);
 
         $this->assertNull($result);
 
@@ -90,7 +90,7 @@ final class WorktreeManagerTest extends TestCase
             $tempWorktree,
         ));
 
-        $result = $this->manager->detect($tempWorktree);
+        $result = $this->manager->detect($tempWorktree, $tempWorktree);
 
         $this->assertInstanceOf(WorktreeInfo::class, $result);
         $this->assertSame($tempMain, $result->mainDirectory);
@@ -115,7 +115,7 @@ final class WorktreeManagerTest extends TestCase
             $tempWorktree,
         ));
 
-        $result = $this->manager->detect($tempWorktree);
+        $result = $this->manager->detect($tempWorktree, $tempWorktree);
 
         $this->assertInstanceOf(WorktreeInfo::class, $result);
         $this->assertSame('feature-x', $result->branch);
@@ -137,7 +137,7 @@ final class WorktreeManagerTest extends TestCase
             $tempWorktree,
         ));
 
-        $result = $this->manager->detect($tempWorktree);
+        $result = $this->manager->detect($tempWorktree, $tempWorktree);
 
         $this->assertInstanceOf(WorktreeInfo::class, $result);
         $this->assertSame('', $result->branch);
@@ -166,7 +166,7 @@ final class WorktreeManagerTest extends TestCase
             $realWorktree,
         ));
 
-        $result = $this->manager->detect($tempWorktree);
+        $result = $this->manager->detect($tempWorktree, $tempWorktree);
 
         $this->assertInstanceOf(WorktreeInfo::class, $result);
         $this->assertSame('feature', $result->branch);
@@ -381,6 +381,66 @@ final class WorktreeManagerTest extends TestCase
             'notbeispiel.test',
             $this->manager->rewriteHostname('notbeispiel.test', 'beispiel', $info),
         );
+    }
+
+    public function testDetectReturnsWorktreeInfoWhenCwdIsInsideNestedWorktreeWithoutDdeDir(): void
+    {
+        // Models the real-world setup where the .dde/ directory only lives in
+        // the main checkout and a worktree is nested inside it (e.g. under
+        // .claude/worktrees/<name>). The walk-up logic in ProjectConfigManager
+        // finds the main's .dde/ first, so $projectDir is the main, not the
+        // worktree. detect() must use the actual CWD (passed explicitly here)
+        // to discover that we are physically inside a worktree.
+        $tempMain = sys_get_temp_dir().'/dde-wt-test-main-'.bin2hex(random_bytes(4));
+        $tempWorktree = $tempMain.'/.claude/worktrees/inner';
+        mkdir($tempMain);
+        mkdir($tempWorktree, 0o777, true);
+
+        $this->stubGitWorktreeList(sprintf(
+            "worktree %s\nbranch refs/heads/master\n\nworktree %s\nbranch refs/heads/feature/x\n",
+            $tempMain,
+            $tempWorktree,
+        ));
+
+        $result = $this->manager->detect($tempMain, $tempWorktree);
+
+        $this->assertInstanceOf(WorktreeInfo::class, $result);
+        $this->assertSame($tempMain, $result->mainDirectory);
+        $this->assertSame(realpath($tempWorktree), $result->worktreeDirectory);
+        $this->assertSame('feature/x', $result->branch);
+        $this->assertSame('inner', $result->suffix);
+
+        rmdir($tempWorktree);
+        rmdir($tempMain.'/.claude/worktrees');
+        rmdir($tempMain.'/.claude');
+        rmdir($tempMain);
+    }
+
+    public function testDetectReturnsNullWhenCwdIsInsideMainEvenIfWorktreesExist(): void
+    {
+        $tempMain = sys_get_temp_dir().'/dde-wt-test-main-'.bin2hex(random_bytes(4));
+        $tempWorktree = $tempMain.'/.claude/worktrees/inner';
+        mkdir($tempMain);
+        mkdir($tempWorktree, 0o777, true);
+
+        $this->stubGitWorktreeList(sprintf(
+            "worktree %s\nbranch refs/heads/master\n\nworktree %s\nbranch refs/heads/feature/x\n",
+            $tempMain,
+            $tempWorktree,
+        ));
+
+        // CWD points at a sibling of the worktree but inside main — must not
+        // trigger worktree detection just because nested worktrees exist.
+        $cwdInsideMain = $tempMain;
+
+        $result = $this->manager->detect($tempMain, $cwdInsideMain);
+
+        $this->assertNull($result);
+
+        rmdir($tempWorktree);
+        rmdir($tempMain.'/.claude/worktrees');
+        rmdir($tempMain.'/.claude');
+        rmdir($tempMain);
     }
 
     private function stubGitWorktreeList(string $output): void
