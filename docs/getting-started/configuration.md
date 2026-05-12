@@ -74,7 +74,7 @@ containers:
 #### Hostnames
 
 dde assigns a meaningful hostname to every project container so the shell
-prompt inside the container shows `<project>-<service>` (e.g. `meseto-web`)
+prompt inside the container shows `<project>-<service>` (e.g. `beispiel-web`)
 instead of the random Docker container ID. The hostname is derived from the
 project name and the compose service name and sanitized to a valid RFC 1123
 label (lowercase, `a-z0-9-`, max 63 chars).
