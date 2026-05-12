@@ -61,7 +61,31 @@ readonly class ProjectLifecycleManager
         if ($worktreeInfo instanceof WorktreeInfo) {
             $worktreeHostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
             $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
-            $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, [$worktreeHostname]);
+
+            $mainDomains = $this->composeParser->extractTraefikDomains($composeFile);
+            $worktreeDomains = [];
+
+            // Only include domains the rewrite actually changed. Compose
+            // services that legitimately point at unrelated external hosts
+            // (e.g. `Host(`partner.example.com`)`) are passed through
+            // unchanged by `rewriteHostname()` — they must NOT end up in
+            // the worktree-specific mkcert SAN list, otherwise we generate
+            // a local trusted cert for hosts the project does not own.
+            foreach ($mainDomains as $domain) {
+                $rewritten = $this->worktreeManager->rewriteHostname($domain, $projectName, $worktreeInfo);
+
+                if ($rewritten !== $domain) {
+                    $worktreeDomains[] = $rewritten;
+                }
+            }
+
+            // Always include the bare worktree hostname so the cert covers it even
+            // when the compose file declares no Traefik labels at all (the override
+            // generator falls back to generated labels in that case).
+            $worktreeDomains[] = $worktreeHostname;
+            $worktreeDomains = array_values(array_unique($worktreeDomains));
+
+            $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, $worktreeDomains);
         }
 
         // 5. Image layer check — build dev layer for project containers
