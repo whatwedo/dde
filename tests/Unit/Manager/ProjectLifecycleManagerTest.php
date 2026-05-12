@@ -983,6 +983,152 @@ final class ProjectLifecycleManagerTest extends TestCase
         );
     }
 
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpGeneratesCertificateForAllRewrittenWorktreeDomains(): void
+    {
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+        $projectDir = '/tmp/test-project-meseto-wt';
+
+        $worktreeInfo = new \App\Config\WorktreeInfo(
+            mainDirectory: '/main',
+            worktreeDirectory: $projectDir,
+            branch: 'feature/x',
+            suffix: 'feature-x',
+        );
+
+        $worktreeManager = $this->createMock(WorktreeManager::class);
+        $worktreeManager->method('detect')->willReturn($worktreeInfo);
+        $worktreeManager->method('resolveHostname')->willReturn('meseto-feature-x.test');
+        $worktreeManager
+            ->method('rewriteHostname')
+            ->willReturnCallback(static function (string $hostname, string $projectName, \App\Config\WorktreeInfo $worktreeInfo): string {
+                return match ($hostname) {
+                    'meseto.test' => 'meseto-feature-x.test',
+                    'preview.meseto.test' => 'preview.meseto-feature-x.test',
+                    default => $hostname,
+                };
+            });
+
+        // Use a MockObject (not Stub) so we can assert on ensureForDomains expectations.
+        $mkcertManager = $this->createMock(MkcertManager::class);
+        $mkcertManager->method('ensureForComposeFile');
+        $mkcertManager
+            ->expects($this->atLeastOnce())
+            ->method('ensureForDomains')
+            ->with(
+                'meseto-feature-x',
+                $this->callback(static function (array $domains): bool {
+                    return in_array('meseto-feature-x.test', $domains, true)
+                        && in_array('preview.meseto-feature-x.test', $domains, true);
+                }),
+            );
+
+        // Compose file declares the bare project host and a subdomain.
+        $this->composeParser->method('extractTraefikDomains')
+            ->willReturn(['meseto.test', 'preview.meseto.test']);
+
+        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $systemServiceManager = new SystemServiceManager(
+            $this->dockerManager,
+            $serviceRegistry,
+            $this->systemFilesystem,
+            '/tmp/dde-data',
+        );
+
+        $manager = new ProjectLifecycleManager(
+            $this->dockerComposeManager,
+            $systemServiceManager,
+            $this->imageManager,
+            $mkcertManager,
+            $serviceRegistry,
+            $this->dockerManager,
+            $worktreeManager,
+            $this->composeParser,
+            $this->filesystem,
+        );
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $manager->up($config, $projectDir, build: false);
+    }
+
+    public function testUpExcludesUnrelatedExternalDomainsFromWorktreeCertificate(): void
+    {
+        // The compose file may declare Traefik routes for external hosts
+        // (e.g. a partner API exposed via the project's Traefik). Those
+        // hosts pass through `rewriteHostname()` unchanged because they are
+        // not subdomains of the project. mkcert must not be asked to sign
+        // them — generating a local trusted cert for a domain the project
+        // does not own is at best confusing, at worst a security smell.
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+        $projectDir = '/tmp/test-project-meseto-wt';
+
+        $worktreeInfo = new \App\Config\WorktreeInfo(
+            mainDirectory: '/main',
+            worktreeDirectory: $projectDir,
+            branch: 'feature/x',
+            suffix: 'feature-x',
+        );
+
+        $worktreeManager = $this->createMock(WorktreeManager::class);
+        $worktreeManager->method('detect')->willReturn($worktreeInfo);
+        $worktreeManager->method('resolveHostname')->willReturn('meseto-feature-x.test');
+        $worktreeManager
+            ->method('rewriteHostname')
+            ->willReturnCallback(static function (string $hostname, string $projectName, \App\Config\WorktreeInfo $worktreeInfo): string {
+                return match ($hostname) {
+                    'meseto.test' => 'meseto-feature-x.test',
+                    default => $hostname,
+                };
+            });
+
+        $mkcertManager = $this->createMock(MkcertManager::class);
+        $mkcertManager->method('ensureForComposeFile');
+        $mkcertManager
+            ->expects($this->atLeastOnce())
+            ->method('ensureForDomains')
+            ->with(
+                'meseto-feature-x',
+                $this->callback(static function (array $domains): bool {
+                    return in_array('meseto-feature-x.test', $domains, true)
+                        && ! in_array('partner.example.com', $domains, true);
+                }),
+            );
+
+        $this->composeParser->method('extractTraefikDomains')
+            ->willReturn(['meseto.test', 'partner.example.com']);
+
+        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $systemServiceManager = new SystemServiceManager(
+            $this->dockerManager,
+            $serviceRegistry,
+            $this->systemFilesystem,
+            '/tmp/dde-data',
+        );
+
+        $manager = new ProjectLifecycleManager(
+            $this->dockerComposeManager,
+            $systemServiceManager,
+            $this->imageManager,
+            $mkcertManager,
+            $serviceRegistry,
+            $this->dockerManager,
+            $worktreeManager,
+            $this->composeParser,
+            $this->filesystem,
+        );
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $manager->up($config, $projectDir, build: false);
+    }
+
     /**
      * @param array<ServiceDefinition> $services
      */
