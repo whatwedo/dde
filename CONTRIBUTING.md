@@ -2,36 +2,14 @@
 
 Thank you for your interest in contributing to dde!
 
-Please see our [Contributing Guide](docs/contributing/development-setup.md) for details on:
+Full contributor documentation lives at <https://dde.sh/contributing/development-setup/>:
 
-- [Development setup](docs/contributing/development-setup.md)
-- [Architecture overview](docs/contributing/architecture.md)
-- [Testing](docs/contributing/testing.md)
-- [Adding commands](docs/contributing/adding-a-command.md)
-- [Adding services](docs/contributing/adding-a-service.md)
-- [Adding adapters](docs/contributing/adding-an-adapter.md)
-- [Release process](docs/contributing/release-process.md)
+- [Development setup](https://dde.sh/contributing/development-setup/) — prerequisites, sources-vs-built alias variants, build commands, project structure
+- [Architecture overview](https://dde.sh/contributing/architecture/)
+- [Testing](https://dde.sh/contributing/testing/)
+- [Adding commands](https://dde.sh/contributing/adding-a-command/)
+- [Adding services](https://dde.sh/contributing/adding-a-service/)
+- [Adding adapters](https://dde.sh/contributing/adding-an-adapter/)
+- [Release process](https://dde.sh/contributing/release-process/)
 
-## Quick Start
-
-```bash
-git clone git@github.com:whatwedo/dde.git
-cd dde
-composer install
-bin/console list
-make qa
-```
-
-## Code Style
-
-We use ECS with [whatwedo/php-coding-standard](https://github.com/whatwedo/php-coding-standard). Run `make ecs` to check and auto-fix.
-
-## Quality Checks
-
-Before submitting a pull request, ensure all checks pass:
-
-```bash
-make qa
-```
-
-This runs ECS, PHPStan (level 8), Rector, and all unit/integration tests.
+Before submitting a pull request, run `make qa` (ECS, PHPStan level 8, Rector dry-run, and all unit/integration tests) — see the [development setup guide](https://dde.sh/contributing/development-setup/) for details and individual tool invocations.
