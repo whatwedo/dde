@@ -61,7 +61,31 @@ readonly class ProjectLifecycleManager
         if ($worktreeInfo instanceof WorktreeInfo) {
             $worktreeHostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
             $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
-            $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, [$worktreeHostname]);
+
+            $mainDomains = $this->composeParser->extractTraefikDomains($composeFile);
+            $worktreeDomains = [];
+
+            // Only include domains the rewrite actually changed. Compose
+            // services that legitimately point at unrelated external hosts
+            // (e.g. `Host(`partner.example.com`)`) are passed through
+            // unchanged by `rewriteHostname()` — they must NOT end up in
+            // the worktree-specific mkcert SAN list, otherwise we generate
+            // a local trusted cert for hosts the project does not own.
+            foreach ($mainDomains as $domain) {
+                $rewritten = $this->worktreeManager->rewriteHostname($domain, $projectName, $worktreeInfo);
+
+                if ($rewritten !== $domain) {
+                    $worktreeDomains[] = $rewritten;
+                }
+            }
+
+            // Always include the bare worktree hostname so the cert covers it even
+            // when the compose file declares no Traefik labels at all (the override
+            // generator falls back to generated labels in that case).
+            $worktreeDomains[] = $worktreeHostname;
+            $worktreeDomains = array_values(array_unique($worktreeDomains));
+
+            $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, $worktreeDomains);
         }
 
         // 5. Image layer check — build dev layer for project containers
@@ -92,14 +116,12 @@ readonly class ProjectLifecycleManager
                 'build' => $build,
             ], $output);
 
-            if ($worktreeHostname === null) {
-                $runningServices = $this->getRunningServiceNames($projectDir, $composeFiles);
-            }
+            $runningServices = $this->getRunningServiceNames($projectDir, $composeFiles);
         } finally {
             $this->filesystem->remove($overrideFile);
         }
 
-        $domains = $this->collectProjectDomains($composeFile, $worktreeHostname, $runningServices);
+        $domains = $this->collectProjectDomains($composeFile, $worktreeHostname, $runningServices, $projectName, $worktreeInfo);
 
         return [
             'serviceResults' => $serviceResults,
@@ -196,27 +218,49 @@ readonly class ProjectLifecycleManager
     /**
      * Collects the project's reachable domains.
      *
-     * Mirrors the worktree-first policy of `project:open` (see commit d3d654c):
-     * inside a worktree the compose file still declares the main project
-     * hostname — only the generated override rewrites it — so we surface the
-     * resolved worktree hostname. Outside a worktree we fall back to the
-     * Traefik `Host()` labels in the compose file so user-customised domains
-     * win.
+     * Outside a worktree the Traefik `Host()` labels from the compose file
+     * are surfaced verbatim so user-customised domains win. Inside a worktree
+     * each project-owned host is rewritten to its worktree variant via
+     * `WorktreeManager::rewriteHostname()` so subdomains (e.g.
+     * `preview.<project>-<suffix>.test`) are surfaced too — surfacing only
+     * the bare worktree host would hide every other URL the user can reach.
+     * Unrelated external hosts pass through unchanged (they are the same in
+     * main and worktree). The bare worktree hostname is appended as a
+     * fallback so projects with no Traefik labels still surface a URL (the
+     * override generator emits generated labels for that hostname in that
+     * case).
      *
-     * Only domains belonging to actually running services are returned so that
-     * inactive profiles do not produce misleading URLs.
+     * Only domains belonging to actually running services are returned so
+     * that inactive profiles do not produce misleading URLs.
      *
      * @param list<string> $runningServices
      *
      * @return list<string>
      */
-    private function collectProjectDomains(string $composeFile, ?string $worktreeHostname, array $runningServices): array
-    {
-        if ($worktreeHostname !== null) {
-            return [$worktreeHostname];
+    private function collectProjectDomains(
+        string $composeFile,
+        ?string $worktreeHostname,
+        array $runningServices,
+        string $projectName,
+        ?WorktreeInfo $worktreeInfo,
+    ): array {
+        $domains = $this->composeParser->extractTraefikDomains($composeFile, $runningServices);
+
+        if (! $worktreeInfo instanceof WorktreeInfo) {
+            return $domains;
         }
 
-        return $this->composeParser->extractTraefikDomains($composeFile, $runningServices);
+        $rewritten = [];
+
+        foreach ($domains as $domain) {
+            $rewritten[] = $this->worktreeManager->rewriteHostname($domain, $projectName, $worktreeInfo);
+        }
+
+        if ($worktreeHostname !== null) {
+            $rewritten[] = $worktreeHostname;
+        }
+
+        return array_values(array_unique($rewritten));
     }
 
     /**
