@@ -792,12 +792,11 @@ final class ProjectLifecycleManagerTest extends TestCase
     }
 
     #[AllowMockObjectsWithoutExpectations]
-    public function testUpFallsBackToWorktreeHostnameWhenComposeHasNoTraefikLabels(): void
+    public function testUpToleratesPsFailureInsideWorktree(): void
     {
-        // When the compose file declares no Traefik labels, extractTraefikDomains
-        // returns an empty list. The override generator falls back to generated
-        // labels for the bare worktree hostname — surface that hostname so the
-        // "Available at" list is not empty.
+        // A `ps` JSON-parse failure must never tear down `up()`; the
+        // lifecycle falls back to "all declared Traefik hosts" (no service
+        // filter) so the user still sees the worktree URL list afterwards.
         $config = $this->createConfig();
         $projectDir = '/tmp/test-project-wt';
 
@@ -810,6 +809,12 @@ final class ProjectLifecycleManagerTest extends TestCase
         );
         $worktreeManager->method('detect')->willReturn($worktreeInfo);
         $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
+        $worktreeManager->method('rewriteHostname')->willReturnCallback(
+            static fn (string $hostname): string => match ($hostname) {
+                'test-project.test' => 'test-project-wt.test',
+                default => $hostname,
+            },
+        );
 
         $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
         $systemServiceManager = new SystemServiceManager(
@@ -835,8 +840,8 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willReturn($projectDir.'/docker-compose.yml');
         $this->imageManager->method('ensureDevLayers')->willReturn(null);
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
-
-        $this->composeParser->method('extractTraefikDomains')->willReturn([]);
+        $this->dockerComposeManager->method('ps')->willThrowException(new \RuntimeException('ps json parse failed'));
+        $this->composeParser->method('extractTraefikDomains')->willReturn(['test-project.test']);
 
         $result = $manager->up($config, $projectDir, false);
 
@@ -847,9 +852,10 @@ final class ProjectLifecycleManagerTest extends TestCase
     public function testUpReturnsWorktreeHostnameInsideWorktree(): void
     {
         // Regression for #118 + d3d654c: inside a worktree the compose file
-        // still declares the main hostname, so surfacing compose labels would
-        // leak the main URL. The lifecycle must rewrite every project host to
-        // its worktree variant before returning.
+        // still declares the main hostname, so surfacing compose labels
+        // verbatim would leak the main URL. The lifecycle must rewrite each
+        // Traefik-declared host through `WorktreeManager::rewriteHostname`
+        // before returning.
         $config = $this->createConfig();
         $projectDir = '/tmp/test-project-wt';
 
@@ -862,11 +868,12 @@ final class ProjectLifecycleManagerTest extends TestCase
         );
         $worktreeManager->method('detect')->willReturn($worktreeInfo);
         $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
-        $worktreeManager
-            ->method('rewriteHostname')
-            ->willReturnCallback(static function (string $hostname, string $projectName, \App\Config\WorktreeInfo $worktreeInfo): string {
-                return $hostname === 'test-project.test' ? 'test-project-wt.test' : $hostname;
-            });
+        $worktreeManager->method('rewriteHostname')->willReturnCallback(
+            static fn (string $hostname): string => match ($hostname) {
+                'test-project.test' => 'test-project-wt.test',
+                default => $hostname,
+            },
+        );
 
         $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
         $systemServiceManager = new SystemServiceManager(
@@ -892,14 +899,79 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willReturn($projectDir.'/docker-compose.yml');
         $this->imageManager->method('ensureDevLayers')->willReturn(null);
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
-
-        // The compose file still points at the MAIN hostname — the lifecycle
-        // must rewrite it to the worktree variant before surfacing it.
         $this->composeParser->method('extractTraefikDomains')->willReturn(['test-project.test']);
 
         $result = $manager->up($config, $projectDir, false);
 
         $this->assertSame(['test-project-wt.test'], $result['domains']);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpReturnsEverySubdomainRewrittenInsideWorktree(): void
+    {
+        // Regression: `dde update` inside a worktree used to print only the
+        // bare worktree hostname even when the compose file declared
+        // subdomain Host() rules. Every Traefik-declared host must be
+        // surfaced, each one rewritten to its worktree variant — anything
+        // less hides URLs the worktree container actually serves.
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project-wt';
+
+        $worktreeManager = $this->createMock(WorktreeManager::class);
+        $worktreeInfo = new \App\Config\WorktreeInfo(
+            mainDirectory: '/tmp/test-project',
+            worktreeDirectory: $projectDir,
+            branch: 'feature/x',
+            suffix: 'test-project-wt',
+        );
+        $worktreeManager->method('detect')->willReturn($worktreeInfo);
+        $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
+        $worktreeManager->method('rewriteHostname')->willReturnCallback(
+            static fn (string $hostname): string => match ($hostname) {
+                'test-project.test' => 'test-project-wt.test',
+                'preview.test-project.test' => 'preview.test-project-wt.test',
+                'playwright.test-project.test' => 'playwright.test-project-wt.test',
+                default => $hostname,
+            },
+        );
+
+        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $systemServiceManager = new SystemServiceManager(
+            $this->dockerManager,
+            $serviceRegistry,
+            $this->systemFilesystem,
+            '/tmp/dde-data',
+        );
+
+        $manager = new ProjectLifecycleManager(
+            $this->dockerComposeManager,
+            $systemServiceManager,
+            $this->imageManager,
+            $this->certificateManager,
+            $serviceRegistry,
+            $this->dockerManager,
+            $worktreeManager,
+            $this->composeParser,
+            $this->filesystem,
+        );
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+        $this->composeParser->method('extractTraefikDomains')->willReturn([
+            'test-project.test',
+            'preview.test-project.test',
+            'playwright.test-project.test',
+        ]);
+
+        $result = $manager->up($config, $projectDir, false);
+
+        $this->assertSame([
+            'test-project-wt.test',
+            'preview.test-project-wt.test',
+            'playwright.test-project-wt.test',
+        ], $result['domains']);
     }
 
     #[AllowMockObjectsWithoutExpectations]
@@ -1059,78 +1131,6 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
 
         $manager->up($config, $projectDir, build: false);
-    }
-
-    #[AllowMockObjectsWithoutExpectations]
-    public function testUpSurfacesAllRewrittenSubdomainUrlsInsideWorktree(): void
-    {
-        // Regression: surfacing only the bare worktree hostname hid every
-        // subdomain URL the user can reach in the worktree (e.g. preview.*,
-        // playwright.*). The "Available at" list must include each
-        // worktree-rewritten Traefik host so the user knows where the
-        // services are reachable.
-        $config = $this->createConfig();
-        $projectDir = '/tmp/test-project-wt';
-
-        $worktreeManager = $this->createMock(WorktreeManager::class);
-        $worktreeInfo = new \App\Config\WorktreeInfo(
-            mainDirectory: '/tmp/test-project',
-            worktreeDirectory: $projectDir,
-            branch: 'feature/x',
-            suffix: 'test-project-wt',
-        );
-        $worktreeManager->method('detect')->willReturn($worktreeInfo);
-        $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
-        $worktreeManager
-            ->method('rewriteHostname')
-            ->willReturnCallback(static function (string $hostname): string {
-                return match ($hostname) {
-                    'test-project.test' => 'test-project-wt.test',
-                    'preview.test-project.test' => 'preview.test-project-wt.test',
-                    'playwright.test-project.test' => 'playwright.test-project-wt.test',
-                    default => $hostname,
-                };
-            });
-
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
-        $systemServiceManager = new SystemServiceManager(
-            $this->dockerManager,
-            $serviceRegistry,
-            $this->systemFilesystem,
-            '/tmp/dde-data',
-        );
-
-        $manager = new ProjectLifecycleManager(
-            $this->dockerComposeManager,
-            $systemServiceManager,
-            $this->imageManager,
-            $this->certificateManager,
-            $serviceRegistry,
-            $this->dockerManager,
-            $worktreeManager,
-            $this->composeParser,
-            $this->filesystem,
-        );
-
-        $this->dockerComposeManager->method('findComposeFile')
-            ->willReturn($projectDir.'/docker-compose.yml');
-        $this->imageManager->method('ensureDevLayers')->willReturn(null);
-        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
-
-        $this->composeParser->method('extractTraefikDomains')->willReturn([
-            'test-project.test',
-            'preview.test-project.test',
-            'playwright.test-project.test',
-        ]);
-
-        $result = $manager->up($config, $projectDir, false);
-
-        $this->assertContains('test-project-wt.test', $result['domains']);
-        $this->assertContains('preview.test-project-wt.test', $result['domains']);
-        $this->assertContains('playwright.test-project-wt.test', $result['domains']);
-        foreach ($result['domains'] as $domain) {
-            $this->assertStringNotContainsString('test-project.test', $domain, 'Main hostname must be rewritten');
-        }
     }
 
     public function testUpExcludesUnrelatedExternalDomainsFromWorktreeCertificate(): void
