@@ -42,7 +42,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - `project:up` and `project:update` now print the project's reachable domains after a successful run (worktree-aware)
-- Auto-generated container hostnames (`<project>-<service>`) so the shell prompt inside a container shows `meseto-web` instead of the random container ID; explicit `hostname:` in the user's `docker-compose.yml` is respected
+- Auto-generated container hostnames (`<project>-<service>`) so the shell prompt inside a container shows `beispiel-web` instead of the random container ID; explicit `hostname:` in the user's `docker-compose.yml` is respected
 - `project:init` now proposes `.env` migrations for `APP_ENV`, `MAILER_DSN`, and `DATABASE_URL`, presenting each rewrite before it is written
 - Per-worktree `DATABASE_URL` rewrite in the compose override so main and worktree checkouts talk to distinct databases on the shared service
 
