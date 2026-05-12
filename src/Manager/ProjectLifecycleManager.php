@@ -103,12 +103,12 @@ readonly class ProjectLifecycleManager
         $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork);
 
         // 9. Docker compose up, then query running services while the override
-        //    file still exists — `finally` deletes it afterwards. Inside a
-        //    worktree the hostname wins over compose labels anyway, so skip
-        //    the extra `ps` round-trip and avoid introducing a new failure
-        //    mode where a JSON-parse error in `ps` would tear down `up()`.
+        //    file still exists — `finally` deletes it afterwards. A `ps`
+        //    JSON-parse failure must not tear down `up()`, so fall back to
+        //    `null` (no service filter — include every Traefik-declared
+        //    host) when the lookup fails.
         $composeFiles = [$composeFile, $overrideFile];
-        $runningServices = [];
+        $runningServices = null;
 
         try {
             $this->dockerComposeManager->up($projectDir, [
@@ -116,12 +116,16 @@ readonly class ProjectLifecycleManager
                 'build' => $build,
             ], $output);
 
-            $runningServices = $this->getRunningServiceNames($projectDir, $composeFiles);
+            try {
+                $runningServices = $this->getRunningServiceNames($projectDir, $composeFiles);
+            } catch (\Throwable) {
+                $runningServices = null;
+            }
         } finally {
             $this->filesystem->remove($overrideFile);
         }
 
-        $domains = $this->collectProjectDomains($composeFile, $worktreeHostname, $runningServices, $projectName, $worktreeInfo);
+        $domains = $this->collectProjectDomains($composeFile, $config->projectName, $worktreeInfo, $worktreeHostname, $runningServices);
 
         return [
             'serviceResults' => $serviceResults,
@@ -218,31 +222,31 @@ readonly class ProjectLifecycleManager
     /**
      * Collects the project's reachable domains.
      *
-     * Outside a worktree the Traefik `Host()` labels from the compose file
-     * are surfaced verbatim so user-customised domains win. Inside a worktree
-     * each project-owned host is rewritten to its worktree variant via
-     * `WorktreeManager::rewriteHostname()` so subdomains (e.g.
-     * `preview.<project>-<suffix>.test`) are surfaced too — surfacing only
-     * the bare worktree host would hide every other URL the user can reach.
-     * Unrelated external hosts pass through unchanged (they are the same in
-     * main and worktree). The bare worktree hostname is appended as a
-     * fallback so projects with no Traefik labels still surface a URL (the
-     * override generator emits generated labels for that hostname in that
-     * case).
+     * Mirrors the worktree-first policy of `project:open` (see commit d3d654c):
+     * the compose file always declares the *main* project hostnames — only the
+     * generated override rewrites them — so inside a worktree we feed every
+     * Traefik-declared host through `WorktreeManager::rewriteHostname` to
+     * surface its worktree variant. Bare project host plus every subdomain
+     * get listed, mirroring what the override file actually wires up.
+     *
+     * Outside a worktree the Traefik labels are returned as-is so
+     * user-customised domains win.
      *
      * Only domains belonging to actually running services are returned so
-     * that inactive profiles do not produce misleading URLs.
+     * that inactive profiles do not produce misleading URLs. `null` for
+     * `$runningServices` means "include every declared Traefik host" — used
+     * as the safety fallback when `docker compose ps` could not be parsed.
      *
-     * @param list<string> $runningServices
+     * @param list<string>|null $runningServices
      *
      * @return list<string>
      */
     private function collectProjectDomains(
         string $composeFile,
-        ?string $worktreeHostname,
-        array $runningServices,
         string $projectName,
         ?WorktreeInfo $worktreeInfo,
+        ?string $worktreeHostname,
+        ?array $runningServices,
     ): array {
         $domains = $this->composeParser->extractTraefikDomains($composeFile, $runningServices);
 
@@ -256,7 +260,10 @@ readonly class ProjectLifecycleManager
             $rewritten[] = $this->worktreeManager->rewriteHostname($domain, $projectName, $worktreeInfo);
         }
 
-        if ($worktreeHostname !== null) {
+        // Compose file with no Traefik labels at all: the override generator
+        // falls back to auto-generated labels for the bare worktree host, so
+        // mirror that here.
+        if ($rewritten === [] && $worktreeHostname !== null) {
             $rewritten[] = $worktreeHostname;
         }
 
