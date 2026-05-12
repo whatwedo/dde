@@ -496,22 +496,22 @@ final class DockerComposeManagerTest extends TestCase
                 'image' => 'nginx:latest',
                 'labels' => [
                     'traefik.enable=true',
-                    'traefik.http.routers.meseto-test-web.rule=Host(`meseto.test`)',
-                    'traefik.http.routers.meseto-test-web-tls.rule=Host(`meseto.test`)',
-                    'traefik.http.routers.meseto-test-web-tls.tls=true',
+                    'traefik.http.routers.beispiel-test-web.rule=Host(`beispiel.test`)',
+                    'traefik.http.routers.beispiel-test-web-tls.rule=Host(`beispiel.test`)',
+                    'traefik.http.routers.beispiel-test-web-tls.tls=true',
                 ],
             ],
         ]);
 
         $worktreeInfo = new WorktreeInfo(
-            mainDirectory: '/projects/meseto',
-            worktreeDirectory: '/projects/meseto-wt-feature',
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
             branch: 'feature/test',
-            suffix: 'meseto-wt-feature',
+            suffix: 'beispiel-wt-feature',
         );
 
-        $manager = $this->createManagerWithWorktreeSupport('meseto-feature.test');
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -526,17 +526,139 @@ final class DockerComposeManagerTest extends TestCase
         // worktree containers can coexist without Traefik router-name conflicts.
         // Host() rules are rewritten to the worktree hostname.
         $this->assertContains('traefik.enable=true', $labels);
-        $this->assertContains('traefik.http.routers.meseto-feature-test-web.rule=Host(`meseto-feature.test`)', $labels);
-        $this->assertContains('traefik.http.routers.meseto-feature-test-web-tls.rule=Host(`meseto-feature.test`)', $labels);
-        $this->assertContains('traefik.http.routers.meseto-feature-test-web-tls.tls=true', $labels);
+        $this->assertContains('traefik.http.routers.beispiel-feature-test-web.rule=Host(`beispiel-feature.test`)', $labels);
+        $this->assertContains('traefik.http.routers.beispiel-feature-test-web-tls.rule=Host(`beispiel-feature.test`)', $labels);
+        $this->assertContains('traefik.http.routers.beispiel-feature-test-web-tls.tls=true', $labels);
 
         // Must NOT contain the original router name or the original hostname
         foreach ($labels as $label) {
-            $this->assertStringNotContainsString('routers.meseto-test-web', $label, 'Old router name must be gone');
+            $this->assertStringNotContainsString('routers.beispiel-test-web', $label, 'Old router name must be gone');
 
             if (str_contains($label, '.rule=')) {
-                $this->assertStringNotContainsString('Host(`meseto.test`)', $label);
+                $this->assertStringNotContainsString('Host(`beispiel.test`)', $label);
             }
+        }
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeRewritesSubdomainTraefikLabels(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.beispiel-test-web.rule=Host(`beispiel.test`)',
+                    'traefik.http.routers.beispiel-test-web-tls.rule=Host(`beispiel.test`)',
+                    'traefik.http.routers.beispiel-test-web-tls.tls=true',
+                ],
+            ],
+            'preview' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.preview-beispiel-test-preview.rule=Host(`preview.beispiel.test`)',
+                    'traefik.http.routers.preview-beispiel-test-preview-tls.rule=Host(`preview.beispiel.test`)',
+                    'traefik.http.routers.preview-beispiel-test-preview-tls.tls=true',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-wt-feature',
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $previewLabels = $data['services']['preview']['labels']->getValue();
+
+        // Subdomain Host() rule must be rewritten to the worktree variant.
+        $this->assertContains(
+            'traefik.http.routers.preview-beispiel-feature-test-preview.rule=Host(`preview.beispiel-feature.test`)',
+            $previewLabels,
+        );
+        $this->assertContains(
+            'traefik.http.routers.preview-beispiel-feature-test-preview-tls.rule=Host(`preview.beispiel-feature.test`)',
+            $previewLabels,
+        );
+
+        foreach ($previewLabels as $label) {
+            $this->assertStringNotContainsString('Host(`preview.beispiel.test`)', $label, 'Old subdomain host must be gone');
+            $this->assertStringNotContainsString('routers.preview-beispiel-test-preview', $label, 'Old subdomain router must be renamed');
+        }
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeLeavesUnrelatedHostnameSubstringsUntouched(): void
+    {
+        // Regression: an earlier implementation used unconditional str_replace
+        // and would mangle `testproject-beispiel.test` (which contains the
+        // substring `beispiel.test`) and any router named
+        // `testproject-beispiel-test-...`. Strict suffix matching for the host
+        // rule plus anchored regex (lookbehind requires `.`, not `-`) for
+        // the router/service identifier must leave such unrelated hosts and
+        // identifiers alone.
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.beispiel-test-web.rule=Host(`beispiel.test`)',
+                ],
+            ],
+            'testproject' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.testproject-beispiel-test-testproject.rule=Host(`testproject-beispiel.test`)',
+                    'traefik.http.routers.testproject-beispiel-test-testproject-tls.rule=Host(`testproject-beispiel.test`)',
+                    'traefik.http.routers.testproject-beispiel-test-testproject-tls.tls=true',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-wt-feature',
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $testprojectLabels = $data['services']['testproject']['labels']->getValue();
+
+        // The unrelated `testproject-beispiel.test` host and its routers must
+        // survive verbatim — no part of the project's hostname rewrite reaches
+        // them.
+        $this->assertContains(
+            'traefik.http.routers.testproject-beispiel-test-testproject.rule=Host(`testproject-beispiel.test`)',
+            $testprojectLabels,
+        );
+        $this->assertContains(
+            'traefik.http.routers.testproject-beispiel-test-testproject-tls.rule=Host(`testproject-beispiel.test`)',
+            $testprojectLabels,
+        );
+        $this->assertContains(
+            'traefik.http.routers.testproject-beispiel-test-testproject-tls.tls=true',
+            $testprojectLabels,
+        );
+
+        foreach ($testprojectLabels as $label) {
+            $this->assertStringNotContainsString('beispiel-feature', $label, 'Unrelated hostname must not gain the worktree suffix');
         }
 
         unlink($overridePath);
@@ -551,14 +673,14 @@ final class DockerComposeManagerTest extends TestCase
         ]);
 
         $worktreeInfo = new WorktreeInfo(
-            mainDirectory: '/projects/meseto',
-            worktreeDirectory: '/projects/meseto-wt-feature',
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
             branch: 'feature/test',
-            suffix: 'meseto-wt-feature',
+            suffix: 'beispiel-wt-feature',
         );
 
-        $manager = $this->createManagerWithWorktreeSupport('meseto-feature.test');
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -572,7 +694,7 @@ final class DockerComposeManagerTest extends TestCase
         $hasWorktreeHost = false;
 
         foreach ($labels as $label) {
-            if (str_contains($label, 'meseto-feature.test')) {
+            if (str_contains($label, 'beispiel-feature.test')) {
                 $hasWorktreeHost = true;
             }
         }
@@ -588,32 +710,32 @@ final class DockerComposeManagerTest extends TestCase
             'web' => [
                 'image' => 'nginx:latest',
                 'environment' => [
-                    'VIRTUAL_HOST=meseto.test',
-                    'MERCURE_URL=http://mercure.meseto.test/.well-known/mercure',
-                    'OPEN_URL=https://meseto.test',
+                    'VIRTUAL_HOST=beispiel.test',
+                    'MERCURE_URL=http://mercure.beispiel.test/.well-known/mercure',
+                    'OPEN_URL=https://beispiel.test',
                     'DATABASE_URL=mysql://root@db:3306/app',
                 ],
             ],
         ]);
 
         $worktreeInfo = new WorktreeInfo(
-            mainDirectory: '/projects/meseto',
-            worktreeDirectory: '/projects/meseto-wt-feature',
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
             branch: 'feature/test',
-            suffix: 'meseto-wt-feature',
+            suffix: 'beispiel-wt-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $env = $data['services']['web']['environment'];
 
-        $this->assertSame('meseto-wt-feature.test', $env['VIRTUAL_HOST']);
-        $this->assertSame('http://mercure.meseto-wt-feature.test/.well-known/mercure', $env['MERCURE_URL']);
-        $this->assertSame('https://meseto-wt-feature.test', $env['OPEN_URL']);
+        $this->assertSame('beispiel-wt-feature.test', $env['VIRTUAL_HOST']);
+        $this->assertSame('http://mercure.beispiel-wt-feature.test/.well-known/mercure', $env['MERCURE_URL']);
+        $this->assertSame('https://beispiel-wt-feature.test', $env['OPEN_URL']);
 
         // DATABASE_URL path segment gets worktree suffix appended
         $this->assertSame('mysql://root@db:3306/app_wt_feature', $env['DATABASE_URL']);
@@ -632,13 +754,13 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath);
 
-        $this->assertSame('meseto-web', $data['services']['web']['hostname']);
-        $this->assertSame('meseto-worker', $data['services']['worker']['hostname']);
+        $this->assertSame('beispiel-web', $data['services']['web']['hostname']);
+        $this->assertSame('beispiel-worker', $data['services']['worker']['hostname']);
 
         unlink($overridePath);
     }
@@ -670,7 +792,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath);
@@ -693,12 +815,12 @@ final class DockerComposeManagerTest extends TestCase
 
         $manager = $this->createManagerWithDockerManager($dockerManager);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath);
 
-        $this->assertSame('meseto-mercure', $data['services']['mercure']['hostname']);
+        $this->assertSame('beispiel-mercure', $data['services']['mercure']['hostname']);
 
         unlink($overridePath);
     }
@@ -709,28 +831,28 @@ final class DockerComposeManagerTest extends TestCase
             'web' => [
                 'image' => 'nginx:latest',
                 'environment' => [
-                    'OPEN_URL' => 'https://meseto.test',
+                    'OPEN_URL' => 'https://beispiel.test',
                     'APP_SECRET' => 'abc123',
                 ],
             ],
         ]);
 
         $worktreeInfo = new WorktreeInfo(
-            mainDirectory: '/projects/meseto',
-            worktreeDirectory: '/projects/meseto-wt-feature',
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
             branch: 'feature/test',
-            suffix: 'meseto-wt-feature',
+            suffix: 'beispiel-wt-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $env = $data['services']['web']['environment'];
 
-        $this->assertSame('https://meseto-wt-feature.test', $env['OPEN_URL']);
+        $this->assertSame('https://beispiel-wt-feature.test', $env['OPEN_URL']);
         $this->assertArrayNotHasKey('APP_SECRET', $env);
 
         unlink($overridePath);
@@ -742,31 +864,31 @@ final class DockerComposeManagerTest extends TestCase
             'web' => [
                 'image' => 'nginx:latest',
                 'environment' => [
-                    'DATABASE_URL=mysql://root:pw@mariadb:3306/meseto?serverVersion=11.8.0-MariaDB',
-                    'APP_URL=https://meseto.test',
+                    'DATABASE_URL=mysql://root:pw@mariadb:3306/beispiel?serverVersion=11.8.0-MariaDB',
+                    'APP_URL=https://beispiel.test',
                 ],
             ],
         ]);
 
         $worktreeInfo = new WorktreeInfo(
-            mainDirectory: '/projects/meseto',
-            worktreeDirectory: '/projects/meseto-wt-feature',
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
             branch: 'feature/test',
-            suffix: 'meseto-wt-feature',
+            suffix: 'beispiel-wt-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
         $env = $data['services']['web']['environment'];
 
         $this->assertSame(
-            'mysql://root:pw@mariadb:3306/meseto_wt_feature?serverVersion=11.8.0-MariaDB',
+            'mysql://root:pw@mariadb:3306/beispiel_wt_feature?serverVersion=11.8.0-MariaDB',
             $env['DATABASE_URL'],
         );
-        $this->assertSame('https://meseto-wt-feature.test', $env['APP_URL']);
+        $this->assertSame('https://beispiel-wt-feature.test', $env['APP_URL']);
 
         unlink($overridePath);
     }
