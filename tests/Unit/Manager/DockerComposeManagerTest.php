@@ -542,6 +542,128 @@ final class DockerComposeManagerTest extends TestCase
         unlink($overridePath);
     }
 
+    public function testGenerateOverrideWorktreeRewritesSubdomainTraefikLabels(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.meseto-test-web.rule=Host(`meseto.test`)',
+                    'traefik.http.routers.meseto-test-web-tls.rule=Host(`meseto.test`)',
+                    'traefik.http.routers.meseto-test-web-tls.tls=true',
+                ],
+            ],
+            'preview' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.preview-meseto-test-preview.rule=Host(`preview.meseto.test`)',
+                    'traefik.http.routers.preview-meseto-test-preview-tls.rule=Host(`preview.meseto.test`)',
+                    'traefik.http.routers.preview-meseto-test-preview-tls.tls=true',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/meseto',
+            worktreeDirectory: '/projects/meseto-wt-feature',
+            branch: 'feature/test',
+            suffix: 'meseto-wt-feature',
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('meseto-feature.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $previewLabels = $data['services']['preview']['labels']->getValue();
+
+        // Subdomain Host() rule must be rewritten to the worktree variant.
+        $this->assertContains(
+            'traefik.http.routers.preview-meseto-feature-test-preview.rule=Host(`preview.meseto-feature.test`)',
+            $previewLabels,
+        );
+        $this->assertContains(
+            'traefik.http.routers.preview-meseto-feature-test-preview-tls.rule=Host(`preview.meseto-feature.test`)',
+            $previewLabels,
+        );
+
+        foreach ($previewLabels as $label) {
+            $this->assertStringNotContainsString('Host(`preview.meseto.test`)', $label, 'Old subdomain host must be gone');
+            $this->assertStringNotContainsString('routers.preview-meseto-test-preview', $label, 'Old subdomain router must be renamed');
+        }
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeLeavesUnrelatedHostnameSubstringsUntouched(): void
+    {
+        // Regression: an earlier implementation used unconditional str_replace
+        // and would mangle `testproject-meseto.test` (which contains the
+        // substring `meseto.test`) and any router named
+        // `testproject-meseto-test-...`. Strict suffix matching for the host
+        // rule plus anchored regex (lookbehind requires `.`, not `-`) for
+        // the router/service identifier must leave such unrelated hosts and
+        // identifiers alone.
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.meseto-test-web.rule=Host(`meseto.test`)',
+                ],
+            ],
+            'testproject' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.testproject-meseto-test-testproject.rule=Host(`testproject-meseto.test`)',
+                    'traefik.http.routers.testproject-meseto-test-testproject-tls.rule=Host(`testproject-meseto.test`)',
+                    'traefik.http.routers.testproject-meseto-test-testproject-tls.tls=true',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/meseto',
+            worktreeDirectory: '/projects/meseto-wt-feature',
+            branch: 'feature/test',
+            suffix: 'meseto-wt-feature',
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('meseto-feature.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'meseto'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $testprojectLabels = $data['services']['testproject']['labels']->getValue();
+
+        // The unrelated `testproject-meseto.test` host and its routers must
+        // survive verbatim — no part of the project's hostname rewrite reaches
+        // them.
+        $this->assertContains(
+            'traefik.http.routers.testproject-meseto-test-testproject.rule=Host(`testproject-meseto.test`)',
+            $testprojectLabels,
+        );
+        $this->assertContains(
+            'traefik.http.routers.testproject-meseto-test-testproject-tls.rule=Host(`testproject-meseto.test`)',
+            $testprojectLabels,
+        );
+        $this->assertContains(
+            'traefik.http.routers.testproject-meseto-test-testproject-tls.tls=true',
+            $testprojectLabels,
+        );
+
+        foreach ($testprojectLabels as $label) {
+            $this->assertStringNotContainsString('meseto-feature', $label, 'Unrelated hostname must not gain the worktree suffix');
+        }
+
+        unlink($overridePath);
+    }
+
     public function testGenerateOverrideWorktreeFallbackWhenNoTraefikLabels(): void
     {
         $this->createComposeFile([
