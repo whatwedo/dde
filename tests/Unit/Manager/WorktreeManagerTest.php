@@ -345,6 +345,44 @@ final class WorktreeManagerTest extends TestCase
         );
     }
 
+    public function testRewriteHostnameRewritesProjectHost(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+
+        $this->assertSame('beispiel-feature.test', $this->manager->rewriteHostname('beispiel.test', 'beispiel', $info));
+    }
+
+    public function testRewriteHostnameRewritesSubdomain(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+
+        $this->assertSame(
+            'preview.beispiel-feature.test',
+            $this->manager->rewriteHostname('preview.beispiel.test', 'beispiel', $info),
+        );
+    }
+
+    public function testRewriteHostnamePassesThroughUnrelatedHost(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+
+        $this->assertSame(
+            'partner-api.example.com',
+            $this->manager->rewriteHostname('partner-api.example.com', 'beispiel', $info),
+        );
+    }
+
+    public function testRewriteHostnamePassesThroughLookalikeHost(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+
+        // Suffix must be `.beispiel.test`, not just contain `beispiel.test`.
+        $this->assertSame(
+            'notbeispiel.test',
+            $this->manager->rewriteHostname('notbeispiel.test', 'beispiel', $info),
+        );
+    }
+
     private function stubGitWorktreeList(string $output): void
     {
         $process = $this->createStub(Process::class);

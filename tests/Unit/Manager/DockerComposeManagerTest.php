@@ -1050,6 +1050,21 @@ ENV);
 
         $worktreeManager = $this->createStub(\App\Manager\WorktreeManager::class);
         $worktreeManager->method('resolveHostname')->willReturn($worktreeHostname);
+        $worktreeManager->method('rewriteHostname')->willReturnCallback(
+            function (string $hostname, string $projectName, \App\Config\WorktreeInfo $info) use ($worktreeHostname): string {
+                $projectHostname = $projectName.'.test';
+
+                if ($hostname === $projectHostname) {
+                    return $worktreeHostname;
+                }
+
+                if (str_ends_with($hostname, '.'.$projectHostname)) {
+                    return str_replace($projectHostname, $worktreeHostname, $hostname);
+                }
+
+                return $hostname;
+            },
+        );
         $worktreeManager->method('computeEnvironmentOverrides')->willReturnCallback(
             function (array $env, string $project, \App\Config\WorktreeInfo $info) use ($worktreeHostname): array {
                 $result = [];

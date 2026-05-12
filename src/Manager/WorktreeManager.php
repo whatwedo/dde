@@ -99,6 +99,31 @@ readonly class WorktreeManager
     }
 
     /**
+     * Rewrites a hostname from the main checkout to its worktree variant.
+     * Replaces the substring `<projectName>.test` with `<worktreeProjectName>.test`,
+     * which preserves any subdomain prefix (e.g. `preview.meseto.test` ->
+     * `preview.meseto-feature-x.test`). Bare project hostnames are rewritten too.
+     * Unrelated hosts (no `.<project>.test` suffix and not equal to `<project>.test`)
+     * pass through unchanged so external integrations declared on the same compose
+     * service are never mangled.
+     */
+    public function rewriteHostname(string $hostname, string $projectName, WorktreeInfo $worktreeInfo): string
+    {
+        $projectHostname = $projectName.'.test';
+        $worktreeHostname = $this->resolveHostname($projectName, $worktreeInfo);
+
+        if ($hostname === $projectHostname) {
+            return $worktreeHostname;
+        }
+
+        if (str_ends_with($hostname, '.'.$projectHostname)) {
+            return str_replace($projectHostname, $worktreeHostname, $hostname);
+        }
+
+        return $hostname;
+    }
+
+    /**
      * @param array<int|string, mixed> $existingEnv
      *
      * @return array<string, string>
