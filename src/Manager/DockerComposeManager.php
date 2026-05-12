@@ -315,11 +315,10 @@ readonly class DockerComposeManager
 
             $labels = ['dde.managed=true'];
             $worktreeHostname = null;
-            $projectHostname = $config->projectName.'.test';
 
             if ($worktreeInfo instanceof WorktreeInfo) {
                 $worktreeHostname = $this->worktreeManager->resolveHostname($config->projectName, $worktreeInfo);
-                $labels = array_merge($labels, $this->overrideTraefikLabels($serviceConfig['labels'] ?? [], $projectHostname, $worktreeHostname, $serviceName));
+                $labels = array_merge($labels, $this->overrideTraefikLabels($serviceConfig['labels'] ?? [], $config->projectName, $worktreeInfo, $worktreeHostname, $serviceName));
             }
 
             $containerHostname = $this->resolveContainerHostname($serviceName, $serviceConfig, $config);
@@ -828,7 +827,7 @@ readonly class DockerComposeManager
      *
      * @return list<string>
      */
-    private function overrideTraefikLabels(array $existingLabels, string $projectHostname, string $worktreeHostname, string $serviceName): array
+    private function overrideTraefikLabels(array $existingLabels, string $projectName, WorktreeInfo $worktreeInfo, string $worktreeHostname, string $serviceName): array
     {
         // First pass: collect every host we will rewrite so router/service
         // identifiers derived from those hosts can be renamed in *every*
@@ -848,7 +847,7 @@ readonly class DockerComposeManager
             }
 
             foreach ($matches[1] as $original) {
-                $rewritten = $this->rewriteWorktreeHost($original, $projectHostname, $worktreeHostname);
+                $rewritten = $this->worktreeManager->rewriteHostname($original, $projectName, $worktreeInfo);
 
                 if ($rewritten !== $original) {
                     $dotFormMap[str_replace('.', '-', $original)] = str_replace('.', '-', $rewritten);
@@ -871,7 +870,7 @@ readonly class DockerComposeManager
 
             $label = (string) preg_replace_callback(
                 '/Host\(`([^`]+)`\)/',
-                fn (array $match): string => 'Host(`'.$this->rewriteWorktreeHost($match[1], $projectHostname, $worktreeHostname).'`)',
+                fn (array $match): string => 'Host(`'.$this->worktreeManager->rewriteHostname($match[1], $projectName, $worktreeInfo).'`)',
                 $label,
             );
 
@@ -898,24 +897,5 @@ readonly class DockerComposeManager
         }
 
         return $overrideLabels;
-    }
-
-    /**
-     * Returns the worktree variant of `$hostname`, or the input unchanged
-     * when `$hostname` is neither the bare project host nor a strict
-     * subdomain of it. Mirrors the strict suffix logic the env-rewrite path
-     * applies, so the Traefik label rewrite never mangles unrelated hosts.
-     */
-    private function rewriteWorktreeHost(string $hostname, string $projectHostname, string $worktreeHostname): string
-    {
-        if ($hostname === $projectHostname) {
-            return $worktreeHostname;
-        }
-
-        if (str_ends_with($hostname, '.'.$projectHostname)) {
-            return str_replace($projectHostname, $worktreeHostname, $hostname);
-        }
-
-        return $hostname;
     }
 }
