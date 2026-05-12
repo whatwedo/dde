@@ -19,11 +19,22 @@ composer install
 bin/console list  # Verify it works
 ```
 
-To use your local development version instead of the installed binary, set an alias:
+To use your local development version instead of the installed binary, override the `dde` command via an alias. Two variants:
+
+**Run from sources directly** (fastest iteration — every code change is picked up on the next invocation, no build step):
 
 ```bash
-alias dde='/path/to/dde/bin/console'
+alias dde='~/projects/dde/bin/console'
 ```
+
+**Run the built binary** (matches what users get from a release; useful for verifying PHAR-specific behaviour like the pre-warmed cache dir):
+
+```bash
+make build-binary
+alias dde='~/projects/dde/bin/dde'
+```
+
+Adjust the path to wherever you cloned the repository. Add the alias to your shell rc (`.bashrc`, `.zshrc`, …) to make it permanent.
 
 ## Quality Assurance
 
