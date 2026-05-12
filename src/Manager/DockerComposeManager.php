@@ -717,9 +717,16 @@ readonly class DockerComposeManager
     /**
      * Overrides Traefik labels from compose.yml for worktree usage.
      *
-     * Replaces both the Host() value and the router name so main and worktree
-     * containers can coexist without Traefik reporting "router defined multiple
-     * times with different configurations".
+     * Rewrites every `Host(`<x>.<project>.test`)` value (including the bare
+     * `Host(`<project>.test`)`) and the matching router/service identifier
+     * segments derived from those hostnames. Hostname matching is strict:
+     * only the bare project hostname or genuine subdomain-suffix hosts are
+     * rewritten — unrelated hosts that merely contain the project hostname
+     * as a substring (e.g. `testproject-meseto.test` when the project is
+     * `meseto`) pass through untouched. Router/service identifier rewrites
+     * are anchored at the start of the router-name segment (right after
+     * `routers.` or `services.`) so a similarly named unrelated identifier
+     * (`testproject-meseto-test-…`) is not silently renamed.
      *
      * @param array<int|string, mixed> $existingLabels
      *
@@ -727,10 +734,35 @@ readonly class DockerComposeManager
      */
     private function overrideTraefikLabels(array $existingLabels, string $projectHostname, string $worktreeHostname, string $serviceName): array
     {
+        // First pass: collect every host we will rewrite so router/service
+        // identifiers derived from those hosts can be renamed in *every*
+        // label, including ones that do not themselves carry a `Host()` rule
+        // (e.g. `traefik.http.routers.<name>-tls.tls=true`).
+        $dotFormMap = [];
+
+        foreach ($existingLabels as $key => $value) {
+            $label = is_int($key) ? (string) $value : $key.'='.$value;
+
+            if (! str_contains($label, 'traefik.')) {
+                continue;
+            }
+
+            if (preg_match_all('/Host\(`([^`]+)`\)/', $label, $matches) === false) {
+                continue;
+            }
+
+            foreach ($matches[1] as $original) {
+                $rewritten = $this->rewriteWorktreeHost($original, $projectHostname, $worktreeHostname);
+
+                if ($rewritten !== $original) {
+                    $dotFormMap[str_replace('.', '-', $original)] = str_replace('.', '-', $rewritten);
+                }
+            }
+        }
+
+        // Second pass: emit the actual override labels.
         $overrideLabels = [];
         $hasTraefikLabels = false;
-        $oldRouterName = $this->traefikService->generateRouterName($projectHostname, $serviceName);
-        $newRouterName = $this->traefikService->generateRouterName($worktreeHostname, $serviceName);
 
         foreach ($existingLabels as $key => $value) {
             $label = is_int($key) ? (string) $value : $key.'='.$value;
@@ -741,20 +773,25 @@ readonly class DockerComposeManager
 
             $hasTraefikLabels = true;
 
-            // 1. Rename router/service in label key so the worktree container registers
-            //    routers under its own unique name (avoids Traefik conflict warnings).
-            $label = (string) preg_replace(
-                '/(traefik\.http\.(?:routers|services)\.)'.preg_quote($oldRouterName, '/').'(\.|-tls\.)/',
-                '$1'.$newRouterName.'$2',
+            $label = (string) preg_replace_callback(
+                '/Host\(`([^`]+)`\)/',
+                fn (array $match): string => 'Host(`'.$this->rewriteWorktreeHost($match[1], $projectHostname, $worktreeHostname).'`)',
                 $label,
             );
 
-            // 2. Rewrite Host() rule value to the worktree hostname
-            $label = (string) preg_replace(
-                '/Host\(`'.preg_quote($projectHostname, '/').'`\)/',
-                sprintf('Host(`%s`)', $worktreeHostname),
-                $label,
-            );
+            // Anchor the dot-form rewrite to the start of a router-name
+            // segment: the previous character must be `.` (right after
+            // `routers.` or `services.`) and the next character must be `-`
+            // (the service-name suffix or the `-tls` modifier). Allowing `-`
+            // in the lookbehind would falsely match `meseto-test` inside
+            // `testproject-meseto-test-app`, which is an unrelated router.
+            foreach ($dotFormMap as $oldDotForm => $newDotForm) {
+                $label = (string) preg_replace(
+                    '/(?<=\.)'.preg_quote($oldDotForm, '/').'(?=-)/',
+                    $newDotForm,
+                    $label,
+                );
+            }
 
             $overrideLabels[] = $label;
         }
@@ -765,5 +802,24 @@ readonly class DockerComposeManager
         }
 
         return $overrideLabels;
+    }
+
+    /**
+     * Returns the worktree variant of `$hostname`, or the input unchanged
+     * when `$hostname` is neither the bare project host nor a strict
+     * subdomain of it. Mirrors the strict suffix logic the env-rewrite path
+     * applies, so the Traefik label rewrite never mangles unrelated hosts.
+     */
+    private function rewriteWorktreeHost(string $hostname, string $projectHostname, string $worktreeHostname): string
+    {
+        if ($hostname === $projectHostname) {
+            return $worktreeHostname;
+        }
+
+        if (str_ends_with($hostname, '.'.$projectHostname)) {
+            return str_replace($projectHostname, $worktreeHostname, $hostname);
+        }
+
+        return $hostname;
     }
 }
