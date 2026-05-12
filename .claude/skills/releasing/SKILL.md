@@ -102,6 +102,38 @@ Present:
 
 and wait for explicit confirmation.
 
+## Step 6: Update the GitHub release
+
+The workflow creates the GitHub Release as the binaries upload. Its description is auto-generated from the merged PRs (`generate_release_notes: true` in `release.yml`) — replace it with this version's CHANGELOG section, and flag pre-releases so the GitHub UI hides them from the "Latest" link.
+
+Wait for the workflow to finish:
+
+```bash
+gh run watch
+# or: gh release view v<version>
+```
+
+Extract the CHANGELOG section for this version, derive the pre-release flag, and update the release in a single call:
+
+```bash
+version="<version-without-v-prefix>"   # e.g. 2.0.0-alpha.5
+
+notes=$(awk -v ver="$version" '
+  /^## \[/ { p=0 }
+  index($0, "## ["ver"]")==1 { p=1; next }
+  p
+' CHANGELOG.md)
+
+prerelease_flag=""
+case "$version" in
+  *-alpha.*|*-beta.*|*-rc.*) prerelease_flag="--prerelease" ;;
+esac
+
+gh release edit "v$version" --notes "$notes" $prerelease_flag
+```
+
+Verify in the browser at `https://github.com/whatwedo/dde/releases/tag/v<version>` — the description should match the CHANGELOG section and the "Pre-release" badge should be visible for alpha/beta/rc tags.
+
 ## Quick checklist
 
 - [ ] User confirmed target version
@@ -111,6 +143,8 @@ and wait for explicit confirmation.
 - [ ] Commit signed + signed-off, subject `chore(release): bump version to v<version>`
 - [ ] Annotated tag signed, subject exactly `v<version>`
 - [ ] No push without explicit user approval
+- [ ] GitHub release notes populated from CHANGELOG section
+- [ ] Pre-release flag set for `-alpha.`/`-beta.`/`-rc.` tags
 
 ## Common mistakes
 
@@ -121,3 +155,5 @@ and wait for explicit confirmation.
 | Amending an earlier release commit | Always a new commit; never rewrite a published tag. |
 | Missing tag signature (`git tag v…` instead of `git tag -s v…`) | Re-create with `-s`. |
 | Pushing the tag without asking | The release workflow is expensive and public; always confirm. |
+| Leaving the GitHub release description empty | Run Step 6 — users land on the release page from "Latest release" links and expect to see the changelog. |
+| Tagging `-alpha.N` as a stable release | Always pass `--prerelease` when editing alpha/beta/rc tags, otherwise GitHub marks them as the "Latest" release. |
