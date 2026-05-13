@@ -14,7 +14,7 @@ use Symfony\Component\HttpKernel\KernelInterface;
 
 final class Application extends BaseApplication
 {
-    public const string APP_VERSION = 'v2.0.0-alpha.5';
+    public const string APP_VERSION = 'v2.0.0-beta.1';
 
     private const array ALLOWED_COMMANDS = ['about', 'completion', 'help', 'list'];
 
