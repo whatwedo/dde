@@ -118,7 +118,7 @@ readonly class ProjectInitAdaptationManager
     }
 
     /**
-     * Applies forced env transformations (APP_ENV, MAILER_DSN) immediately and
+     * Applies forced env transformations (MAILER_DSN) immediately and
      * returns prompted proposals (DATABASE_URL) for user confirmation.
      *
      * @param list<string>                       $ddeServiceNames
@@ -154,12 +154,6 @@ readonly class ProjectInitAdaptationManager
         }
 
         $appliedChanges = [];
-
-        // Forced: APP_ENV
-        $appEnvChange = $this->applyAppEnvRule($config, $container);
-        if ($appEnvChange !== null) {
-            $appliedChanges[] = $appEnvChange;
-        }
 
         // Forced: MAILER_DSN
         $mailerChange = $this->applyMailerDsnRuleToConfig($config, $container, $projectDir, $ddeServiceNames);
@@ -518,28 +512,6 @@ readonly class ProjectInitAdaptationManager
         if ($written) {
             $this->filesystem->dumpFile($path, implode("\n", $lines));
         }
-    }
-
-    /**
-     * @param array<string, mixed> $config
-     */
-    private function applyAppEnvRule(array &$config, string $container): ?string
-    {
-        if (! isset($config['services'][$container]) || ! is_array($config['services'][$container])) {
-            return null;
-        }
-
-        $service = $config['services'][$container];
-
-        if ($this->dockerComposeModifier->extractEnvironmentVariable($service, 'APP_ENV') === 'dev') {
-            return null;
-        }
-
-        $this->dockerComposeModifier->removeEnvironmentVariable($service, 'APP_ENV');
-        $this->dockerComposeModifier->setEnvironmentVariable($service, 'APP_ENV', 'dev');
-        $config['services'][$container] = $service;
-
-        return 'Applied APP_ENV=dev to compose';
     }
 
     /**

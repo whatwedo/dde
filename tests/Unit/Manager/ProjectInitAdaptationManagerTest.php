@@ -283,36 +283,25 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function testProposeEnvMigrationsAppliesAppEnvToCompose(): void
+    public function testProposeEnvMigrationsNeverInjectsAppEnvIntoCompose(): void
     {
+        // Symfony stops loading .env files when APP_ENV is set in the environment, so
+        // dde must not move APP_ENV from .env into the docker-compose service definition.
         $composePath = $this->tempDir.'/docker-compose.yml';
         file_put_contents($composePath, <<<'YAML'
             services:
               web:
                 image: php:8.5
             YAML);
+        $originalContent = file_get_contents($composePath);
 
         $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', [], []);
-        $this->assertNotEmpty($result['appliedChanges']);
 
-        $config = \Symfony\Component\Yaml\Yaml::parseFile($composePath);
-        $env = $config['services']['web']['environment'];
-        $found = false;
-
-        foreach ($env as $k => $v) {
-            if ($k === 'APP_ENV' && $v === 'dev') {
-                $found = true;
-            }
-
-            if (is_int($k) && $v === 'APP_ENV=dev') {
-                $found = true;
-            }
-        }
-
-        $this->assertTrue($found, 'Expected APP_ENV=dev in compose environment');
+        $this->assertSame([], $result['appliedChanges']);
+        $this->assertSame($originalContent, file_get_contents($composePath));
     }
 
-    public function testProposeEnvMigrationsSkipsAppEnvWhenAlreadySet(): void
+    public function testProposeEnvMigrationsLeavesExistingAppEnvUntouched(): void
     {
         $composePath = $this->tempDir.'/docker-compose.yml';
         file_put_contents($composePath, <<<'YAML'
@@ -320,13 +309,13 @@ final class ProjectInitAdaptationManagerTest extends TestCase
               web:
                 image: php:8.5
                 environment:
-                  APP_ENV: dev
+                  APP_ENV: prod
             YAML);
         $originalContent = file_get_contents($composePath);
 
         $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', [], []);
 
-        // File should remain unchanged (idempotent)
+        // APP_ENV in compose is not touched — even when it diverges from "dev"
         $this->assertSame($originalContent, file_get_contents($composePath));
     }
 
@@ -558,33 +547,6 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', ['mariadb'], $services);
 
         $this->assertCount(0, $result['proposals']);
-    }
-
-    public function testProposeEnvMigrationsOverwritesAppEnvWhenDivergent(): void
-    {
-        $composePath = $this->tempDir.'/docker-compose.yml';
-        file_put_contents($composePath, <<<'YAML'
-            services:
-              web:
-                image: php:8.5
-                environment:
-                  APP_ENV: prod
-            YAML);
-
-        $result = $this->manager->proposeEnvMigrations($this->tempDir, 'beispiel', 'web', [], []);
-
-        $config = \Symfony\Component\Yaml\Yaml::parseFile($composePath);
-        $env = $config['services']['web']['environment'];
-        $found = false;
-
-        foreach ($env as $k => $v) {
-            if (($k === 'APP_ENV' && $v === 'dev') || (is_int($k) && $v === 'APP_ENV=dev')) {
-                $found = true;
-            }
-        }
-
-        $this->assertTrue($found, 'Expected APP_ENV=dev in compose after overwrite from prod');
-        $this->assertNotEmpty($result['appliedChanges']);
     }
 
     public function testProposeEnvMigrationsRecognizesPgsqlSchemeForPostgresService(): void

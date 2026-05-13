@@ -116,7 +116,7 @@ final class ProjectInitCommand extends AbstractProjectCommand
             $dockerResult = $this->handleDockerAdaptation($projectDir, $name, $container, $isDryRun, $isForce, $io, $suppressInteractive);
         }
 
-        // Apply env migrations (forced: APP_ENV, MAILER_DSN; prompted: DATABASE_URL)
+        // Apply env migrations (forced: MAILER_DSN; prompted: DATABASE_URL)
         if (! $isDryRun) {
             $serviceDefinitions = [];
 

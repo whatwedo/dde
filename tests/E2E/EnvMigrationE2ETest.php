@@ -48,7 +48,11 @@ final class EnvMigrationE2ETest extends TestCase
 
         // docker-compose.yml — forced environment injections
         $webEnv = $this->extractServiceEnvironment('web');
-        $this->assertSame('dev', $webEnv['APP_ENV'] ?? null, 'APP_ENV=dev must be set in compose');
+        $this->assertArrayNotHasKey(
+            'APP_ENV',
+            $webEnv,
+            'APP_ENV must not be migrated into compose — Symfony stops loading .env files when APP_ENV is in the environment',
+        );
         $this->assertSame('smtp://mailpit:1025', $webEnv['MAILER_DSN'] ?? null, 'MAILER_DSN must point to mailpit in compose');
 
         // docker-compose.yml — DATABASE_URL from migration NOT present.
@@ -112,7 +116,7 @@ final class EnvMigrationE2ETest extends TestCase
 
         $webEnv = $this->extractServiceEnvironment('web');
         $this->assertArrayNotHasKey('MAILER_DSN', $webEnv, 'compose must not gain MAILER_DSN when mailpit is absent');
-        $this->assertSame('dev', $webEnv['APP_ENV'] ?? null, 'APP_ENV forced rule should still apply');
+        $this->assertArrayNotHasKey('APP_ENV', $webEnv, 'APP_ENV must never be injected into compose');
     }
 
     /**

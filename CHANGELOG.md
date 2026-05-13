@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Mailpit retains all messages instead of capping at the most recent 500. The container now starts with `MP_MAX_MESSAGES=0`; users on existing installations pick this up after the next `dde system:update`. (#143)
 - `project:db*` commands (`project:db`, `project:db:open`, `project:db:export`, `project:db:import`, `project:db:snapshot:create`, `project:db:snapshot:restore`) now target the worktree-suffixed database when run from inside a git worktree, matching the `DATABASE_URL` the compose override rewrites for the application container. An explicit `--database` value is still forwarded verbatim.
+- `project:init` no longer injects `APP_ENV=dev` into `docker-compose.yml`. Symfony skips loading `.env`/`.env.local` whenever `APP_ENV` is already defined in the environment, which silently broke projects that rely on `.env` for application-level configuration. (#132)
 
 ## [2.0.0-alpha.5] - 2026-04-21
 
@@ -43,7 +44,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - `project:up` and `project:update` now print the project's reachable domains after a successful run (worktree-aware)
 - Auto-generated container hostnames (`<project>-<service>`) so the shell prompt inside a container shows `beispiel-web` instead of the random container ID; explicit `hostname:` in the user's `docker-compose.yml` is respected
-- `project:init` now proposes `.env` migrations for `APP_ENV`, `MAILER_DSN`, and `DATABASE_URL`, presenting each rewrite before it is written
+- `project:init` now rewrites `MAILER_DSN` automatically (compose + `.env`) when `mailpit` is configured and prompts to migrate `DATABASE_URL` from `.env` into the compose service
 - Per-worktree `DATABASE_URL` rewrite in the compose override so main and worktree checkouts talk to distinct databases on the shared service
 
 ### Fixed
