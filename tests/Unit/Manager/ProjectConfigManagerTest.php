@@ -328,6 +328,7 @@ final class ProjectConfigManagerTest extends TestCase
     public function testDetectWorktreeReturnsNullForMainCheckout(): void
     {
         $mainDir = $this->createGitRepo();
+        chdir($mainDir);
 
         $result = $this->createManager()->detectWorktree($mainDir);
         $this->assertNull($result);
@@ -338,6 +339,7 @@ final class ProjectConfigManagerTest extends TestCase
     {
         $mainDir = $this->createGitRepo();
         $worktreeDir = $this->createWorktree($mainDir, 'feature-branch');
+        chdir($worktreeDir);
 
         $result = $this->createManager()->detectWorktree($worktreeDir);
 
@@ -352,6 +354,7 @@ final class ProjectConfigManagerTest extends TestCase
     public function testDetectWorktreeReturnsNullForNonGitDirectory(): void
     {
         $tmpDir = $this->createTempDir();
+        chdir($tmpDir);
 
         $result = $this->createManager()->detectWorktree($tmpDir);
         $this->assertNull($result);
