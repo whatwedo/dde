@@ -89,11 +89,10 @@ While adapting the project, `project:init` also inspects the `.env`/`.env.local`
 
 Because dde-specific values live only in `docker-compose.yml`, the [worktree override](./worktrees.md#environment-overrides) can cleanly rewrite them per worktree (hostnames, `DATABASE_URL` path segment) without ever touching the committed `.env`. Main and worktree both share the same `.env`, but see different values inside their containers.
 
-With that split in mind, `project:init` applies these three rules:
+With that split in mind, `project:init` applies these two rules:
 
 | Variable | Where | Behaviour |
 |---|---|---|
-| `APP_ENV` | compose `environment:` | Always forced to `dev`. `.env` is not touched. |
 | `MAILER_DSN` | compose `environment:` + `.env` | Only when `mailpit` is a configured dde service. compose gets `smtp://mailpit:1025`; `.env` is rewritten to `null://null` (so the app is safe to run outside dde too). |
 | `DATABASE_URL` | compose `environment:` + `.env` | User-prompted. If the `.env` value matches a configured dde DB service, you are asked whether to migrate. Accepting rewrites `.env` to `<scheme>://app:changeme@127.0.0.1:<port>/<db>?<query>` and adds a compose entry `<scheme>://<root>:<root>@<service>/<sanitized-db>?serverVersion=<version>&<query>`. |
 
