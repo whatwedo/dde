@@ -2,15 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [2.0.0-beta.1] - 2026-05-13
 
 ### BREAKING
+
 - Plugins are now registered under the `project:` namespace instead of `project:exec:`. A plugin with `@command deploy` now runs as `dde project:deploy` (previously `dde project:exec:deploy`). Built-in `project:*` commands take precedence; colliding plugin names are silently shadowed.
 
+### Added
+
+- Each git worktree now owns its own per-project Docker network (`dde-services-<project>-<suffix>`). Main and worktree can run different versions of the same shared service (e.g. main on postgres-16, worktree on postgres-18) without DNS-alias collisions on the canonical service name. Main checkouts are unaffected.
+
 ### Fixed
+
 - Mailpit retains all messages instead of capping at the most recent 500. The container now starts with `MP_MAX_MESSAGES=0`; users on existing installations pick this up after the next `dde system:update`. (#143)
 - `project:db*` commands (`project:db`, `project:db:open`, `project:db:export`, `project:db:import`, `project:db:snapshot:create`, `project:db:snapshot:restore`) now target the worktree-suffixed database when run from inside a git worktree, matching the `DATABASE_URL` the compose override rewrites for the application container. An explicit `--database` value is still forwarded verbatim.
 - `project:init` no longer injects `APP_ENV=dev` into `docker-compose.yml`. Symfony skips loading `.env`/`.env.local` whenever `APP_ENV` is already defined in the environment, which silently broke projects that rely on `.env` for application-level configuration. (#132)
+- Worktrees nested inside the main checkout (e.g. `<main>/.claude/worktrees/<name>`) and worktrees whose branch has not yet committed `.dde/` are now correctly detected. Previously they launched with the main checkout's hostnames, breaking isolation.
+- Traefik labels for subdomain hosts (e.g. `Host(\`preview.<project>.test\`)`) are now rewritten in the worktree compose override, preventing the "router defined multiple times" conflict between main and worktree.
+- URL-bearing env vars declared via `env_file:` are now rewritten in the worktree compose override, so values like `E2E_TARGET_URL` or `MERCURE_URL` point at the worktree variant instead of leaking through to the main checkout.
+- Worktree TLS certificates now cover every subdomain declared via Traefik labels, not just the bare worktree hostname. Subdomain routes inside a worktree are no longer served with an untrusted wildcard certificate.
+- `project:up` and `project:update` now list every worktree subdomain URL in the "Available at:" output instead of only the bare worktree hostname.
+- `project:up` "Available at:" only advertises URLs of services that are actually running — services excluded by inactive Compose profiles are no longer surfaced with broken TLS.
+- `project:up` now detaches stale service containers from the per-project network when a service version changes (e.g. mariadb 10.11 → 11.8), preventing Docker's embedded DNS from round-robining between the old and new containers.
+- The dev-layer build now skips shell-less images (distroless/scratch bases such as Garage) when selecting the target service, avoiding `exec: /bin/sh: no such file or directory` errors in multi-service projects.
 
 ## [2.0.0-alpha.5] - 2026-04-21
 
