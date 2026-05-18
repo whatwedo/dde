@@ -32,6 +32,16 @@ final readonly class SystemServiceManager
             return ServiceStartStatus::ALREADY_RUNNING;
         }
 
+        // `system:stop` stops versioned containers without removing them, and the
+        // restart-policy may not bring them back after a Docker daemon restart.
+        // Re-start the existing container instead of issuing `docker run`, which
+        // would collide with the existing name.
+        if ($this->dockerManager->containerExists($containerName)) {
+            $this->dockerManager->start($containerName);
+
+            return ServiceStartStatus::STARTED;
+        }
+
         $config = $this->getContainerConfig($service, $version, $isDefault);
         $this->ensureDataDir($service, $version);
         $this->dockerManager->run($config);

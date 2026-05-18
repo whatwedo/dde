@@ -166,6 +166,38 @@ final class SystemServiceManagerTest extends TestCase
         $this->assertSame(ServiceStartStatus::ALREADY_RUNNING, $result);
     }
 
+    public function testStartServiceStartsExistingStoppedContainer(): void
+    {
+        // Regression: `dde system:stop` stops versioned containers without removing
+        // them. The next `project:up` must restart the existing container rather
+        // than calling `docker run` with the same name (which fails with
+        // "container name already in use").
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('isContainerRunning')
+            ->with('dde-mailpit-latest')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('containerExists')
+            ->with('dde-mailpit-latest')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('start')
+            ->with('dde-mailpit-latest');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('run');
+
+        $result = $this->manager->startService('mailpit', 'latest', true);
+
+        $this->assertSame(ServiceStartStatus::STARTED, $result);
+    }
+
     public function testStartServiceNonDefaultAlwaysGetsDynamicPort(): void
     {
         // isDefault=false is always passed for non-default versions by the caller;
