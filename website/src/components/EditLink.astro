@@ -1,0 +1,36 @@
+---
+import { Icon } from '@astrojs/starlight/components';
+
+// Docs live at `/docs/` in the repository, but Astro loads them through a
+// symlink at `website/src/content/docs/`. Starlight therefore synthesizes
+// edit URLs against the symlinked path, which GitHub does not resolve and
+// returns 404 for. Rewrite the path back to the canonical location.
+const { editUrl } = Astro.locals.starlightRoute;
+
+const rewritten = editUrl
+	? new URL(editUrl.pathname.replace('/src/content/docs/', '/docs/'), editUrl)
+	: undefined;
+---
+
+{
+	rewritten && (
+		<a href={rewritten.href} class="sl-flex print:hidden">
+			<Icon name="pencil" size="1.2em" />
+			{Astro.locals.t('page.editLink')}
+		</a>
+	)
+}
+
+<style>
+	@layer starlight.core {
+		a {
+			gap: 0.5rem;
+			align-items: center;
+			text-decoration: none;
+			color: var(--sl-color-gray-3);
+		}
+		a:hover {
+			color: var(--sl-color-white);
+		}
+	}
+</style>

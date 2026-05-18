@@ -18,6 +18,11 @@ export default defineConfig({
 			editLink: {
 				baseUrl: 'https://github.com/whatwedo/dde/edit/v2/',
 			},
+			components: {
+				// Rewrites the synthesized edit URL: the docs symlink under
+				// src/content/docs/ would otherwise produce a GitHub 404.
+				EditLink: './src/components/EditLink.astro',
+			},
 			customCss: ['./src/styles/custom.css'],
 			sidebar: [
 				{
