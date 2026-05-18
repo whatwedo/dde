@@ -623,7 +623,10 @@ readonly class DockerComposeManager
      */
     private function parseComposeServices(string $composeFile): array
     {
-        $data = Yaml::parseFile($composeFile, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE);
+        // PARSE_CUSTOM_TAGS so legitimate Compose tags like `!reset` and
+        // `!override` in user override files don't crash the parser before
+        // Compose itself gets a chance to interpret them.
+        $data = Yaml::parseFile($composeFile, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE | Yaml::PARSE_CUSTOM_TAGS);
 
         if (! is_array($data) || ! is_array($data['services'] ?? null)) {
             return [];

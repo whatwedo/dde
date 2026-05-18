@@ -22,15 +22,19 @@ readonly class MkcertManager
     }
 
     /**
-     * Extracts domains from Traefik labels in the compose file and ensures TLS certificates exist.
+     * Extracts domains from Traefik labels in the compose file(s) and ensures
+     * TLS certificates exist. Pass a list of files (base + user override) so
+     * routes declared only in an override are covered too.
+     *
+     * @param string|list<string> $composeFiles
      */
-    public function ensureForComposeFile(string $projectName, string $composeFile): void
+    public function ensureForComposeFile(string $projectName, string|array $composeFiles): void
     {
         if (! $this->isMkcertInstalled()) {
             return;
         }
 
-        $domains = $this->composeParser->extractTraefikDomains($composeFile);
+        $domains = $this->composeParser->extractTraefikDomains($composeFiles);
 
         if ($domains === []) {
             return;

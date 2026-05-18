@@ -7,6 +7,7 @@ namespace App\Parser;
 use App\Util\DiffUtil;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Yaml\Exception\ParseException;
+use Symfony\Component\Yaml\Tag\TaggedValue;
 use Symfony\Component\Yaml\Yaml;
 
 readonly class DockerComposeParser
@@ -28,7 +29,7 @@ readonly class DockerComposeParser
         }
 
         try {
-            $data = Yaml::parseFile($path, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE);
+            $data = Yaml::parseFile($path, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE | Yaml::PARSE_CUSTOM_TAGS);
         } catch (ParseException $parseException) {
             throw new \RuntimeException(sprintf('Invalid YAML in "%s": %s', $path, $parseException->getMessage()), $parseException->getCode(), previous: $parseException);
         }
@@ -41,57 +42,71 @@ readonly class DockerComposeParser
     }
 
     /**
-     * Extracts all unique domains from Traefik `Host()` labels in a docker-compose file.
+     * Extracts all unique domains from Traefik `Host()` labels in one or more
+     * docker-compose files.
      *
-     * Returns an empty list when the file does not exist or contains no Traefik
-     * host rules. Parses both map- and list-style label definitions.
+     * Pass a list of paths to walk a base + override stack — labels are
+     * collected from every file and de-duplicated, mirroring how Compose
+     * itself merges labels across `-f` arguments.
+     *
+     * Returns an empty list when no file exists or none contain Traefik host
+     * rules. Parses both map- and list-style label definitions, and tolerates
+     * `!override` / `!reset` tags on the labels value (only the inner list is
+     * scanned — Compose semantics are not re-implemented).
      *
      * When $onlyServices is provided, only labels from those service names are
      * considered — useful for filtering by actually running containers (e.g.
      * when profiles exclude some services).
      *
-     * @param list<string>|null $onlyServices service names to include (null = all)
+     * @param string|list<string> $paths        single file or ordered stack (base first)
+     * @param list<string>|null   $onlyServices service names to include (null = all)
      *
      * @return list<string>
      */
-    public function extractTraefikDomains(string $path, ?array $onlyServices = null): array
+    public function extractTraefikDomains(string|array $paths, ?array $onlyServices = null): array
     {
-        if (! $this->filesystem->exists($path)) {
-            return [];
-        }
-
-        $config = $this->parse($path);
-
-        if (! isset($config['services']) || ! is_array($config['services'])) {
-            return [];
-        }
-
         $domains = [];
 
-        foreach ($config['services'] as $serviceName => $service) {
-            if ($onlyServices !== null && ! in_array($serviceName, $onlyServices, true)) {
+        foreach (is_string($paths) ? [$paths] : $paths as $path) {
+            if (! $this->filesystem->exists($path)) {
                 continue;
             }
 
-            if (! is_array($service)) {
+            $config = $this->parse($path);
+
+            if (! isset($config['services']) || ! is_array($config['services'])) {
                 continue;
             }
 
-            $labels = $service['labels'] ?? [];
+            foreach ($config['services'] as $serviceName => $service) {
+                if ($onlyServices !== null && ! in_array($serviceName, $onlyServices, true)) {
+                    continue;
+                }
 
-            if (! is_array($labels)) {
-                continue;
-            }
+                if (! is_array($service)) {
+                    continue;
+                }
 
-            foreach ($labels as $key => $value) {
-                // List format: "traefik.http.routers.xxx.rule=Host(`example.test`)"
-                $label = is_int($key) ? (string) $value : $key.'='.$value;
+                $labels = $service['labels'] ?? [];
 
-                if (preg_match_all('/Host\(([^)]+)\)/', $label, $hostMatches)) {
-                    foreach ($hostMatches[1] as $hostContent) {
-                        if (preg_match_all('/`([^`]+)`/', $hostContent, $domainMatches)) {
-                            foreach ($domainMatches[1] as $domain) {
-                                $domains[] = $domain;
+                if ($labels instanceof TaggedValue) {
+                    $labels = $labels->getValue();
+                }
+
+                if (! is_array($labels)) {
+                    continue;
+                }
+
+                foreach ($labels as $key => $value) {
+                    // List format: "traefik.http.routers.xxx.rule=Host(`example.test`)"
+                    $label = is_int($key) ? (string) $value : $key.'='.$value;
+
+                    if (preg_match_all('/Host\(([^)]+)\)/', $label, $hostMatches)) {
+                        foreach ($hostMatches[1] as $hostContent) {
+                            if (preg_match_all('/`([^`]+)`/', $hostContent, $domainMatches)) {
+                                foreach ($domainMatches[1] as $domain) {
+                                    $domains[] = $domain;
+                                }
                             }
                         }
                     }

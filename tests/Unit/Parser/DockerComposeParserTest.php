@@ -281,6 +281,65 @@ final class DockerComposeParserTest extends TestCase
         );
     }
 
+    public function testExtractTraefikDomainsMergesAcrossMultipleFiles(): void
+    {
+        $base = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`)"
+            YAML;
+
+        $override = <<<'YAML'
+            services:
+              debug:
+                image: ubuntu
+                labels:
+                  - "traefik.http.routers.debug.rule=Host(`debug.app.test`)"
+            YAML;
+
+        $basePath = $this->createTempFile($base);
+        $overridePath = $this->createTempFile($override);
+
+        $this->assertSame(
+            ['app.test', 'debug.app.test'],
+            $this->parser->extractTraefikDomains([$basePath, $overridePath]),
+        );
+    }
+
+    public function testExtractTraefikDomainsHandlesOverrideTaggedLabels(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels: !override
+                  - "traefik.http.routers.web.rule=Host(`override.test`)"
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        $this->assertSame(['override.test'], $this->parser->extractTraefikDomains($path));
+    }
+
+    public function testParseToleratesCustomYamlTags(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                environment: !reset {}
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        // Must not throw — custom Compose tags are valid input and only
+        // resolved at compose-apply time.
+        $parsed = $this->parser->parse($path);
+        $this->assertArrayHasKey('services', $parsed);
+    }
+
     public function testGenerateDiffPreservesLineOrder(): void
     {
         $original = [
