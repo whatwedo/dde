@@ -46,4 +46,6 @@ Interactive commands (`project:shell`, `project:logs --follow`) do not support J
 
 Drop a `docker-compose.override.yml` (or `compose.override.yml`) next to the base compose file for developer-local tweaks — host port bindings, an extra `DISPLAY` env var for a Playwright container, an optional debug service. dde picks it up on `project:up` and slots it between the base file and its own runtime overlay, so the dde overlay still has the final word on the network and worktree hostname, while everything else (environment, volumes, extra services) behaves exactly like a normal Compose override.
 
+A service that exists only in the override (e.g. a `debug:` helper that does not appear in the base file) is automatically joined to the per-project network and pinned to Traefik's lookup network too, so it can reach `mariadb`, `postgres`, and your project's own containers by their canonical names — just like a base service would.
+
 The override is paired by base filename: a project on `docker-compose.yml` looks for `docker-compose.override.yml` (or `.yaml`); a project on `compose.yml` looks for `compose.override.yml`. Mixing the two stems is intentionally not supported — keep the names consistent.

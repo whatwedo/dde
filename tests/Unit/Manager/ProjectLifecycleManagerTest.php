@@ -338,7 +338,9 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->imageManager->method('ensureDevLayers')
             ->willReturn(null);
 
-        $this->dockerComposeManager->method('generateOverride')
+        $this->dockerComposeManager->expects($this->once())
+            ->method('generateOverride')
+            ->with($config, $projectDir, null, null, $userOverride)
             ->willReturn($ddeOverride);
 
         $this->dockerComposeManager->expects($this->once())

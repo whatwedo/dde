@@ -220,3 +220,5 @@ Typical use cases:
 - Optional debug services that should not ship in the committed base file
 
 The dde overlay always wins for fields it sets explicitly (worktree hostname, per-project network, Traefik routing for known hosts). For everything else — `environment`, `volumes`, `extra_hosts`, additional services — the user override behaves exactly as it would without dde.
+
+Services declared **only** in the user override (e.g. a `debug:` service that does not exist in the base compose file) are discovered up-front and receive a minimal stub in the dde overlay so they join the per-project network and pin Traefik's lookup network. Without that stub Compose would attach them to its default network, where they could not reach the project's other containers by service name.

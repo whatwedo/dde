@@ -290,13 +290,17 @@ readonly class DockerComposeManager
         }
     }
 
-    public function generateOverride(ResolvedConfig $config, string $projectDir, ?WorktreeInfo $worktreeInfo = null, ?string $projectNetwork = null): string
+    public function generateOverride(ResolvedConfig $config, string $projectDir, ?WorktreeInfo $worktreeInfo = null, ?string $projectNetwork = null, ?string $userOverrideFile = null): string
     {
         $composeServices = $this->discoverComposeServicesWithConfig($projectDir);
 
         if ($composeServices === []) {
             throw new \RuntimeException(sprintf('No services found in docker-compose.yml in "%s"', $projectDir));
         }
+
+        $userOverrideServices = $userOverrideFile !== null
+            ? $this->parseComposeServices($userOverrideFile)
+            : [];
 
         $overrideServices = [];
         $entrypointPath = $this->adapterRegistry->getEntrypointPath();
@@ -463,6 +467,22 @@ readonly class DockerComposeManager
             $overrideServices[$serviceName] = $serviceOverride;
         }
 
+        // Services declared only in the user override would otherwise miss the
+        // per-project network and Traefik network pinning that base services
+        // get above. Emit a minimal entry so they behave like a normal Compose
+        // override would without dde (joined to the project's primary network).
+        foreach (array_keys(array_diff_key($userOverrideServices, $composeServices)) as $serviceName) {
+            $entry = [
+                'networks' => $serviceNetworks,
+            ];
+
+            if ($projectNetwork !== null) {
+                $entry['labels'] = ['traefik.docker.network='.$projectNetwork];
+            }
+
+            $overrideServices[$serviceName] = $entry;
+        }
+
         $networks = [
             $attachedNetwork => [
                 'external' => true,
@@ -595,6 +615,14 @@ readonly class DockerComposeManager
             return [];
         }
 
+        return $this->parseComposeServices($composeFile);
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function parseComposeServices(string $composeFile): array
+    {
         $data = Yaml::parseFile($composeFile, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE);
 
         if (! is_array($data) || ! is_array($data['services'] ?? null)) {

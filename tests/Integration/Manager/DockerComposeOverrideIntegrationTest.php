@@ -299,6 +299,88 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertContains('dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro', $web['volumes']);
     }
 
+    public function testGenerateOverrideAttachesUserOverrideOnlyServicesToProjectNetwork(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        $userOverridePath = $projectDir.'/docker-compose.override.yml';
+        $this->filesystem->dumpFile($userOverridePath, <<<'YAML'
+            services:
+              debug:
+                image: ubuntu:latest
+                command: ["tail", "-f", "/dev/null"]
+            YAML);
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir, null, 'dde-services-myproject', $userOverridePath);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        self::assertArrayHasKey('debug', $parsed['services']);
+        $debug = $parsed['services']['debug'];
+
+        self::assertIsArray($debug['networks']);
+        self::assertArrayHasKey('dde-services-myproject', $debug['networks']);
+
+        self::assertIsArray($debug['labels']);
+        self::assertContains('traefik.docker.network=dde-services-myproject', $debug['labels']);
+    }
+
+    public function testGenerateOverrideDoesNotDuplicateBaseServicesFromUserOverride(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        $userOverridePath = $projectDir.'/docker-compose.override.yml';
+        $this->filesystem->dumpFile($userOverridePath, <<<'YAML'
+            services:
+              web:
+                environment:
+                  FOO: bar
+            YAML);
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir, null, 'dde-services-myproject', $userOverridePath);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        // The base service `web` keeps its full dde overlay (entrypoint,
+        // volumes, env, …) — not the minimal override-only stub.
+        self::assertArrayHasKey('web', $parsed['services']);
+        self::assertSame(['/dde/entrypoint.sh'], $parsed['services']['web']['entrypoint']);
+    }
+
+    public function testGenerateOverrideOmitsTraefikLabelForOverrideServiceWithoutProjectNetwork(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        $userOverridePath = $projectDir.'/docker-compose.override.yml';
+        $this->filesystem->dumpFile($userOverridePath, <<<'YAML'
+            services:
+              debug:
+                image: ubuntu:latest
+            YAML);
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir, null, null, $userOverridePath);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        self::assertArrayHasKey('debug', $parsed['services']);
+        self::assertArrayNotHasKey('labels', $parsed['services']['debug']);
+    }
+
     public function testGenerateOverrideDoesNotAddExtraHosts(): void
     {
         $projectDir = $this->createProjectDir(<<<'YAML'

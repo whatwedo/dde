@@ -101,8 +101,11 @@ readonly class ProjectLifecycleManager
             $this->dockerComposeManager->pull($projectDir);
         }
 
-        // 8. Generate override (inject worktree info + per-project network)
-        $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork);
+        // 8. Generate override. The user override is discovered up-front so
+        //    services declared only there get the per-project network attached
+        //    by the dde overlay too.
+        $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
+        $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork, $userOverride);
 
         // 9. Docker compose up, then query running services while the override
         //    file still exists — `finally` deletes it afterwards. A `ps`
@@ -112,7 +115,6 @@ readonly class ProjectLifecycleManager
         //
         //    Order: base → user override → dde override, so the dde overlay
         //    retains the final word on runtime-critical fields.
-        $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
         $composeFiles = $userOverride !== null
             ? [$composeFile, $userOverride, $overrideFile]
             : [$composeFile, $overrideFile];
