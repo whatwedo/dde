@@ -308,6 +308,83 @@ final class DockerComposeParserTest extends TestCase
         );
     }
 
+    public function testExtractTraefikDomainsAppendsOverrideRoutersToBase(): void
+    {
+        $base = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`)"
+            YAML;
+
+        $override = <<<'YAML'
+            services:
+              web:
+                labels:
+                  - "traefik.http.routers.preview.rule=Host(`preview.app.test`)"
+            YAML;
+
+        $basePath = $this->createTempFile($base);
+        $overridePath = $this->createTempFile($override);
+
+        $this->assertSame(
+            ['app.test', 'preview.app.test'],
+            $this->parser->extractTraefikDomains([$basePath, $overridePath]),
+        );
+    }
+
+    public function testExtractTraefikDomainsReplacesBaseRoutersOnOverrideTag(): void
+    {
+        // `labels: !override [...]` in the user override drops the base
+        // labels entirely — the cert/URL output must not surface the
+        // replaced base hostnames.
+        $base = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`)"
+            YAML;
+
+        $override = <<<'YAML'
+            services:
+              web:
+                labels: !override
+                  - "traefik.http.routers.replaced.rule=Host(`replaced.test`)"
+            YAML;
+
+        $basePath = $this->createTempFile($base);
+        $overridePath = $this->createTempFile($override);
+
+        $this->assertSame(
+            ['replaced.test'],
+            $this->parser->extractTraefikDomains([$basePath, $overridePath]),
+        );
+    }
+
+    public function testExtractTraefikDomainsDropsBaseRoutersOnResetTag(): void
+    {
+        $base = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`app.test`)"
+            YAML;
+
+        $override = <<<'YAML'
+            services:
+              web:
+                labels: !reset []
+            YAML;
+
+        $basePath = $this->createTempFile($base);
+        $overridePath = $this->createTempFile($override);
+
+        $this->assertSame([], $this->parser->extractTraefikDomains([$basePath, $overridePath]));
+    }
+
     public function testExtractTraefikDomainsHandlesOverrideTaggedLabels(): void
     {
         $yaml = <<<'YAML'

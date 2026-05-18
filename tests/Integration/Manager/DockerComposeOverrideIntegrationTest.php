@@ -173,6 +173,49 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertNotEmpty($traefikLabels);
     }
 
+    public function testGenerateOverridePreservesUserOverrideTraefikLabelsInWorktree(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+                labels:
+                  - "traefik.http.routers.web.rule=Host(`myproject.test`)"
+            YAML);
+
+        $userOverridePath = $projectDir.'/docker-compose.override.yml';
+        $this->filesystem->dumpFile($userOverridePath, <<<'YAML'
+            services:
+              web:
+                labels:
+                  - "traefik.http.routers.preview.rule=Host(`preview.myproject.test`)"
+            YAML);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/some/main/dir',
+            worktreeDirectory: $projectDir,
+            branch: 'feature/branch',
+            suffix: 'feature-branch',
+        );
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir, $worktreeInfo, null, $userOverridePath);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+        $labelsValue = $parsed['services']['web']['labels'];
+
+        self::assertInstanceOf(\Symfony\Component\Yaml\Tag\TaggedValue::class, $labelsValue);
+        $labels = $labelsValue->getValue();
+
+        // Both routers survive the !override emission: the base router gets
+        // its host rewritten to the worktree variant, and the override router
+        // does too. Without merging the override labels in first, the
+        // `preview` router would silently disappear at runtime.
+        $joined = implode("\n", $labels);
+        self::assertStringContainsString('Host(`myproject-feature-branch.test`)', $joined);
+        self::assertStringContainsString('Host(`preview.myproject-feature-branch.test`)', $joined);
+    }
+
     public function testGenerateOverrideWritesToTempFile(): void
     {
         $projectDir = $this->createProjectDir(<<<'YAML'

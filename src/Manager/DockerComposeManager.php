@@ -10,6 +10,7 @@ use App\Config\WorktreeInfo;
 use App\Model\UserContext;
 use App\Service\TraefikService;
 use App\Util\ComposeEnvEntryParser;
+use App\Util\ComposeLabelMerger;
 use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
 use App\Util\TempFileUtil;
@@ -330,7 +331,19 @@ readonly class DockerComposeManager
 
             if ($worktreeInfo instanceof WorktreeInfo) {
                 $worktreeHostname = $this->worktreeManager->resolveHostname($config->projectName, $worktreeInfo);
-                $labels = array_merge($labels, $this->overrideTraefikLabels($serviceConfig['labels'] ?? [], $config->projectName, $worktreeInfo, $worktreeHostname, $serviceName));
+
+                // The dde overlay emits `labels: !override`, which replaces
+                // the merged base + user-override stack at runtime. Merge the
+                // user override's labels in first so any Traefik router
+                // declared only in `docker-compose.override.yml` survives the
+                // overlay's replacement.
+                $effectiveLabels = is_array($serviceConfig['labels'] ?? null) ? $serviceConfig['labels'] : [];
+
+                if (isset($userOverrideServices[$serviceName]) && array_key_exists('labels', $userOverrideServices[$serviceName])) {
+                    $effectiveLabels = ComposeLabelMerger::merge($effectiveLabels, $userOverrideServices[$serviceName]['labels']);
+                }
+
+                $labels = array_merge($labels, $this->overrideTraefikLabels($effectiveLabels, $config->projectName, $worktreeInfo, $worktreeHostname, $serviceName));
             }
 
             $containerHostname = $this->resolveContainerHostname($serviceName, $serviceConfig, $config);

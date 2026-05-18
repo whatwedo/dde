@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Parser;
 
+use App\Util\ComposeLabelMerger;
 use App\Util\DiffUtil;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Yaml\Exception\ParseException;
-use Symfony\Component\Yaml\Tag\TaggedValue;
 use Symfony\Component\Yaml\Yaml;
 
 readonly class DockerComposeParser
@@ -45,14 +45,14 @@ readonly class DockerComposeParser
      * Extracts all unique domains from Traefik `Host()` labels in one or more
      * docker-compose files.
      *
-     * Pass a list of paths to walk a base + override stack — labels are
-     * collected from every file and de-duplicated, mirroring how Compose
-     * itself merges labels across `-f` arguments.
+     * Pass a list of paths to walk a base + override stack. Labels are merged
+     * per-service using Compose's own override semantics (via
+     * `ComposeLabelMerger`) before extraction, so a user override that uses
+     * `!override`/`!reset` correctly drops the base routers instead of seeing
+     * them resurrected as ghost domains in the cert/URL output.
      *
      * Returns an empty list when no file exists or none contain Traefik host
-     * rules. Parses both map- and list-style label definitions, and tolerates
-     * `!override` / `!reset` tags on the labels value (only the inner list is
-     * scanned — Compose semantics are not re-implemented).
+     * rules. Parses both map- and list-style label definitions.
      *
      * When $onlyServices is provided, only labels from those service names are
      * considered — useful for filtering by actually running containers (e.g.
@@ -65,48 +65,23 @@ readonly class DockerComposeParser
      */
     public function extractTraefikDomains(string|array $paths, ?array $onlyServices = null): array
     {
+        $mergedLabels = $this->mergeServiceLabelsAcrossFiles(is_string($paths) ? [$paths] : $paths);
         $domains = [];
 
-        foreach (is_string($paths) ? [$paths] : $paths as $path) {
-            if (! $this->filesystem->exists($path)) {
+        foreach ($mergedLabels as $serviceName => $labels) {
+            if ($onlyServices !== null && ! in_array($serviceName, $onlyServices, true)) {
                 continue;
             }
 
-            $config = $this->parse($path);
+            foreach ($labels as $key => $value) {
+                // List format: "traefik.http.routers.xxx.rule=Host(`example.test`)"
+                $label = is_int($key) ? (string) $value : $key.'='.$value;
 
-            if (! isset($config['services']) || ! is_array($config['services'])) {
-                continue;
-            }
-
-            foreach ($config['services'] as $serviceName => $service) {
-                if ($onlyServices !== null && ! in_array($serviceName, $onlyServices, true)) {
-                    continue;
-                }
-
-                if (! is_array($service)) {
-                    continue;
-                }
-
-                $labels = $service['labels'] ?? [];
-
-                if ($labels instanceof TaggedValue) {
-                    $labels = $labels->getValue();
-                }
-
-                if (! is_array($labels)) {
-                    continue;
-                }
-
-                foreach ($labels as $key => $value) {
-                    // List format: "traefik.http.routers.xxx.rule=Host(`example.test`)"
-                    $label = is_int($key) ? (string) $value : $key.'='.$value;
-
-                    if (preg_match_all('/Host\(([^)]+)\)/', $label, $hostMatches)) {
-                        foreach ($hostMatches[1] as $hostContent) {
-                            if (preg_match_all('/`([^`]+)`/', $hostContent, $domainMatches)) {
-                                foreach ($domainMatches[1] as $domain) {
-                                    $domains[] = $domain;
-                                }
+                if (preg_match_all('/Host\(([^)]+)\)/', $label, $hostMatches)) {
+                    foreach ($hostMatches[1] as $hostContent) {
+                        if (preg_match_all('/`([^`]+)`/', $hostContent, $domainMatches)) {
+                            foreach ($domainMatches[1] as $domain) {
+                                $domains[] = $domain;
                             }
                         }
                     }
@@ -134,5 +109,44 @@ readonly class DockerComposeParser
             explode("\n", rtrim($originalYaml, "\n")),
             explode("\n", rtrim($modifiedYaml, "\n")),
         );
+    }
+
+    /**
+     * @param list<string> $paths
+     *
+     * @return array<string, array<int|string, mixed>>
+     */
+    private function mergeServiceLabelsAcrossFiles(array $paths): array
+    {
+        $mergedLabels = [];
+
+        foreach ($paths as $path) {
+            if (! $this->filesystem->exists($path)) {
+                continue;
+            }
+
+            $config = $this->parse($path);
+
+            if (! isset($config['services']) || ! is_array($config['services'])) {
+                continue;
+            }
+
+            foreach ($config['services'] as $serviceName => $service) {
+                if (! is_string($serviceName) || ! is_array($service)) {
+                    continue;
+                }
+
+                if (! array_key_exists('labels', $service)) {
+                    continue;
+                }
+
+                $mergedLabels[$serviceName] = ComposeLabelMerger::merge(
+                    $mergedLabels[$serviceName] ?? [],
+                    $service['labels'],
+                );
+            }
+        }
+
+        return $mergedLabels;
     }
 }
