@@ -8,7 +8,6 @@ use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Parser\DockerComposeParser;
 use App\Service\ServiceRegistry;
-use App\Service\TraefikService;
 use App\Util\IdentifierSanitizer;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -23,7 +22,6 @@ readonly class ProjectLifecycleManager
         private ServiceRegistry $serviceRegistry,
         private DockerManager $dockerManager,
         private WorktreeManager $worktreeManager,
-        private TraefikService $traefikService,
         private DockerComposeParser $composeParser = new DockerComposeParser(),
         private Filesystem $filesystem = new Filesystem(),
     ) {
@@ -175,11 +173,17 @@ readonly class ProjectLifecycleManager
             $this->dockerManager->disconnectContainerFromNetwork($containerName, $projectNetwork);
         }
 
-        // 3. Disconnect Traefik (attached in ensureProjectNetwork).
-        $this->dockerManager->disconnectContainerFromNetwork(
-            $this->traefikService->getContainerName(),
-            $projectNetwork,
-        );
+        // 3. Disconnect global services attached in ensureProjectNetwork.
+        foreach ($this->serviceRegistry->getGlobalServices() as $globalService) {
+            if ($globalService->getProjectNetworkAliases() === null) {
+                continue;
+            }
+
+            $this->dockerManager->disconnectContainerFromNetwork(
+                $globalService->getContainerName(),
+                $projectNetwork,
+            );
+        }
 
         // 4. Remove the now-empty per-project network
         $this->dockerManager->removeNetwork($projectNetwork);
@@ -359,19 +363,28 @@ readonly class ProjectLifecycleManager
             $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$serviceName]);
         }
 
-        $traefikContainer = $this->traefikService->getContainerName();
-        $traefikAlreadyConnected = in_array($traefikContainer, $connectedContainers, true);
+        // Attach global services that need in-network reachability (Traefik for
+        // routing, Mailpit for its `mail` alias). Services opt in by returning
+        // a non-null `getProjectNetworkAliases()` from AbstractSystemService.
+        foreach ($this->serviceRegistry->getGlobalServices() as $globalService) {
+            $aliases = $globalService->getProjectNetworkAliases();
 
-        $this->dockerManager->connectContainerToNetwork($traefikContainer, $projectNetwork);
+            if ($aliases === null) {
+                continue;
+            }
 
-        // Traefik's docker provider caches its attached networks at startup;
-        // a runtime `docker network connect` is not picked up. Without this
-        // restart, the freshly attached project containers would receive 502.
-        // Skip the cycle when Traefik was already on the network so unrelated
-        // projects keep routing.
-        if (! $traefikAlreadyConnected) {
-            $this->dockerManager->stop($traefikContainer);
-            $this->dockerManager->start($traefikContainer);
+            $container = $globalService->getContainerName();
+            $alreadyConnected = in_array($container, $connectedContainers, true);
+
+            $this->dockerManager->connectContainerToNetwork($container, $projectNetwork, $aliases);
+
+            // Some services (Traefik) cache their network list at process
+            // startup; a runtime `docker network connect` is not picked up
+            // until the container is restarted.
+            if (! $alreadyConnected && $globalService->requiresRestartAfterProjectNetworkAttach()) {
+                $this->dockerManager->stop($container);
+                $this->dockerManager->start($container);
+            }
         }
     }
 

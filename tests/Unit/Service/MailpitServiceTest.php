@@ -201,6 +201,49 @@ final class MailpitServiceTest extends TestCase
         $this->service->stop();
     }
 
+    public function testGetProjectNetworkAliasesExposesMailAlias(): void
+    {
+        $this->assertSame(['mail'], $this->service->getProjectNetworkAliases());
+    }
+
+    public function testDoesNotRequireRestartAfterProjectNetworkAttach(): void
+    {
+        $this->assertFalse($this->service->requiresRestartAfterProjectNetworkAttach());
+    }
+
+    public function testStartAttachesMailpitToExistingProjectNetworks(): void
+    {
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-mailpit')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('listNetworksWithPrefix')
+            ->with('dde-services-')
+            ->willReturn(['dde-services-alpha', 'dde-services-empty']);
+
+        $this->dockerManager
+            ->method('getConnectedContainerNames')
+            ->willReturnMap([
+                ['dde-services-alpha', ['alpha-web-1']],
+                ['dde-services-empty', []],
+            ]);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('connectContainerToNetwork')
+            ->with('dde-mailpit', 'dde-services-alpha', ['mail']);
+
+        // Mailpit doesn't need a restart after attach — only Traefik caches
+        // network state.
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('stop');
+
+        $this->service->start();
+    }
+
     public function testIsRunningDelegatesToDockerManager(): void
     {
         $this->dockerManager
