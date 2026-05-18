@@ -565,6 +565,77 @@ final class ProjectLifecycleManagerTest extends TestCase
         self::assertContains(['dde-traefik', 'dde-services-test-project', []], $calls);
     }
 
+    public function testUpRestartsTraefikWhenAttachingToProjectNetworkForTheFirstTime(): void
+    {
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'mariadb', version: '10.11'),
+        ]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->method('isContainerRunning')->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('networkExists')
+            ->with('dde-services-test-project')
+            ->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('getConnectedContainerNames')
+            ->with('dde-services-test-project')
+            ->willReturn(['dde-mariadb-10.11']);
+
+        $this->dockerManager->expects($this->once())
+            ->method('stop')
+            ->with('dde-traefik');
+
+        $this->dockerManager->expects($this->once())
+            ->method('start')
+            ->with('dde-traefik');
+
+        $calls = [];
+        $this->captureConnectContainerToNetworkCalls(2, $calls);
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $this->manager->up($config, $projectDir, false);
+    }
+
+    public function testUpKeepsTraefikRunningWhenAlreadyAttachedToProjectNetwork(): void
+    {
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'mariadb', version: '10.11'),
+        ]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->method('isContainerRunning')->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('networkExists')
+            ->with('dde-services-test-project')
+            ->willReturn(true);
+
+        $this->dockerManager->expects($this->once())
+            ->method('getConnectedContainerNames')
+            ->with('dde-services-test-project')
+            ->willReturn(['dde-mariadb-10.11', 'dde-traefik']);
+
+        $this->dockerManager->expects($this->never())->method('stop');
+        $this->dockerManager->expects($this->never())->method('start');
+
+        $calls = [];
+        $this->captureConnectContainerToNetworkCalls(2, $calls);
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $this->manager->up($config, $projectDir, false);
+    }
+
     public function testUpSkipsStaleScanWhenNetworkIsFreshlyCreated(): void
     {
         // A freshly created network has no containers attached, so probing it
