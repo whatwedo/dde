@@ -22,7 +22,6 @@ use App\Model\ServiceDefinition;
 use App\Parser\DockerComposeParser;
 use App\Service\AbstractSystemService;
 use App\Service\ServiceRegistry;
-use App\Service\TraefikService;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
@@ -45,6 +44,8 @@ final class ProjectLifecycleManagerTest extends TestCase
     private Filesystem&MockObject $filesystem;
 
     private Filesystem&Stub $systemFilesystem;
+
+    private AbstractSystemService&Stub $traefikStub;
 
     private ProjectLifecycleManager $manager;
 
@@ -126,7 +127,6 @@ final class ProjectLifecycleManagerTest extends TestCase
         );
 
         $worktreeManager = $this->createStub(WorktreeManager::class);
-        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -135,7 +135,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -605,6 +604,110 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->manager->up($config, $projectDir, false);
     }
 
+    public function testUpAttachesGlobalServicesWithAliasesToProjectNetwork(): void
+    {
+        // Global services with non-null getProjectNetworkAliases() (Mailpit's
+        // `mail` alias being the canonical case) must join the per-project
+        // network too, otherwise `smtp://mail:1025` from inside the project
+        // network would not resolve.
+        $mailpitStub = $this->createStub(\App\Service\AbstractSystemService::class);
+        $mailpitStub->method('getContainerName')->willReturn('dde-mailpit');
+        $mailpitStub->method('getProjectNetworkAliases')->willReturn(['mail']);
+        $mailpitStub->method('requiresRestartAfterProjectNetworkAttach')->willReturn(false);
+
+        $serviceRegistry = new ServiceRegistry(
+            [$this->traefikStub, $mailpitStub],
+            new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]),
+        );
+        $systemServiceManager = new SystemServiceManager(
+            $this->dockerManager,
+            $serviceRegistry,
+            $this->systemFilesystem,
+            '/tmp/dde-data',
+        );
+        $manager = new ProjectLifecycleManager(
+            $this->dockerComposeManager,
+            $systemServiceManager,
+            $this->imageManager,
+            $this->certificateManager,
+            $serviceRegistry,
+            $this->dockerManager,
+            $this->createStub(WorktreeManager::class),
+            $this->composeParser,
+            $this->filesystem,
+        );
+
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'mariadb', version: '10.11'),
+        ]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->method('isContainerRunning')->willReturn(true);
+        $this->dockerManager->method('networkExists')->willReturn(true);
+        $this->dockerManager->method('getConnectedContainerNames')->willReturn(['dde-mariadb-10.11', 'dde-traefik']);
+
+        $calls = [];
+        $this->captureConnectContainerToNetworkCalls(3, $calls);
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        $manager->up($config, $projectDir, false);
+
+        self::assertContains(['dde-mailpit', 'dde-services-test-project', ['mail']], $calls);
+    }
+
+    public function testDownDisconnectsGlobalServicesWithAliases(): void
+    {
+        $mailpitStub = $this->createStub(\App\Service\AbstractSystemService::class);
+        $mailpitStub->method('getContainerName')->willReturn('dde-mailpit');
+        $mailpitStub->method('getProjectNetworkAliases')->willReturn(['mail']);
+
+        $serviceRegistry = new ServiceRegistry(
+            [$this->traefikStub, $mailpitStub],
+            new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]),
+        );
+        $systemServiceManager = new SystemServiceManager(
+            $this->dockerManager,
+            $serviceRegistry,
+            $this->systemFilesystem,
+            '/tmp/dde-data',
+        );
+        $manager = new ProjectLifecycleManager(
+            $this->dockerComposeManager,
+            $systemServiceManager,
+            $this->imageManager,
+            $this->certificateManager,
+            $serviceRegistry,
+            $this->dockerManager,
+            $this->createStub(WorktreeManager::class),
+            $this->composeParser,
+            $this->filesystem,
+        );
+
+        $config = $this->createConfig([
+            new ServiceDefinition(name: 'mariadb', version: '10.6'),
+        ]);
+        $projectDir = '/tmp/test-project';
+
+        $this->dockerManager->method('networkExists')->willReturn(true);
+
+        $calls = [];
+        $this->captureDisconnectContainerFromNetworkCalls(3, $calls);
+
+        $this->dockerManager->expects($this->once())
+            ->method('removeNetwork')
+            ->with('dde-services-test-project');
+
+        $manager->down($config, $projectDir);
+
+        self::assertContains(['dde-mariadb-10.6', 'dde-services-test-project'], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project'], $calls);
+        self::assertContains(['dde-mailpit', 'dde-services-test-project'], $calls);
+    }
+
     public function testUpKeepsTraefikRunningWhenAlreadyAttachedToProjectNetwork(): void
     {
         $config = $this->createConfig([
@@ -745,7 +848,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         );
         $worktreeManager->method('detect')->willReturn($worktreeInfo);
 
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $serviceRegistry = new ServiceRegistry([$this->traefikStub], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
         $systemServiceManager = new SystemServiceManager(
             $this->dockerManager,
             $serviceRegistry,
@@ -753,7 +856,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
-        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -762,7 +864,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -901,7 +1002,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             ]);
 
         $this->composeParser->method('extractTraefikDomains')
-            ->with($projectDir.'/docker-compose.yml', ['web'])
+            ->with([$projectDir.'/docker-compose.yml'], ['web'])
             ->willReturn(['app.test']);
 
         $result = $this->manager->up($config, $projectDir, false);
@@ -946,7 +1047,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             ]);
 
         $this->composeParser->method('extractTraefikDomains')
-            ->with($projectDir.'/docker-compose.yml', ['worker', 'api'])
+            ->with([$projectDir.'/docker-compose.yml'], ['worker', 'api'])
             ->willReturn(['worker.test', 'api.test']);
 
         $result = $this->manager->up($config, $projectDir, false);
@@ -979,7 +1080,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             },
         );
 
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $serviceRegistry = new ServiceRegistry([$this->traefikStub], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
         $systemServiceManager = new SystemServiceManager(
             $this->dockerManager,
             $serviceRegistry,
@@ -987,7 +1088,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
-        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -996,7 +1096,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1040,7 +1139,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             },
         );
 
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $serviceRegistry = new ServiceRegistry([$this->traefikStub], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
         $systemServiceManager = new SystemServiceManager(
             $this->dockerManager,
             $serviceRegistry,
@@ -1048,7 +1147,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
-        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1057,7 +1155,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1102,7 +1199,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             },
         );
 
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $serviceRegistry = new ServiceRegistry([$this->traefikStub], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
         $systemServiceManager = new SystemServiceManager(
             $this->dockerManager,
             $serviceRegistry,
@@ -1110,7 +1207,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
-        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1119,7 +1215,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1161,7 +1256,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         $worktreeManager->method('detect')->willReturn($worktreeInfo);
         $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
 
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $serviceRegistry = new ServiceRegistry([$this->traefikStub], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
         $systemServiceManager = new SystemServiceManager(
             $this->dockerManager,
             $serviceRegistry,
@@ -1169,7 +1264,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
-        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1178,7 +1272,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1278,7 +1371,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->composeParser->method('extractTraefikDomains')
             ->willReturn(['beispiel.test', 'preview.beispiel.test']);
 
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $serviceRegistry = new ServiceRegistry([$this->traefikStub], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
         $systemServiceManager = new SystemServiceManager(
             $this->dockerManager,
             $serviceRegistry,
@@ -1286,7 +1379,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
-        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1295,7 +1387,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1354,7 +1445,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->composeParser->method('extractTraefikDomains')
             ->willReturn(['beispiel.test', 'partner.example.com']);
 
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $serviceRegistry = new ServiceRegistry([$this->traefikStub], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
         $systemServiceManager = new SystemServiceManager(
             $this->dockerManager,
             $serviceRegistry,
@@ -1362,7 +1453,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
-        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1371,7 +1461,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1427,7 +1516,12 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->filesystem = $this->createMock(Filesystem::class);
         $this->systemFilesystem = $this->createStub(Filesystem::class);
 
-        $serviceRegistry = new ServiceRegistry([], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
+        $this->traefikStub = $this->createStub(AbstractSystemService::class);
+        $this->traefikStub->method('getContainerName')->willReturn('dde-traefik');
+        $this->traefikStub->method('getProjectNetworkAliases')->willReturn([]);
+        $this->traefikStub->method('requiresRestartAfterProjectNetworkAttach')->willReturn(true);
+
+        $serviceRegistry = new ServiceRegistry([$this->traefikStub], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
         $systemServiceManager = new SystemServiceManager(
             $this->dockerManager,
             $serviceRegistry,
@@ -1442,7 +1536,6 @@ final class ProjectLifecycleManagerTest extends TestCase
         // so removeNetwork is never called unless a test explicitly stubs networkExists to true.
 
         $worktreeManager = $this->createStub(WorktreeManager::class);
-        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $this->manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1451,7 +1544,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );

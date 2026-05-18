@@ -23,6 +23,14 @@ final class MailpitService extends AbstractSystemService
         return 'axllent/mailpit';
     }
 
+    /**
+     * @return list<string>
+     */
+    public function getProjectNetworkAliases(): array
+    {
+        return ['mail'];
+    }
+
     public function getContainerConfig(): ContainerConfig
     {
         return new ContainerConfig(

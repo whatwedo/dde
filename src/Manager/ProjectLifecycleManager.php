@@ -8,7 +8,6 @@ use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Parser\DockerComposeParser;
 use App\Service\ServiceRegistry;
-use App\Service\TraefikService;
 use App\Util\IdentifierSanitizer;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -23,7 +22,6 @@ readonly class ProjectLifecycleManager
         private ServiceRegistry $serviceRegistry,
         private DockerManager $dockerManager,
         private WorktreeManager $worktreeManager,
-        private TraefikService $traefikService,
         private DockerComposeParser $composeParser = new DockerComposeParser(),
         private Filesystem $filesystem = new Filesystem(),
     ) {
@@ -52,10 +50,14 @@ readonly class ProjectLifecycleManager
             : null;
         $this->ensureProjectNetwork($config, $projectNetwork);
 
-        // 4. Ensure TLS certificates for project domains
+        // 4. Ensure TLS certificates for project domains. The user override is
+        //    discovered up-front and included in every domain extraction so
+        //    Traefik routers declared only there are covered too (cert + URLs).
         $composeFile = $this->dockerComposeManager->findComposeFile($projectDir);
+        $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
+        $domainSources = $userOverride !== null ? [$composeFile, $userOverride] : [$composeFile];
         $projectName = $config->projectName;
-        $this->mkcertManager->ensureForComposeFile($projectName, $composeFile);
+        $this->mkcertManager->ensureForComposeFile($projectName, $domainSources);
 
         // 4b. Ensure TLS certificates for worktree domains
         $worktreeHostname = null;
@@ -64,7 +66,7 @@ readonly class ProjectLifecycleManager
             $worktreeHostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
             $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
 
-            $mainDomains = $this->composeParser->extractTraefikDomains($composeFile);
+            $mainDomains = $this->composeParser->extractTraefikDomains($domainSources);
             $worktreeDomains = [];
 
             // Only include domains the rewrite actually changed. Compose
@@ -101,10 +103,9 @@ readonly class ProjectLifecycleManager
             $this->dockerComposeManager->pull($projectDir);
         }
 
-        // 8. Generate override. The user override is discovered up-front so
-        //    services declared only there get the per-project network attached
-        //    by the dde overlay too.
-        $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
+        // 8. Generate override. The user override (discovered in step 4) is
+        //    passed in so services declared only there get the per-project
+        //    network attached by the dde overlay too.
         $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork, $userOverride);
 
         // 9. Docker compose up, then query running services while the override
@@ -135,7 +136,7 @@ readonly class ProjectLifecycleManager
             $this->filesystem->remove($overrideFile);
         }
 
-        $domains = $this->collectProjectDomains($composeFile, $config->projectName, $worktreeInfo, $worktreeHostname, $runningServices);
+        $domains = $this->collectProjectDomains($domainSources, $config->projectName, $worktreeInfo, $worktreeHostname, $runningServices);
 
         return [
             'serviceResults' => $serviceResults,
@@ -177,11 +178,17 @@ readonly class ProjectLifecycleManager
             $this->dockerManager->disconnectContainerFromNetwork($containerName, $projectNetwork);
         }
 
-        // 3. Disconnect Traefik (attached in ensureProjectNetwork).
-        $this->dockerManager->disconnectContainerFromNetwork(
-            $this->traefikService->getContainerName(),
-            $projectNetwork,
-        );
+        // 3. Disconnect global services attached in ensureProjectNetwork.
+        foreach ($this->serviceRegistry->getGlobalServices() as $globalService) {
+            if ($globalService->getProjectNetworkAliases() === null) {
+                continue;
+            }
+
+            $this->dockerManager->disconnectContainerFromNetwork(
+                $globalService->getContainerName(),
+                $projectNetwork,
+            );
+        }
 
         // 4. Remove the now-empty per-project network
         $this->dockerManager->removeNetwork($projectNetwork);
@@ -253,18 +260,19 @@ readonly class ProjectLifecycleManager
      * `$runningServices` means "include every declared Traefik host" — used
      * as the safety fallback when `docker compose ps` could not be parsed.
      *
+     * @param list<string>      $composeFiles    base file plus user override (if any)
      * @param list<string>|null $runningServices
      *
      * @return list<string>
      */
     private function collectProjectDomains(
-        string $composeFile,
+        array $composeFiles,
         string $projectName,
         ?WorktreeInfo $worktreeInfo,
         ?string $worktreeHostname,
         ?array $runningServices,
     ): array {
-        $domains = $this->composeParser->extractTraefikDomains($composeFile, $runningServices);
+        $domains = $this->composeParser->extractTraefikDomains($composeFiles, $runningServices);
 
         if (! $worktreeInfo instanceof WorktreeInfo) {
             return $domains;
@@ -361,19 +369,28 @@ readonly class ProjectLifecycleManager
             $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$serviceName]);
         }
 
-        $traefikContainer = $this->traefikService->getContainerName();
-        $traefikAlreadyConnected = in_array($traefikContainer, $connectedContainers, true);
+        // Attach global services that need in-network reachability (Traefik for
+        // routing, Mailpit for its `mail` alias). Services opt in by returning
+        // a non-null `getProjectNetworkAliases()` from AbstractSystemService.
+        foreach ($this->serviceRegistry->getGlobalServices() as $globalService) {
+            $aliases = $globalService->getProjectNetworkAliases();
 
-        $this->dockerManager->connectContainerToNetwork($traefikContainer, $projectNetwork);
+            if ($aliases === null) {
+                continue;
+            }
 
-        // Traefik's docker provider caches its attached networks at startup;
-        // a runtime `docker network connect` is not picked up. Without this
-        // restart, the freshly attached project containers would receive 502.
-        // Skip the cycle when Traefik was already on the network so unrelated
-        // projects keep routing.
-        if (! $traefikAlreadyConnected) {
-            $this->dockerManager->stop($traefikContainer);
-            $this->dockerManager->start($traefikContainer);
+            $container = $globalService->getContainerName();
+            $alreadyConnected = in_array($container, $connectedContainers, true);
+
+            $this->dockerManager->connectContainerToNetwork($container, $projectNetwork, $aliases);
+
+            // Some services (Traefik) cache their network list at process
+            // startup; a runtime `docker network connect` is not picked up
+            // until the container is restarted.
+            if (! $alreadyConnected && $globalService->requiresRestartAfterProjectNetworkAttach()) {
+                $this->dockerManager->stop($container);
+                $this->dockerManager->start($container);
+            }
         }
     }
 
