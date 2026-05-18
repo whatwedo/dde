@@ -126,7 +126,7 @@ services:
 
 ### 3. Networks
 
-The overlay declares the per-project network as external and attaches every service to it:
+The overlay declares the per-project network as external and attaches every service to it. A `traefik.docker.network` label pins Traefik's lookup network so it can resolve upstream IPs:
 
 ```yaml
 networks:
@@ -135,6 +135,8 @@ networks:
 
 services:
   web:
+    labels:
+      - 'traefik.docker.network=dde-services-myproject'
     networks:
       dde-services-myproject: null
 ```
