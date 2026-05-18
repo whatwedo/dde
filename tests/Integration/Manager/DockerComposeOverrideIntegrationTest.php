@@ -81,9 +81,11 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertArrayHasKey('dde_ssh-agent_socket-dir', $parsed['volumes']);
         self::assertTrue($parsed['volumes']['dde_ssh-agent_socket-dir']['external']);
 
-        // Networks
+        // Networks — always the per-project network derived from the config,
+        // never the shared `dde` network.
         self::assertIsArray($parsed['networks']);
-        self::assertArrayHasKey('dde', $parsed['networks']);
+        self::assertArrayHasKey('dde-services-test-project', $parsed['networks']);
+        self::assertArrayNotHasKey('dde', $parsed['networks']);
 
         // SSH_AUTH_SOCK env var
         self::assertArrayHasKey('SSH_AUTH_SOCK', $env);
@@ -228,13 +230,59 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertTrue($parsed['networks']['dde-services-myproject']['external']);
 
         $web = $parsed['services']['web'];
-        self::assertIsArray($web['networks']);
-        self::assertArrayNotHasKey('dde', $web['networks']);
-        self::assertArrayHasKey('dde-services-myproject', $web['networks']);
+        // Service `networks:` is emitted with `!override` so Compose replaces
+        // (not merges) any networks from the base compose. The wrapped value
+        // contains exactly the per-project network; no `dde` membership can
+        // slip in through a hand-edited or legacy `networks: [dde]` on the
+        // base service.
+        self::assertInstanceOf(\Symfony\Component\Yaml\Tag\TaggedValue::class, $web['networks']);
+        self::assertSame('override', $web['networks']->getTag());
+        self::assertSame([
+            'dde-services-myproject' => null,
+        ], $web['networks']->getValue());
+
+        self::assertContains('traefik.docker.network=dde-services-myproject', $web['labels']);
     }
 
-    public function testGenerateOverrideWithoutProjectNetworkInjectsOnlyDdeNetwork(): void
+    public function testGenerateOverrideDropsLegacyDdeNetworkFromService(): void
     {
+        // Regression: when the base compose attached the service to the
+        // shared `dde` network (legacy v1 layout or a hand-edited file), a
+        // plain merge kept that membership next to the per-project network —
+        // reintroducing the cross-checkout DNS alias collision that the
+        // per-project isolation was meant to prevent. The overlay now emits
+        // service networks with `!override`, so the base list is replaced
+        // outright and the service joins exactly the per-project network.
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+                networks:
+                  - dde
+            networks:
+              dde:
+                external: true
+            YAML);
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $web = $parsed['services']['web'];
+        self::assertInstanceOf(\Symfony\Component\Yaml\Tag\TaggedValue::class, $web['networks']);
+        self::assertSame('override', $web['networks']->getTag());
+        self::assertSame([
+            'dde-services-myproject' => null,
+        ], $web['networks']->getValue());
+    }
+
+    public function testGenerateOverrideDerivesProjectNetworkFromConfigWhenNotProvided(): void
+    {
+        // Standalone caller does not pass `$projectNetwork`. The overlay must
+        // still emit a per-project network (derived from `$config->projectName`)
+        // and the matching Traefik label — there is no fallback to the shared
+        // `dde` network anymore.
         $projectDir = $this->createProjectDir(<<<'YAML'
             services:
               web:
@@ -247,8 +295,13 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         self::assertIsArray($parsed['networks']);
-        self::assertArrayHasKey('dde', $parsed['networks']);
-        self::assertArrayNotHasKey('dde-services-myproject', $parsed['networks']);
+        self::assertArrayHasKey('dde-services-myproject', $parsed['networks']);
+        self::assertArrayNotHasKey('dde', $parsed['networks']);
+
+        self::assertContains(
+            'traefik.docker.network=dde-services-myproject',
+            $parsed['services']['web']['labels'],
+        );
     }
 
     public function testGenerateOverrideInjectsSshAgentVolumeAndEnv(): void

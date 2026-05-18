@@ -57,6 +57,8 @@ final class TraefikService extends AbstractSystemService
         $this->ensureCertsDir();
 
         parent::start();
+
+        $this->reconcileProjectNetworkAttachments();
     }
 
     public function ensureNetwork(): void
@@ -129,6 +131,46 @@ final class TraefikService extends AbstractSystemService
     public function generateRouterName(string $hostname, string $serviceName): string
     {
         return str_replace('.', '-', $hostname).'-'.$serviceName;
+    }
+
+    /**
+     * Re-attaches Traefik to every existing per-project network that still has
+     * other containers connected. Necessary because Docker does not preserve
+     * ad-hoc `docker network connect` calls across a container re-create
+     * (system:update, system:down + system:up) — without this, projects that
+     * were running before the Traefik restart would receive 502 until each was
+     * brought up again.
+     */
+    private function reconcileProjectNetworkAttachments(): void
+    {
+        $networks = $this->dockerManager->listNetworksWithPrefix('dde-services-');
+        $traefikContainer = $this->getContainerName();
+        $attached = false;
+
+        foreach ($networks as $network) {
+            $connected = $this->dockerManager->getConnectedContainerNames($network);
+
+            if (in_array($traefikContainer, $connected, true)) {
+                continue;
+            }
+
+            $hasProjectContainers = array_filter(
+                $connected,
+                static fn (string $name): bool => $name !== $traefikContainer,
+            ) !== [];
+
+            if (! $hasProjectContainers) {
+                continue;
+            }
+
+            $this->dockerManager->connectContainerToNetwork($traefikContainer, $network);
+            $attached = true;
+        }
+
+        if ($attached) {
+            $this->dockerManager->stop($traefikContainer);
+            parent::start();
+        }
     }
 
     /**

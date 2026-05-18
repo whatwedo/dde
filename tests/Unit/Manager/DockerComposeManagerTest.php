@@ -1035,7 +1035,7 @@ ENV);
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertSame('beispiel-web', $data['services']['web']['hostname']);
         $this->assertSame('beispiel-worker', $data['services']['worker']['hostname']);
@@ -1054,7 +1054,7 @@ ENV);
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'My Project_42'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertSame('my-project-42-web', $data['services']['web']['hostname']);
 
@@ -1073,7 +1073,7 @@ ENV);
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertArrayNotHasKey('hostname', $data['services']['web']);
 
@@ -1096,7 +1096,7 @@ ENV);
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
-        $data = Yaml::parseFile($overridePath);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertSame('beispiel-mercure', $data['services']['mercure']['hostname']);
 

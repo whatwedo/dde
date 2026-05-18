@@ -302,19 +302,38 @@ readonly class DockerComposeManager
         $entrypointPath = $this->adapterRegistry->getEntrypointPath();
         $adaptersDir = $this->adapterRegistry->getBuiltinAdaptersDir();
 
-        // Project containers must not share the global `dde` network when a
-        // per-project network exists: parallel checkouts (main + worktree)
-        // would otherwise register identical service aliases on `dde` and
-        // Docker DNS would round-robin between them.
-        $attachedNetwork = $projectNetwork ?? 'dde';
-        $serviceNetworks = [
-            $attachedNetwork => null,
-        ];
+        // Project containers always join their per-project network — never the
+        // shared `dde` network. Parallel checkouts (main + worktree) would
+        // otherwise register identical service aliases on `dde` and Docker DNS
+        // would round-robin between them. Callers that drove the lifecycle
+        // (`ProjectLifecycleManager::up()`) compute the name themselves and
+        // pass it in; standalone callers (tests, ad-hoc invocations) get it
+        // derived from `$config` + `$worktreeInfo` for the same one-network
+        // invariant.
+        $projectNetwork ??= ProjectLifecycleManager::buildProjectNetworkName($config->projectName, $worktreeInfo);
+
+        // `!override` so Compose replaces (not merges) the base file's
+        // `services.<name>.networks` list. Without it, a hand-edited or v1
+        // legacy `networks: [dde]` on a service survives the merge alongside
+        // the per-project network — reintroducing the cross-checkout DNS
+        // alias collision the per-project isolation is meant to prevent.
+        // Project containers always join exactly one network, the per-project
+        // one; extra networks have to be wired up post-`up` (hook or
+        // `docker network connect`).
+        $serviceNetworks = new TaggedValue('override', [
+            $projectNetwork => null,
+        ]);
 
         foreach ($composeServices as $serviceName => $serviceConfig) {
             $imageName = $this->resolveServiceImage($serviceName, $serviceConfig, $projectDir);
 
-            $labels = ['dde.managed=true'];
+            $labels = [
+                'dde.managed=true',
+                // Traefik's docker provider defaults to `network: dde`; pin the
+                // per-project network so it can resolve upstream IPs for project
+                // containers that never join `dde`.
+                'traefik.docker.network='.$projectNetwork,
+            ];
             $worktreeHostname = null;
 
             if ($worktreeInfo instanceof WorktreeInfo) {
@@ -457,7 +476,7 @@ readonly class DockerComposeManager
         }
 
         $networks = [
-            $attachedNetwork => [
+            $projectNetwork => [
                 'external' => true,
             ],
         ];
