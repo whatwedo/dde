@@ -185,6 +185,37 @@ final class ProjectInitCommandTest extends TestCase
         $this->assertStringContainsString('Skipped', $output);
     }
 
+    public function testExecutePrintsSkippedBeforeCreatedAndReversesCreated(): void
+    {
+        // .dde/ itself already exists → first directory in the iteration is "skipped".
+        // Without inversion, the "Skipped .dde/" line ends up at the bottom of the
+        // output, after every freshly created subdirectory. Invert so the existing
+        // root appears first and the deepest leaves last (config.yml, .gitignore
+        // at the top; data/ at the bottom).
+        mkdir($this->tempDir.'/.dde', 0o755, true);
+
+        $this->commandTester->execute([
+            '--name' => 'test-project',
+            '--no-docker' => true,
+        ], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $output = $this->commandTester->getDisplay();
+
+        $skipped = strpos($output, 'Skipped .dde/');
+        $createdConfig = strpos($output, 'Created .dde/config.yml');
+        $createdData = strpos($output, 'Created .dde/data/');
+
+        $this->assertNotFalse($skipped, 'Skipped .dde/ must be present');
+        $this->assertNotFalse($createdConfig, 'Created .dde/config.yml must be present');
+        $this->assertNotFalse($createdData, 'Created .dde/data/ must be present');
+
+        $this->assertLessThan($createdConfig, $skipped, 'Skipped must come before any Created line');
+        $this->assertLessThan($createdData, $createdConfig, 'config.yml (last-created) must appear before data/ (first-created)');
+    }
+
     public function testExecuteWithJsonOutput(): void
     {
         $this->commandTester->execute([
