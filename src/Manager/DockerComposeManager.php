@@ -302,13 +302,19 @@ readonly class DockerComposeManager
         $entrypointPath = $this->adapterRegistry->getEntrypointPath();
         $adaptersDir = $this->adapterRegistry->getBuiltinAdaptersDir();
 
-        $serviceNetworks = [
-            'dde' => null,
-        ];
-
-        if ($projectNetwork !== null) {
-            $serviceNetworks[$projectNetwork] = null;
-        }
+        // When a per-project network exists, project containers join ONLY that
+        // network — never the shared `dde` network. Two checkouts of the same
+        // project (main + worktree) would otherwise both register their service
+        // names (e.g. `vcsim`) as aliases on `dde`, so Docker DNS would
+        // round-robin between them and cross-checkout requests would land on
+        // the wrong container. Traefik reaches project containers via the
+        // per-project network (attached in ProjectLifecycleManager::ensureProjectNetwork).
+        //
+        // Without a per-project network there is nothing to isolate on, so
+        // fall back to the shared network so the container is reachable at all.
+        $serviceNetworks = $projectNetwork !== null
+            ? [$projectNetwork => null]
+            : ['dde' => null];
 
         foreach ($composeServices as $serviceName => $serviceConfig) {
             $imageName = $this->resolveServiceImage($serviceName, $serviceConfig, $projectDir);
@@ -455,17 +461,12 @@ readonly class DockerComposeManager
             $overrideServices[$serviceName] = $serviceOverride;
         }
 
-        $networks = [
-            'dde' => [
-                'external' => true,
-            ],
-        ];
-
-        if ($projectNetwork !== null) {
-            $networks[$projectNetwork] = [
-                'external' => true,
-            ];
-        }
+        // Mirror the per-service attachment decision: declare only the network
+        // the services actually join. Declaring `dde` here when no service
+        // uses it would still pull it into the compose project's network set.
+        $networks = $projectNetwork !== null
+            ? [$projectNetwork => ['external' => true]]
+            : ['dde' => ['external' => true]];
 
         $override = [
             'networks' => $networks,

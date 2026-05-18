@@ -209,8 +209,14 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $this->manager->generateOverride($config, $projectDir);
     }
 
-    public function testGenerateOverrideInjectsBothNetworks(): void
+    public function testGenerateOverrideAttachesOnlyProjectNetworkWhenGiven(): void
     {
+        // Project containers must NOT join the shared `dde` network when a
+        // per-project network exists — otherwise parallel checkouts (main +
+        // worktree) both register the same service-name alias on `dde` and
+        // Docker DNS round-robins between them. See the bug report from
+        // smartlearn where `make install` flaked on `govc` calls because each
+        // request hit a random vcsim instance.
         $projectDir = $this->createProjectDir(<<<'YAML'
             services:
               web:
@@ -223,14 +229,13 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         self::assertIsArray($parsed['networks']);
-        self::assertArrayHasKey('dde', $parsed['networks']);
-        self::assertTrue($parsed['networks']['dde']['external']);
+        self::assertArrayNotHasKey('dde', $parsed['networks']);
         self::assertArrayHasKey('dde-services-myproject', $parsed['networks']);
         self::assertTrue($parsed['networks']['dde-services-myproject']['external']);
 
         $web = $parsed['services']['web'];
         self::assertIsArray($web['networks']);
-        self::assertArrayHasKey('dde', $web['networks']);
+        self::assertArrayNotHasKey('dde', $web['networks']);
         self::assertArrayHasKey('dde-services-myproject', $web['networks']);
     }
 
