@@ -9,7 +9,6 @@ use App\Model\UserContext;
 use App\Util\TempFileUtil;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Yaml\Yaml;
 
 readonly class ImageManager
 {
@@ -89,9 +88,17 @@ readonly class ImageManager
     }
 
     /**
+     * @param array<string, array<string, mixed>> $services merged Compose services
+     *                                                      (base + user override) — see
+     *                                                      DockerComposeManager::getMergedServices().
+     *                                                      Passed in so that base files using custom
+     *                                                      Compose YAML tags (`!override`, `!reset`)
+     *                                                      are parsed once with `PARSE_CUSTOM_TAGS`
+     *                                                      upstream instead of being re-parsed here.
+     *
      * @return array{serviceName: string, imageTag: string}|null
      */
-    public function ensureDevLayers(ResolvedConfig $config, string $composeFile, ?OutputInterface $output = null): ?array
+    public function ensureDevLayers(ResolvedConfig $config, array $services, ?OutputInterface $output = null): ?array
     {
         if ($config->projectName === '') {
             return null;
@@ -101,14 +108,8 @@ readonly class ImageManager
             return null;
         }
 
-        $composeData = Yaml::parseFile($composeFile, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE);
-
-        if (! is_array($composeData) || ! is_array($composeData['services'] ?? null)) {
-            return null;
-        }
-
-        foreach ($composeData['services'] as $serviceName => $serviceConfig) {
-            if (! is_array($serviceConfig) || ! is_string($serviceConfig['image'] ?? null)) {
+        foreach ($services as $serviceName => $serviceConfig) {
+            if (! is_string($serviceConfig['image'] ?? null)) {
                 continue;
             }
 
@@ -121,7 +122,7 @@ readonly class ImageManager
             $imageTag = $this->buildDevLayer($baseImage, $config->projectName, $output);
 
             return [
-                'serviceName' => (string) $serviceName,
+                'serviceName' => $serviceName,
                 'imageTag' => $imageTag,
             ];
         }

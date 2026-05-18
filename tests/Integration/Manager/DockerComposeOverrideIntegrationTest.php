@@ -14,7 +14,6 @@ use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
 use App\Manager\WorktreeManager;
 use App\Model\UserContext;
-use App\Service\TraefikService;
 use App\Util\ProcessFactory;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
@@ -173,6 +172,37 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
 
         $traefikLabels = array_filter($labels, static fn (string $l): bool => str_contains($l, 'traefik.'));
         self::assertNotEmpty($traefikLabels);
+    }
+
+    public function testGenerateOverrideHandlesTaggedLabelsInWorktreeRewriter(): void
+    {
+        // A base file with `labels: !override [...]` survives parsing thanks
+        // to PARSE_CUSTOM_TAGS, but the worktree rewriter then receives the
+        // labels as a TaggedValue. Without unwrapping, the type would not
+        // match the rewriter's `array` parameter.
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+                labels: !override
+                  - "traefik.http.routers.web.rule=Host(`myproject.test`)"
+            YAML);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/main',
+            worktreeDirectory: $projectDir,
+            branch: 'feature/x',
+            suffix: 'feature-x',
+        );
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir, $worktreeInfo);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+        $labels = $parsed['services']['web']['labels']->getValue();
+
+        $joined = implode("\n", $labels);
+        self::assertStringContainsString('Host(`myproject-feature-x.test`)', $joined);
     }
 
     public function testGenerateOverrideWritesToTempFile(): void
@@ -407,12 +437,6 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $dockerManager->method('imageHasShell')->willReturn(true);
         $dockerManager->method('inspectImage')->willReturn('null');
 
-        $traefikService = new TraefikService(
-            dockerManager: $dockerManager,
-            filesystem: $this->filesystem,
-            dataDir: $this->tempDir.'/data',
-        );
-
         $this->adapterRegistry = new AdapterRegistry(
             resourcesDir: dirname(__DIR__, 3).'/resources',
             dataDir: $this->tempDir.'/data',
@@ -421,7 +445,6 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $this->manager = new DockerComposeManager(
             adapterRegistry: $this->adapterRegistry,
             dockerManager: $dockerManager,
-            traefikService: $traefikService,
             userContext: $userContext,
             worktreeManager: new WorktreeManager(new ProcessFactory()),
         );

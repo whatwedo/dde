@@ -6,8 +6,13 @@ namespace App\Service;
 
 use App\Model\ContainerConfig;
 
-final class MailpitService extends AbstractSystemService
+final class MailpitService extends AbstractSystemService implements ProjectNetworkAwareInterface
 {
+    /**
+     * @var list<string>
+     */
+    private const array PROJECT_NETWORK_ALIASES = ['mail'];
+
     public function getName(): string
     {
         return 'mailpit';
@@ -28,7 +33,12 @@ final class MailpitService extends AbstractSystemService
      */
     public function getProjectNetworkAliases(): array
     {
-        return ['mail'];
+        return self::PROJECT_NETWORK_ALIASES;
+    }
+
+    public function requiresRestartAfterProjectNetworkAttach(): bool
+    {
+        return false;
     }
 
     public function getContainerConfig(): ContainerConfig
@@ -52,9 +62,7 @@ final class MailpitService extends AbstractSystemService
                 'traefik.http.routers.mailpit-tls.tls' => 'true',
                 'traefik.http.services.mailpit.loadbalancer.server.port' => '8025',
             ],
-            networkAliases: [
-                'mail',
-            ],
+            networkAliases: self::PROJECT_NETWORK_ALIASES,
         );
     }
 }

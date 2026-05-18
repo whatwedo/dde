@@ -7,12 +7,9 @@ namespace App\Tests\Integration\Util;
 use App\Database\DatabaseAdapterRegistry;
 use App\Database\MariaDbAdapter;
 use App\Database\PostgresAdapter;
-use App\Manager\DockerManager;
 use App\Parser\DockerComposeParser;
-use App\Service\TraefikService;
 use App\Util\DockerComposeModifier;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Filesystem\Filesystem;
 
 final class DockerComposeModifierIntegrationTest extends TestCase
 {
@@ -288,15 +285,8 @@ YAML);
             new MariaDbAdapter(),
             new PostgresAdapter(),
         ]);
-        $dockerManager = $this->createStub(DockerManager::class);
-        $traefikService = new TraefikService(
-            dockerManager: $dockerManager,
-            filesystem: new Filesystem(),
-            dataDir: sys_get_temp_dir(),
-        );
         $this->modifier = new DockerComposeModifier(
             databaseAdapterRegistry: $adapterRegistry,
-            traefikService: $traefikService,
         );
         $this->parser = new DockerComposeParser();
     }

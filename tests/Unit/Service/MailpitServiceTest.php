@@ -9,6 +9,7 @@ use App\Model\ContainerConfig;
 use App\Model\ContainerInfo;
 use App\Model\ContainerStatus;
 use App\Service\MailpitService;
+use App\Service\ProjectNetworkAwareInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -201,6 +202,11 @@ final class MailpitServiceTest extends TestCase
             ->method('remove');
 
         $this->service->stop();
+    }
+
+    public function testImplementsProjectNetworkAwareInterface(): void
+    {
+        $this->assertInstanceOf(ProjectNetworkAwareInterface::class, $this->service);
     }
 
     public function testGetProjectNetworkAliasesExposesMailAlias(): void

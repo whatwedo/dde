@@ -83,49 +83,34 @@ abstract class AbstractSystemService implements ServiceInterface
     }
 
     /**
-     * Network aliases this service should expose on every per-project network.
-     * Return `null` to opt out of project-network attachment entirely (the
-     * default). Return `[]` to attach without an alias (Traefik, which finds
-     * backends via labels). Return a non-empty list to attach with aliases —
-     * Mailpit, for instance, returns `['mail']` so existing applications can
-     * keep reaching it as `smtp://mail:1025` from inside the project network.
-     *
-     * @return list<string>|null
+     * @return array<string, string>
      */
-    public function getProjectNetworkAliases(): ?array
+    protected function getDefaultLabels(): array
     {
-        return null;
-    }
-
-    /**
-     * When true, `ProjectLifecycleManager::ensureProjectNetwork()` stops and
-     * starts this service after attaching it to a fresh project network so
-     * its in-process state (e.g. Traefik's docker provider cache) re-reads
-     * the network list. Services that re-evaluate networks on every request
-     * (Mailpit) don't need this.
-     */
-    public function requiresRestartAfterProjectNetworkAttach(): bool
-    {
-        return false;
+        return [
+            'dde.managed' => 'true',
+            'dde.service' => $this->getName(),
+            'com.docker.compose.project' => 'dde',
+        ];
     }
 
     /**
      * Re-attaches this service to every existing per-project network that still
-     * has project containers connected. Docker does not preserve runtime
-     * `network connect` attachments across a container re-create (`system:update`,
-     * `system:down` + `system:up`), so without this, projects that were running
-     * before the restart would become unreachable from their dependencies.
-     *
-     * No-op for services that opt out via `getProjectNetworkAliases() === null`.
+     * has project containers connected. Called from `start()` on every
+     * invocation; the dominant case is the cheap no-op path (no opt-in or no
+     * networks to scan). Necessary because Docker does not preserve runtime
+     * `network connect` attachments across a container re-create
+     * (`system:update`, `system:down` + `system:up`) — without this, projects
+     * that were running before the restart would become unreachable from
+     * their dependencies until the next `project:up`.
      */
-    protected function reconcileProjectNetworkAttachments(): void
+    private function reconcileProjectNetworkAttachments(): void
     {
-        $aliases = $this->getProjectNetworkAliases();
-
-        if ($aliases === null) {
+        if (! $this instanceof ProjectNetworkAwareInterface) {
             return;
         }
 
+        $aliases = $this->getProjectNetworkAliases();
         $networks = $this->dockerManager->listNetworksWithPrefix('dde-services-');
         $container = $this->getContainerName();
 
@@ -185,17 +170,5 @@ abstract class AbstractSystemService implements ServiceInterface
             $this->dockerManager->stop($container);
             $this->dockerManager->start($container);
         }
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected function getDefaultLabels(): array
-    {
-        return [
-            'dde.managed' => 'true',
-            'dde.service' => $this->getName(),
-            'com.docker.compose.project' => 'dde',
-        ];
     }
 }

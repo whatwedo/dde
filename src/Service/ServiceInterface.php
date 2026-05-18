@@ -12,6 +12,8 @@ interface ServiceInterface
 {
     public function getName(): string;
 
+    public function getContainerName(): string;
+
     public function start(): void;
 
     public function stop(): void;

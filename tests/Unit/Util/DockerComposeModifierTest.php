@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Util;
 
-use App\Manager\DockerManager;
-use App\Service\TraefikService;
 use App\Util\DockerComposeModifier;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Filesystem\Filesystem;
 
 final class DockerComposeModifierTest extends TestCase
 {
@@ -1132,15 +1129,8 @@ final class DockerComposeModifierTest extends TestCase
             new \App\Database\MariaDbAdapter(),
             new \App\Database\PostgresAdapter(),
         ]);
-        $dockerManager = $this->createStub(DockerManager::class);
-        $traefikService = new TraefikService(
-            dockerManager: $dockerManager,
-            filesystem: new Filesystem(),
-            dataDir: sys_get_temp_dir(),
-        );
         $this->modifier = new DockerComposeModifier(
             databaseAdapterRegistry: $adapterRegistry,
-            traefikService: $traefikService,
         );
     }
 
