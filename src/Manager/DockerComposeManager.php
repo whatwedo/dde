@@ -302,13 +302,14 @@ readonly class DockerComposeManager
         $entrypointPath = $this->adapterRegistry->getEntrypointPath();
         $adaptersDir = $this->adapterRegistry->getBuiltinAdaptersDir();
 
+        // Project containers must not share the global `dde` network when a
+        // per-project network exists: parallel checkouts (main + worktree)
+        // would otherwise register identical service aliases on `dde` and
+        // Docker DNS would round-robin between them.
+        $attachedNetwork = $projectNetwork ?? 'dde';
         $serviceNetworks = [
-            'dde' => null,
+            $attachedNetwork => null,
         ];
-
-        if ($projectNetwork !== null) {
-            $serviceNetworks[$projectNetwork] = null;
-        }
 
         foreach ($composeServices as $serviceName => $serviceConfig) {
             $imageName = $this->resolveServiceImage($serviceName, $serviceConfig, $projectDir);
@@ -456,16 +457,10 @@ readonly class DockerComposeManager
         }
 
         $networks = [
-            'dde' => [
+            $attachedNetwork => [
                 'external' => true,
             ],
         ];
-
-        if ($projectNetwork !== null) {
-            $networks[$projectNetwork] = [
-                'external' => true,
-            ];
-        }
 
         $override = [
             'networks' => $networks,

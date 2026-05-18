@@ -105,6 +105,8 @@ Main and worktree can run side-by-side. The Traefik routers emitted by dde are *
 
 Each worktree gets its own per-project Docker network, named `dde-services-<project>-<suffix>`. The main checkout keeps the historical `dde-services-<project>`. A service container (e.g. `dde-postgres-18`) can attach to every network whose project declares that version, each time under the canonical alias (`postgres`). `project:down` removes only the calling project's network — main and sibling worktrees are unaffected.
 
+Project containers join **only** their per-project network — never the shared `dde` network. If they did, both checkouts would register the same service-name alias (e.g. `web`) on `dde` and Docker DNS would round-robin between them, breaking cross-container calls inside the project. Traefik is attached to each per-project network on `project:up` (and detached on `project:down`) so inbound HTTP routing still reaches the right checkout.
+
 **Why:** this lets a worktree run a different version of a system service (e.g. upgrading from Postgres 16 on main to Postgres 18 on a branch) without the canonical alias colliding. Service containers themselves remain shared: one container per `(service, version)` pair, reused across every network that needs it.
 
 ## Setup
