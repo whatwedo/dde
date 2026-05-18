@@ -107,7 +107,13 @@ readonly class ProjectLifecycleManager
         //    JSON-parse failure must not tear down `up()`, so fall back to
         //    `null` (no service filter — include every Traefik-declared
         //    host) when the lookup fails.
-        $composeFiles = [$composeFile, $overrideFile];
+        //
+        //    Order: base → user override → dde override, so the dde overlay
+        //    retains the final word on runtime-critical fields.
+        $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
+        $composeFiles = $userOverride !== null
+            ? [$composeFile, $userOverride, $overrideFile]
+            : [$composeFile, $overrideFile];
         $runningServices = null;
 
         try {

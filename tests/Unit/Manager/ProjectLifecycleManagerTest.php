@@ -314,6 +314,77 @@ final class ProjectLifecycleManagerTest extends TestCase
     }
 
     #[AllowMockObjectsWithoutExpectations]
+    public function testUpIncludesUserComposeOverrideBetweenBaseAndDdeOverride(): void
+    {
+        // Regression: `docker compose -f base -f dde-override` skips Compose's
+        // default `docker-compose.override.yml` auto-discovery, so the user
+        // override has to be passed explicitly between base and dde override.
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project';
+        $composeFile = $projectDir.'/docker-compose.yml';
+        $userOverride = $projectDir.'/docker-compose.override.yml';
+        $ddeOverride = '/tmp/dde-override.yml';
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($composeFile);
+
+        $this->dockerComposeManager->method('findUserOverrideFile')
+            ->with($projectDir, $composeFile)
+            ->willReturn($userOverride);
+
+        $this->imageManager->method('ensureDevLayers')
+            ->willReturn(null);
+
+        $this->dockerComposeManager->method('generateOverride')
+            ->willReturn($ddeOverride);
+
+        $this->dockerComposeManager->expects($this->once())
+            ->method('up')
+            ->with(
+                $projectDir,
+                $this->callback(static function (array $options) use ($composeFile, $userOverride, $ddeOverride): bool {
+                    return $options['composeFiles'] === [$composeFile, $userOverride, $ddeOverride];
+                }),
+                null,
+            );
+
+        $this->manager->up($config, $projectDir, false);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpOmitsUserOverrideWhenAbsent(): void
+    {
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project';
+        $composeFile = $projectDir.'/docker-compose.yml';
+        $ddeOverride = '/tmp/dde-override.yml';
+
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($composeFile);
+
+        $this->dockerComposeManager->method('findUserOverrideFile')
+            ->willReturn(null);
+
+        $this->imageManager->method('ensureDevLayers')
+            ->willReturn(null);
+
+        $this->dockerComposeManager->method('generateOverride')
+            ->willReturn($ddeOverride);
+
+        $this->dockerComposeManager->expects($this->once())
+            ->method('up')
+            ->with(
+                $projectDir,
+                $this->callback(static function (array $options) use ($composeFile, $ddeOverride): bool {
+                    return $options['composeFiles'] === [$composeFile, $ddeOverride];
+                }),
+                null,
+            );
+
+        $this->manager->up($config, $projectDir, false);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
     public function testUpForwardsBuildFlagToDockerCompose(): void
     {
         $config = $this->createConfig();
