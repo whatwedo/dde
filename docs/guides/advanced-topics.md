@@ -5,7 +5,9 @@ title: "Advanced Topics"
 
 ## Networking
 
-All containers share a single Docker network called `dde`. Containers communicate via service names — a web container reaches MariaDB at `mariadb:3306`, Valkey at `valkey:6379`, and Mailpit SMTP at `mail:1025`.
+Each project gets its own Docker network — `dde-services-<project>` for the main checkout, `dde-services-<project>-<suffix>` for a worktree. Project containers join only that network; the shared `dde` network is reserved for system service containers (Traefik, dnsmasq, Mailpit, the versioned MariaDB/Postgres containers). Traefik and the configured DB/mail services attach to the per-project network on `project:up` so cross-container DNS still works — a web container reaches MariaDB at `mariadb:3306`, Valkey at `valkey:6379`, and Mailpit SMTP at `mail:1025`.
+
+The per-project network is created unconditionally, even for projects that declare no `services:` in `.dde/config.yml` — that keeps parallel checkouts (main + worktree) isolated and avoids alias collisions on the shared `dde` network.
 
 DNS resolution for `*.test` domains is handled by a dnsmasq container that resolves everything to `127.0.0.1`. On macOS this uses `/etc/resolver/test`, on Linux it integrates with systemd-resolved or NetworkManager. All configured automatically by `dde system:install`.
 

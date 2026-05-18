@@ -16,6 +16,8 @@ Traefik v3 serves as the reverse proxy for all dde projects, routing HTTP and HT
 
 Traefik runs on the shared `dde` network. To reach project containers, `project:up` also attaches Traefik to each project's per-project network (`dde-services-<project>` for the main checkout, `dde-services-<project>-<suffix>` for a worktree) and `project:down` detaches it again. Project containers themselves live only on the per-project network — joining `dde` as well would let parallel checkouts (main + worktree) shadow each other's service-name DNS aliases.
 
+Docker does not preserve runtime `network connect` attachments across a container re-create, so `system:update` and `system:down` + `system:up` would otherwise leave previously running projects unreachable. Traefik reconciles its attachments on every start: it discovers every existing `dde-services-*` network that still has project containers and re-attaches itself, restarting once so its docker provider picks up the new networks.
+
 See [Core Concepts → Networking](../getting-started/concepts.md#networking) for the full picture.
 
 ## TLS

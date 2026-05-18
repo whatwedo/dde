@@ -47,9 +47,10 @@ readonly class ProjectLifecycleManager
         //    Worktrees get their own network (`dde-services-<project>-<suffix>`) so
         //    they can bind the canonical service alias (e.g. `postgres`) to a
         //    different version than the main checkout without DNS collisions.
-        $projectNetwork = $config->services !== []
-            ? self::buildProjectNetworkName($config->projectName, $worktreeInfo)
-            : null;
+        //    Always created, even for service-less projects, so the network
+        //    rule is "one per-project network, period" — no shared-`dde`
+        //    fallback to reason about in docs or in overlay generation.
+        $projectNetwork = self::buildProjectNetworkName($config->projectName, $worktreeInfo);
         $this->ensureProjectNetwork($config, $projectNetwork);
 
         // 4. Ensure TLS certificates for project domains
@@ -328,12 +329,8 @@ readonly class ProjectLifecycleManager
      * well, and Docker DNS would round-robin between both — randomly routing
      * traffic to the wrong database.
      */
-    private function ensureProjectNetwork(ResolvedConfig $config, ?string $projectNetwork): void
+    private function ensureProjectNetwork(ResolvedConfig $config, string $projectNetwork): void
     {
-        if ($projectNetwork === null) {
-            return;
-        }
-
         $networkExisted = $this->dockerManager->networkExists($projectNetwork);
 
         if (! $networkExisted) {
@@ -347,20 +344,32 @@ readonly class ProjectLifecycleManager
             $desiredContainers[$service->name] = ServiceRegistry::buildContainerName($service->name, $version);
         }
 
+        $connectedContainers = $networkExisted
+            ? $this->dockerManager->getConnectedContainerNames($projectNetwork)
+            : [];
+
         if ($networkExisted) {
-            $this->detachStaleServiceContainers($projectNetwork, $desiredContainers);
+            $this->detachStaleServiceContainers($projectNetwork, $desiredContainers, $connectedContainers);
         }
 
         foreach ($desiredContainers as $serviceName => $containerName) {
             $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$serviceName]);
         }
 
-        // Traefik must join the per-project network so it can route inbound
-        // HTTP traffic — project containers no longer share `dde` with it.
-        $this->dockerManager->connectContainerToNetwork(
-            $this->traefikService->getContainerName(),
-            $projectNetwork,
-        );
+        $traefikContainer = $this->traefikService->getContainerName();
+        $traefikAlreadyConnected = in_array($traefikContainer, $connectedContainers, true);
+
+        $this->dockerManager->connectContainerToNetwork($traefikContainer, $projectNetwork);
+
+        // Traefik's docker provider caches its attached networks at startup;
+        // a runtime `docker network connect` is not picked up. Without this
+        // restart, the freshly attached project containers would receive 502.
+        // Skip the cycle when Traefik was already on the network so unrelated
+        // projects keep routing.
+        if (! $traefikAlreadyConnected) {
+            $this->dockerManager->stop($traefikContainer);
+            $this->dockerManager->start($traefikContainer);
+        }
     }
 
     /**
@@ -370,15 +379,14 @@ readonly class ProjectLifecycleManager
      * left untouched.
      *
      * @param array<string, string> $desiredContainers service name => desired container name
+     * @param list<string>           $connectedContainers network's currently attached containers
      */
-    private function detachStaleServiceContainers(string $projectNetwork, array $desiredContainers): void
+    private function detachStaleServiceContainers(string $projectNetwork, array $desiredContainers, array $connectedContainers): void
     {
-        $connected = $this->dockerManager->getConnectedContainerNames($projectNetwork);
-
         foreach ($desiredContainers as $serviceName => $desired) {
             $prefix = sprintf('dde-%s-', $serviceName);
 
-            foreach ($connected as $name) {
+            foreach ($connectedContainers as $name) {
                 if ($name !== $desired && str_starts_with($name, $prefix)) {
                     $this->dockerManager->disconnectContainerFromNetwork($name, $projectNetwork);
                 }
