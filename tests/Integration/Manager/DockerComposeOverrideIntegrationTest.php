@@ -209,7 +209,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $this->manager->generateOverride($config, $projectDir);
     }
 
-    public function testGenerateOverrideInjectsBothNetworks(): void
+    public function testGenerateOverrideAttachesOnlyProjectNetworkWhenGiven(): void
     {
         $projectDir = $this->createProjectDir(<<<'YAML'
             services:
@@ -223,14 +223,13 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         self::assertIsArray($parsed['networks']);
-        self::assertArrayHasKey('dde', $parsed['networks']);
-        self::assertTrue($parsed['networks']['dde']['external']);
+        self::assertArrayNotHasKey('dde', $parsed['networks']);
         self::assertArrayHasKey('dde-services-myproject', $parsed['networks']);
         self::assertTrue($parsed['networks']['dde-services-myproject']['external']);
 
         $web = $parsed['services']['web'];
         self::assertIsArray($web['networks']);
-        self::assertArrayHasKey('dde', $web['networks']);
+        self::assertArrayNotHasKey('dde', $web['networks']);
         self::assertArrayHasKey('dde-services-myproject', $web['networks']);
     }
 
