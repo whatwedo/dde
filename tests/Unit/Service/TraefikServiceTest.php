@@ -6,6 +6,8 @@ namespace Tests\Unit\Service;
 
 use App\Manager\DockerManager;
 use App\Model\ContainerConfig;
+use App\Model\ContainerInfo;
+use App\Model\ContainerStatus;
 use App\Service\TraefikService;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -213,6 +215,14 @@ final class TraefikServiceTest extends TestCase
             ->willReturn(true);
 
         $this->dockerManager
+            ->method('getContainersByLabel')
+            ->with('com.docker.compose.project', 'dde')
+            ->willReturn([
+                new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+                new ContainerInfo('dde-mariadb-11.8', ContainerStatus::RUNNING, 'mariadb:11.8'),
+            ]);
+
+        $this->dockerManager
             ->method('listNetworksWithPrefix')
             ->with('dde-services-')
             ->willReturn(['dde-services-alpha', 'dde-services-beta', 'dde-services-empty']);
@@ -267,6 +277,13 @@ final class TraefikServiceTest extends TestCase
             ->willReturn(true);
 
         $this->dockerManager
+            ->method('getContainersByLabel')
+            ->with('com.docker.compose.project', 'dde')
+            ->willReturn([
+                new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+            ]);
+
+        $this->dockerManager
             ->method('listNetworksWithPrefix')
             ->with('dde-services-')
             ->willReturn(['dde-services-alpha']);
@@ -287,6 +304,100 @@ final class TraefikServiceTest extends TestCase
         $this->service->start();
     }
 
+    public function testStartSkipsReconciliationWhenOnlyDdeManagedContainersAttached(): void
+    {
+        // A stale network left with only `dde-mariadb-*` or other dde-managed
+        // services must not pull Traefik back in. Without the filter, two
+        // global services on the same stale network would keep reconciling
+        // each other in.
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-traefik')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-traefik')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('networkExists')
+            ->with('dde')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('getContainersByLabel')
+            ->with('com.docker.compose.project', 'dde')
+            ->willReturn([
+                new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+                new ContainerInfo('dde-mailpit', ContainerStatus::RUNNING, 'axllent/mailpit:latest'),
+                new ContainerInfo('dde-mariadb-11.8', ContainerStatus::RUNNING, 'mariadb:11.8'),
+            ]);
+
+        $this->dockerManager
+            ->method('listNetworksWithPrefix')
+            ->with('dde-services-')
+            ->willReturn(['dde-services-stale']);
+
+        $this->dockerManager
+            ->method('getConnectedContainerNames')
+            ->with('dde-services-stale')
+            ->willReturn(['dde-mariadb-11.8', 'dde-mailpit']);
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('connectContainerToNetwork');
+
+        $this->service->start();
+    }
+
+    public function testStartReconnectsTraefikToNetworkOfProjectStartingWithDdePrefix(): void
+    {
+        // Regression: a project whose Compose project name starts with `dde-`
+        // (e.g. directory `dde-shop`) ends up with containers like
+        // `dde-shop-web-1`. A naive `str_starts_with($name, 'dde-')` filter
+        // would treat that as a dde-managed container and the network as
+        // empty, leaving the project unreachable after a Traefik recreate.
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-traefik')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-traefik')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('networkExists')
+            ->with('dde')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('getContainersByLabel')
+            ->with('com.docker.compose.project', 'dde')
+            ->willReturn([
+                new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+            ]);
+
+        $this->dockerManager
+            ->method('listNetworksWithPrefix')
+            ->with('dde-services-')
+            ->willReturn(['dde-services-dde-shop']);
+
+        $this->dockerManager
+            ->method('getConnectedContainerNames')
+            ->with('dde-services-dde-shop')
+            ->willReturn(['dde-shop-web-1']);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('connectContainerToNetwork')
+            ->with('dde-traefik', 'dde-services-dde-shop');
+
+        $this->service->start();
+    }
+
     public function testStartSkipsReconciliationForEmptyProjectNetworks(): void
     {
         $this->dockerManager
@@ -303,6 +414,13 @@ final class TraefikServiceTest extends TestCase
             ->method('networkExists')
             ->with('dde')
             ->willReturn(true);
+
+        $this->dockerManager
+            ->method('getContainersByLabel')
+            ->with('com.docker.compose.project', 'dde')
+            ->willReturn([
+                new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+            ]);
 
         $this->dockerManager
             ->method('listNetworksWithPrefix')

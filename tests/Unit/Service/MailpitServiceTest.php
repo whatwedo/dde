@@ -6,6 +6,8 @@ namespace Tests\Unit\Service;
 
 use App\Manager\DockerManager;
 use App\Model\ContainerConfig;
+use App\Model\ContainerInfo;
+use App\Model\ContainerStatus;
 use App\Service\MailpitService;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -217,6 +219,13 @@ final class MailpitServiceTest extends TestCase
             ->method('isContainerRunning')
             ->with('dde-mailpit')
             ->willReturn(true);
+
+        $this->dockerManager
+            ->method('getContainersByLabel')
+            ->with('com.docker.compose.project', 'dde')
+            ->willReturn([
+                new ContainerInfo('dde-mailpit', ContainerStatus::RUNNING, 'axllent/mailpit:latest'),
+            ]);
 
         $this->dockerManager
             ->method('listNetworksWithPrefix')

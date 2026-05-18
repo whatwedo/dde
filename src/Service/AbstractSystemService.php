@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Manager\DockerManager;
 use App\Model\ContainerConfig;
+use App\Model\ContainerInfo;
 use App\Model\ServiceStatus;
 
 abstract class AbstractSystemService implements ServiceInterface
@@ -127,6 +128,24 @@ abstract class AbstractSystemService implements ServiceInterface
 
         $networks = $this->dockerManager->listNetworksWithPrefix('dde-services-');
         $container = $this->getContainerName();
+
+        // Identify dde-managed containers so they don't count as "project
+        // containers" on a stale network. Both global services and versioned
+        // services tag themselves with `com.docker.compose.project=dde`;
+        // user project containers carry their own Compose project name there
+        // even when the directory happens to start with `dde-` (e.g.
+        // `dde-shop-web-1`). A name-prefix check (`dde-…`) would misclassify
+        // those.
+        try {
+            $ddeManagedContainers = $this->dockerManager->getContainersByLabel('com.docker.compose.project', 'dde');
+        } catch (\RuntimeException) {
+            $ddeManagedContainers = [];
+        }
+
+        $ddeManagedNames = array_flip(array_map(
+            static fn (ContainerInfo $info): string => $info->name,
+            $ddeManagedContainers,
+        ));
         $attached = false;
 
         foreach ($networks as $network) {
@@ -136,10 +155,18 @@ abstract class AbstractSystemService implements ServiceInterface
                 continue;
             }
 
-            $hasProjectContainers = array_filter(
-                $connected,
-                static fn (string $name): bool => $name !== $container,
-            ) !== [];
+            // Only project containers count: dde-managed containers (Traefik,
+            // Mailpit, versioned `dde-mariadb-*` services …) leftover on a
+            // stale network would otherwise reconcile each other indefinitely
+            // and keep an empty network alive.
+            $hasProjectContainers = false;
+
+            foreach ($connected as $name) {
+                if (! isset($ddeManagedNames[$name])) {
+                    $hasProjectContainers = true;
+                    break;
+                }
+            }
 
             if (! $hasProjectContainers) {
                 continue;
