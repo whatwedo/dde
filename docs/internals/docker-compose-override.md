@@ -193,7 +193,27 @@ When running in a git worktree, additional Traefik router labels are generated f
 The runtime override file is:
 
 1. **Generated** before `docker compose up` by `DockerComposeManager::generateOverride()`
-2. **Applied** as a second `-f` argument: `docker compose -f docker-compose.yml -f override.yml up -d`
+2. **Applied** as the last `-f` argument so it has the final word on runtime-critical fields (network, worktree hostname, Traefik labels)
 3. **Removed** after `docker compose up` completes (in a `finally` block to ensure cleanup)
 
 This approach keeps the project's compose file unmodified at runtime.
+
+## User-Supplied `docker-compose.override.yml`
+
+A project may ship its own override file alongside the base compose file. Docker Compose normally auto-merges it on `docker compose up`, but that auto-discovery is disabled the moment dde passes explicit `-f` arguments. `DockerComposeManager::findUserOverrideFile()` detects the override and `ProjectLifecycleManager::up()` slots it in between the base file and the dde-generated overlay:
+
+```
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.override.yml   # user override — optional
+  -f /tmp/dde-override-…           # dde runtime overlay — last word
+  up -d
+```
+
+The override is paired by base filename — `compose.yml` looks for `compose.override.yml` (or `.yaml`), `docker-compose.yml` looks for `docker-compose.override.yml` (or `.yaml`). A project on `compose.yml` will not silently pick up a stray `docker-compose.override.yml`.
+
+Typical use cases:
+- Developer-local tweaks (`DISPLAY` for a Playwright container, host port bindings)
+- Optional debug services that should not ship in the committed base file
+
+The dde overlay always wins for fields it sets explicitly (worktree hostname, per-project network, Traefik routing for known hosts). For everything else — `environment`, `volumes`, `extra_hosts`, additional services — the user override behaves exactly as it would without dde.

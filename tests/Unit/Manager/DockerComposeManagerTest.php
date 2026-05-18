@@ -489,6 +489,54 @@ final class DockerComposeManagerTest extends TestCase
         $this->manager->findComposeFile($this->tempDir);
     }
 
+    public function testFindUserOverrideFileReturnsNullWhenAbsent(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', "services: {}\n");
+
+        $this->assertNull($this->manager->findUserOverrideFile($this->tempDir, $this->tempDir.'/docker-compose.yml'));
+    }
+
+    public function testFindUserOverrideFilePairsDockerComposeBaseWithDockerComposeOverride(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', "services: {}\n");
+        file_put_contents($this->tempDir.'/docker-compose.override.yml', "services: {}\n");
+
+        $this->assertSame(
+            $this->tempDir.'/docker-compose.override.yml',
+            $this->manager->findUserOverrideFile($this->tempDir, $this->tempDir.'/docker-compose.yml'),
+        );
+    }
+
+    public function testFindUserOverrideFilePairsComposeBaseWithComposeOverride(): void
+    {
+        file_put_contents($this->tempDir.'/compose.yml', "services: {}\n");
+        file_put_contents($this->tempDir.'/compose.override.yml', "services: {}\n");
+
+        $this->assertSame(
+            $this->tempDir.'/compose.override.yml',
+            $this->manager->findUserOverrideFile($this->tempDir, $this->tempDir.'/compose.yml'),
+        );
+    }
+
+    public function testFindUserOverrideFileIgnoresDockerComposeOverrideForComposeBase(): void
+    {
+        file_put_contents($this->tempDir.'/compose.yml', "services: {}\n");
+        file_put_contents($this->tempDir.'/docker-compose.override.yml', "services: {}\n");
+
+        $this->assertNull($this->manager->findUserOverrideFile($this->tempDir, $this->tempDir.'/compose.yml'));
+    }
+
+    public function testFindUserOverrideFileSupportsYamlExtension(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', "services: {}\n");
+        file_put_contents($this->tempDir.'/docker-compose.override.yaml', "services: {}\n");
+
+        $this->assertSame(
+            $this->tempDir.'/docker-compose.override.yaml',
+            $this->manager->findUserOverrideFile($this->tempDir, $this->tempDir.'/docker-compose.yml'),
+        );
+    }
+
     public function testGenerateOverrideWorktreeOverridesTraefikLabels(): void
     {
         $this->createComposeFile([

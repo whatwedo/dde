@@ -23,6 +23,16 @@ readonly class ProjectConfigManager
 
     public const array COMPOSE_FILES = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml'];
 
+    /**
+     * @var array<string, list<string>>
+     */
+    public const array COMPOSE_OVERRIDE_FILES = [
+        'docker-compose.yml' => ['docker-compose.override.yml', 'docker-compose.override.yaml'],
+        'docker-compose.yaml' => ['docker-compose.override.yaml', 'docker-compose.override.yml'],
+        'compose.yml' => ['compose.override.yml', 'compose.override.yaml'],
+        'compose.yaml' => ['compose.override.yaml', 'compose.override.yml'],
+    ];
+
     private const string PROJECT_MARKER = '.dde/config.yml';
 
     public function __construct(

@@ -41,3 +41,9 @@ Response format:
 ```
 
 Interactive commands (`project:shell`, `project:logs --follow`) do not support JSON output.
+
+## Local Compose Tweaks via `docker-compose.override.yml`
+
+Drop a `docker-compose.override.yml` (or `compose.override.yml`) next to the base compose file for developer-local tweaks — host port bindings, an extra `DISPLAY` env var for a Playwright container, an optional debug service. dde picks it up on `project:up` and slots it between the base file and its own runtime overlay, so the dde overlay still has the final word on the network and worktree hostname, while everything else (environment, volumes, extra services) behaves exactly like a normal Compose override.
+
+The override is paired by base filename: a project on `docker-compose.yml` looks for `docker-compose.override.yml` (or `.yaml`); a project on `compose.yml` looks for `compose.override.yml`. Mixing the two stems is intentionally not supported — keep the names consistent.
