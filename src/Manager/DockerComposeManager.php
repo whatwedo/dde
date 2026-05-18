@@ -322,6 +322,17 @@ readonly class DockerComposeManager
             $labels = ['dde.managed=true'];
             $worktreeHostname = null;
 
+            // The Traefik docker provider is configured with `network: dde` as
+            // its default lookup network (TraefikService::generateConfig). Now
+            // that project containers no longer join `dde`, Traefik would not
+            // find any IP to forward to and reply with 502 Bad Gateway. Pin the
+            // per-container `traefik.docker.network` label so Traefik picks the
+            // per-project network — without changing the global default that
+            // legitimate `dde`-only services (mailpit, Traefik dashboard) rely on.
+            if ($projectNetwork !== null) {
+                $labels[] = 'traefik.docker.network='.$projectNetwork;
+            }
+
             if ($worktreeInfo instanceof WorktreeInfo) {
                 $worktreeHostname = $this->worktreeManager->resolveHostname($config->projectName, $worktreeInfo);
                 $labels = array_merge($labels, $this->overrideTraefikLabels($serviceConfig['labels'] ?? [], $config->projectName, $worktreeInfo, $worktreeHostname, $serviceName));

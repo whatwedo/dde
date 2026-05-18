@@ -237,6 +237,37 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertIsArray($web['networks']);
         self::assertArrayNotHasKey('dde', $web['networks']);
         self::assertArrayHasKey('dde-services-myproject', $web['networks']);
+
+        // Traefik's docker provider is configured with `network: dde` as its
+        // default lookup network. Without an explicit per-container override
+        // it would fail to discover an upstream IP for project containers
+        // (which no longer join `dde`) and reply with 502 Bad Gateway. The
+        // override must therefore pin the per-project network on every service.
+        self::assertContains('traefik.docker.network=dde-services-myproject', $web['labels']);
+    }
+
+    public function testGenerateOverrideOmitsTraefikDockerNetworkWithoutProjectNetwork(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        // Projects without a per-project network keep joining `dde` directly,
+        // so the global Traefik provider default applies and no per-container
+        // override is needed.
+        $labels = $parsed['services']['web']['labels'];
+        $traefikNetworkLabels = array_filter(
+            $labels,
+            static fn (string $label): bool => str_starts_with($label, 'traefik.docker.network='),
+        );
+        self::assertSame([], $traefikNetworkLabels);
     }
 
     public function testGenerateOverrideWithoutProjectNetworkInjectsOnlyDdeNetwork(): void
