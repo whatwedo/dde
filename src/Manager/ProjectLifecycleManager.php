@@ -110,10 +110,8 @@ readonly class ProjectLifecycleManager
         //    `null` (no service filter — include every Traefik-declared
         //    host) when the lookup fails.
         //
-        //    Order: [base, user-override, dde-override]. The user override slots
-        //    in where Docker Compose would auto-merge it; the dde override keeps
-        //    the final word on runtime-critical fields (network, worktree
-        //    hostname, Traefik labels).
+        //    Order: base → user override → dde override, so the dde overlay
+        //    retains the final word on runtime-critical fields.
         $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
         $composeFiles = $userOverride !== null
             ? [$composeFile, $userOverride, $overrideFile]
@@ -177,8 +175,7 @@ readonly class ProjectLifecycleManager
             $this->dockerManager->disconnectContainerFromNetwork($containerName, $projectNetwork);
         }
 
-        // 3. Disconnect Traefik (attached in ensureProjectNetwork so inbound
-        //    routing works without project containers joining `dde`).
+        // 3. Disconnect Traefik (attached in ensureProjectNetwork).
         $this->dockerManager->disconnectContainerFromNetwork(
             $this->traefikService->getContainerName(),
             $projectNetwork,
@@ -350,23 +347,38 @@ readonly class ProjectLifecycleManager
             $desiredContainers[$service->name] = ServiceRegistry::buildContainerName($service->name, $version);
         }
 
+        // Fetch the connected container list once and reuse it both for the
+        // stale-service detach and the Traefik attachment check below.
+        // Freshly created networks have nothing attached yet, so the
+        // (otherwise expensive) `docker network inspect` is skipped.
+        $connectedContainers = $networkExisted
+            ? $this->dockerManager->getConnectedContainerNames($projectNetwork)
+            : [];
+
         if ($networkExisted) {
-            $this->detachStaleServiceContainers($projectNetwork, $desiredContainers);
+            $this->detachStaleServiceContainers($projectNetwork, $desiredContainers, $connectedContainers);
         }
 
         foreach ($desiredContainers as $serviceName => $containerName) {
             $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$serviceName]);
         }
 
-        // Traefik must live on the per-project network so it can route inbound
-        // HTTP traffic to project containers. Project containers themselves no
-        // longer join the shared `dde` network (see DockerComposeManager) to
-        // avoid DNS-alias collisions between parallel checkouts (main +
-        // worktree); attaching Traefik here is the path that restores routing.
-        $this->dockerManager->connectContainerToNetwork(
-            $this->traefikService->getContainerName(),
-            $projectNetwork,
-        );
+        // Traefik must join the per-project network so it can route inbound
+        // HTTP traffic — project containers no longer share `dde` with it.
+        // Traefik caches the list of networks it is attached to at process
+        // startup; a runtime `docker network connect` does not propagate to
+        // its docker provider, so without restart it keeps responding 502
+        // for the newly added network. Restart only when we actually
+        // performed a new attachment to avoid disrupting unrelated projects.
+        $traefikContainer = $this->traefikService->getContainerName();
+        $traefikAlreadyConnected = in_array($traefikContainer, $connectedContainers, true);
+
+        $this->dockerManager->connectContainerToNetwork($traefikContainer, $projectNetwork);
+
+        if (! $traefikAlreadyConnected) {
+            $this->dockerManager->stop($traefikContainer);
+            $this->dockerManager->start($traefikContainer);
+        }
     }
 
     /**
@@ -376,15 +388,14 @@ readonly class ProjectLifecycleManager
      * left untouched.
      *
      * @param array<string, string> $desiredContainers service name => desired container name
+     * @param list<string>           $connectedContainers network's currently attached containers
      */
-    private function detachStaleServiceContainers(string $projectNetwork, array $desiredContainers): void
+    private function detachStaleServiceContainers(string $projectNetwork, array $desiredContainers, array $connectedContainers): void
     {
-        $connected = $this->dockerManager->getConnectedContainerNames($projectNetwork);
-
         foreach ($desiredContainers as $serviceName => $desired) {
             $prefix = sprintf('dde-%s-', $serviceName);
 
-            foreach ($connected as $name) {
+            foreach ($connectedContainers as $name) {
                 if ($name !== $desired && str_starts_with($name, $prefix)) {
                     $this->dockerManager->disconnectContainerFromNetwork($name, $projectNetwork);
                 }
