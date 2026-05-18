@@ -317,6 +317,13 @@ readonly class DockerComposeManager
             $labels = ['dde.managed=true'];
             $worktreeHostname = null;
 
+            // Traefik's docker provider defaults to `network: dde`; pin the
+            // per-project network so it can resolve upstream IPs for project
+            // containers that no longer join `dde`.
+            if ($projectNetwork !== null) {
+                $labels[] = 'traefik.docker.network='.$projectNetwork;
+            }
+
             if ($worktreeInfo instanceof WorktreeInfo) {
                 $worktreeHostname = $this->worktreeManager->resolveHostname($config->projectName, $worktreeInfo);
                 $labels = array_merge($labels, $this->overrideTraefikLabels($serviceConfig['labels'] ?? [], $config->projectName, $worktreeInfo, $worktreeHostname, $serviceName));

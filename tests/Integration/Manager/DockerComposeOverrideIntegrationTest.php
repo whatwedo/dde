@@ -231,6 +231,29 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertIsArray($web['networks']);
         self::assertArrayNotHasKey('dde', $web['networks']);
         self::assertArrayHasKey('dde-services-myproject', $web['networks']);
+
+        self::assertContains('traefik.docker.network=dde-services-myproject', $web['labels']);
+    }
+
+    public function testGenerateOverrideOmitsTraefikDockerNetworkWithoutProjectNetwork(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $labels = $parsed['services']['web']['labels'];
+        $traefikNetworkLabels = array_filter(
+            $labels,
+            static fn (string $label): bool => str_starts_with($label, 'traefik.docker.network='),
+        );
+        self::assertSame([], $traefikNetworkLabels);
     }
 
     public function testGenerateOverrideWithoutProjectNetworkInjectsOnlyDdeNetwork(): void
