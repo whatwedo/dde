@@ -562,7 +562,6 @@ final class ProjectInitCommandTest extends TestCase
                 new \App\Database\MariaDbAdapter(),
                 new \App\Database\PostgresAdapter(),
             ]),
-            traefikService: $traefikService,
         );
         $dockerfileParser = new DockerfileParser();
 

@@ -9,7 +9,6 @@ use App\Manager\DockerComposeManager;
 use App\Manager\ProjectConfigManager;
 use App\Manager\WorktreeManager;
 use App\Output\FormatterResolver;
-use App\Parser\DockerComposeParser;
 use App\Util\UrlOpenerUtil;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -27,7 +26,6 @@ final class ProjectOpenCommand extends AbstractProjectCommand
         ProjectConfigManager $configManager,
         FormatterResolver $formatterResolver,
         private readonly DockerComposeManager $dockerComposeManager,
-        private readonly DockerComposeParser $composeParser,
         private readonly WorktreeManager $worktreeManager,
         private readonly UrlOpenerUtil $urlOpenerUtil = new UrlOpenerUtil(),
     ) {
@@ -84,14 +82,23 @@ final class ProjectOpenCommand extends AbstractProjectCommand
         }
 
         // Outside a worktree, prefer the actual hostname from Traefik labels
-        // in the compose file so user-customised domains win.
+        // in the compose stack so user-customised domains win.
+        // `getMergedServices()` shells out to `docker compose config` when a
+        // user override exists; catch its RuntimeException so `project:open`
+        // still works when the Docker daemon is unreachable.
         $composeFile = $this->dockerComposeManager->findComposeFileOrNull($projectDir);
 
         if ($composeFile !== null) {
-            $domains = $this->composeParser->extractTraefikDomains($composeFile);
+            try {
+                $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
+                $services = $this->dockerComposeManager->getMergedServices($projectDir, $userOverride);
+                $domains = $this->dockerComposeManager->extractTraefikDomainsFromServices($services);
 
-            if ($domains !== []) {
-                return sprintf('https://%s', $domains[0]);
+                if ($domains !== []) {
+                    return sprintf('https://%s', $domains[0]);
+                }
+            } catch (\RuntimeException) {
+                // fall through to project-name fallback below
             }
         }
 

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Util;
 
 use App\Database\DatabaseAdapterRegistry;
-use App\Service\TraefikService;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Yaml\Yaml;
 
@@ -13,7 +12,6 @@ readonly class DockerComposeModifier
 {
     public function __construct(
         private DatabaseAdapterRegistry $databaseAdapterRegistry,
-        private TraefikService $traefikService,
         private Filesystem $filesystem = new Filesystem(),
     ) {
     }
@@ -78,7 +76,7 @@ readonly class DockerComposeModifier
         $this->removeEnvironmentVariable($service, 'VIRTUAL_PORT');
 
         $port = $virtualPort !== null ? (int) $virtualPort : null;
-        $traefikLabels = $this->traefikService->generateLabels($hostnames, $serviceName, $port);
+        $traefikLabels = TraefikLabelGenerator::generateLabels($hostnames, $serviceName, $port);
 
         $service['labels'] = array_merge($existingLabels, $traefikLabels);
 

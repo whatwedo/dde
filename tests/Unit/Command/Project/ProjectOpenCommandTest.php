@@ -181,9 +181,7 @@ final class ProjectOpenCommandTest extends TestCase
         // must still surface the worktree hostname.
         $dockerComposeManager = $this->createStub(\App\Manager\DockerComposeManager::class);
         $dockerComposeManager->method('findComposeFileOrNull')->willReturn('/tmp/test-project-wt-feature-x/docker-compose.yml');
-
-        $composeParser = $this->createStub(\App\Parser\DockerComposeParser::class);
-        $composeParser->method('extractTraefikDomains')->willReturn(['test-project.test']);
+        $dockerComposeManager->method('extractTraefikDomainsFromServices')->willReturn(['test-project.test']);
 
         $processFactory = $this->createMock(\App\Util\ProcessFactory::class);
         $processFactory->method('create')->willReturnCallback(static function (): Process {
@@ -199,7 +197,6 @@ final class ProjectOpenCommandTest extends TestCase
             $this->configManager,
             $formatterResolver,
             $dockerComposeManager,
-            $composeParser,
             $this->worktreeManager,
             new UrlOpenerUtil($processFactory),
         );
@@ -228,6 +225,67 @@ final class ProjectOpenCommandTest extends TestCase
             $decoded['data']['url'],
             'dde open from a worktree must surface the worktree hostname, not the main hostname from the compose file',
         );
+    }
+
+    public function testFallsBackToProjectHostnameWhenDockerComposeConfigFails(): void
+    {
+        // Regression: when a user compose override exists, resolveProjectUrl
+        // shells out to `docker compose config` via getMergedServices(), which
+        // throws if the Docker daemon is unreachable. `project:open` must still
+        // produce the project URL — the Traefik-label hint is best-effort.
+        $this->setupProjectFixture();
+
+        $this->worktreeManager
+            ->method('detect')
+            ->willReturn(null);
+
+        $this->worktreeManager
+            ->method('resolveHostname')
+            ->willReturn('test-project.test');
+
+        $dockerComposeManager = $this->createStub(\App\Manager\DockerComposeManager::class);
+        $dockerComposeManager->method('findComposeFileOrNull')->willReturn('/tmp/test-project/docker-compose.yml');
+        $dockerComposeManager->method('findComposeFile')->willReturn('/tmp/test-project/docker-compose.yml');
+        $dockerComposeManager->method('findUserOverrideFile')->willReturn('/tmp/test-project/docker-compose.override.yml');
+        $dockerComposeManager->method('getMergedServices')->willThrowException(new \RuntimeException('docker daemon unreachable'));
+
+        $processFactory = $this->createMock(\App\Util\ProcessFactory::class);
+        $processFactory->method('create')->willReturnCallback(static function (): Process {
+            $process = new Process(['true']);
+            $process->run();
+
+            return $process;
+        });
+
+        $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
+
+        $command = new ProjectOpenCommand(
+            $this->configManager,
+            $formatterResolver,
+            $dockerComposeManager,
+            $this->worktreeManager,
+            new UrlOpenerUtil($processFactory),
+        );
+
+        $application = new Application();
+        $application->getDefinition()->addOption(new InputOption(
+            'output',
+            'o',
+            InputOption::VALUE_REQUIRED,
+            'Output format',
+            'text',
+        ));
+        $application->addCommand($command);
+
+        $tester = new CommandTester($command);
+        $tester->execute([
+            '--url-only' => true,
+        ], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $tester->getStatusCode());
+        $this->assertSame('https://test-project.test', trim($tester->getDisplay()));
     }
 
     private function setupProjectFixture(): void
@@ -265,15 +323,12 @@ final class ProjectOpenCommandTest extends TestCase
 
         $dockerComposeManager = $this->createStub(\App\Manager\DockerComposeManager::class);
         $dockerComposeManager->method('findComposeFileOrNull')->willReturn(null);
-
-        $composeParser = $this->createStub(\App\Parser\DockerComposeParser::class);
-        $composeParser->method('extractTraefikDomains')->willReturn([]);
+        $dockerComposeManager->method('extractTraefikDomainsFromServices')->willReturn([]);
 
         $this->command = new ProjectOpenCommand(
             $this->configManager,
             $formatterResolver,
             $dockerComposeManager,
-            $composeParser,
             $this->worktreeManager,
             new UrlOpenerUtil($processFactory),
         );

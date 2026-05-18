@@ -6,7 +6,7 @@ namespace App\Manager;
 
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
-use App\Parser\DockerComposeParser;
+use App\Service\ProjectNetworkAwareInterface;
 use App\Service\ServiceRegistry;
 use App\Util\IdentifierSanitizer;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -22,7 +22,6 @@ readonly class ProjectLifecycleManager
         private ServiceRegistry $serviceRegistry,
         private DockerManager $dockerManager,
         private WorktreeManager $worktreeManager,
-        private DockerComposeParser $composeParser = new DockerComposeParser(),
         private Filesystem $filesystem = new Filesystem(),
     ) {
     }
@@ -51,10 +50,28 @@ readonly class ProjectLifecycleManager
         $projectNetwork = self::buildProjectNetworkName($config->projectName, $worktreeInfo);
         $this->ensureProjectNetwork($config, $projectNetwork);
 
-        // 4. Ensure TLS certificates for project domains
+        // 4. Discover the user override up-front and snapshot the effective
+        //    Compose service set (base + override merged) once. Every later
+        //    step that reads service config — TLS, dev layer, domain output —
+        //    works off this view, so a Traefik router declared only in
+        //    `docker-compose.override.yml` is covered without re-implementing
+        //    Compose's merge rules in PHP.
         $composeFile = $this->dockerComposeManager->findComposeFile($projectDir);
+        $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
+        $mergedServices = $this->dockerComposeManager->getMergedServices($projectDir, $userOverride);
         $projectName = $config->projectName;
-        $this->mkcertManager->ensureForComposeFile($projectName, $composeFile);
+
+        // Single Traefik-domain extract from the merged Compose view: feeds
+        // both the main mkcert SAN list and (inside a worktree) the worktree
+        // SAN derivation below. Recomputing it twice was free in CPU terms
+        // but signalled "these are two different domain snapshots" to the
+        // reader — which they are not.
+        $mainDomains = $this->dockerComposeManager->extractTraefikDomainsFromServices($mergedServices);
+
+        $this->mkcertManager->ensureForDomains(
+            $projectName,
+            $mainDomains,
+        );
 
         // 4b. Ensure TLS certificates for worktree domains
         $worktreeHostname = null;
@@ -63,7 +80,6 @@ readonly class ProjectLifecycleManager
             $worktreeHostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
             $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
 
-            $mainDomains = $this->composeParser->extractTraefikDomains($composeFile);
             $worktreeDomains = [];
 
             // Only include domains the rewrite actually changed. Compose
@@ -89,32 +105,35 @@ readonly class ProjectLifecycleManager
             $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, $worktreeDomains);
         }
 
-        // 5. Image layer check — build dev layer for project containers
-        $devLayerResult = $this->imageManager->ensureDevLayers($config, $composeFile, $output);
+        // 5. Image layer check — build dev layer for project containers.
+        //    Reuse the merged service view from step 4 so a base file with
+        //    valid Compose custom tags (`!override`, `!reset`) doesn't fail a
+        //    second, narrower YAML parse here.
+        $devLayerResult = $this->imageManager->ensureDevLayers($config, $mergedServices, $output);
 
         // 6. Pre-build compose images
         $this->dockerComposeManager->build($projectDir, [], $output);
 
-        // 7. Pull missing images silently — avoids flooding the GUI with pull/extract spam
-        if ($this->dockerComposeManager->needsPull($projectDir)) {
+        // 7. Pull missing images silently — avoids flooding the GUI with pull/extract spam.
+        //    Pass the merged service set so override-only / override-modified images are
+        //    checked too; otherwise `docker compose up` would re-pull them noisily.
+        if ($this->dockerComposeManager->needsPull($projectDir, $mergedServices)) {
             $this->dockerComposeManager->pull($projectDir);
         }
 
-        // 8. Generate override (inject worktree info + per-project network)
-        $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork);
+        // 8. Generate the dde overlay from the merged service view discovered
+        //    in step 4 so override-only services and override-modified fields
+        //    (image, entrypoint, command, labels) get the same treatment as
+        //    base services. Reuse the merged set instead of paying for a
+        //    second `docker compose config` pass.
+        $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork, $userOverride, $mergedServices);
 
         // 9. Docker compose up, then query running services while the override
         //    file still exists — `finally` deletes it afterwards. A `ps`
         //    JSON-parse failure must not tear down `up()`, so fall back to
         //    `null` (no service filter — include every Traefik-declared
         //    host) when the lookup fails.
-        //
-        //    Order: base → user override → dde override, so the dde overlay
-        //    retains the final word on runtime-critical fields.
-        $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
-        $composeFiles = $userOverride !== null
-            ? [$composeFile, $userOverride, $overrideFile]
-            : [$composeFile, $overrideFile];
+        $composeFiles = $this->buildComposeFileChain($composeFile, $userOverride, $overrideFile);
         $runningServices = null;
 
         try {
@@ -125,14 +144,14 @@ readonly class ProjectLifecycleManager
 
             try {
                 $runningServices = $this->getRunningServiceNames($projectDir, $composeFiles);
-            } catch (\Throwable) {
+            } catch (\RuntimeException) {
                 $runningServices = null;
             }
         } finally {
             $this->filesystem->remove($overrideFile);
         }
 
-        $domains = $this->collectProjectDomains($composeFile, $config->projectName, $worktreeInfo, $worktreeHostname, $runningServices);
+        $domains = $this->collectProjectDomains($mergedServices, $config->projectName, $worktreeInfo, $worktreeHostname, $runningServices);
 
         return [
             'serviceResults' => $serviceResults,
@@ -176,7 +195,7 @@ readonly class ProjectLifecycleManager
 
         // 3. Disconnect global services attached in ensureProjectNetwork.
         foreach ($this->serviceRegistry->getGlobalServices() as $globalService) {
-            if ($globalService->getProjectNetworkAliases() === null) {
+            if (! $globalService instanceof ProjectNetworkAwareInterface) {
                 continue;
             }
 
@@ -239,6 +258,21 @@ readonly class ProjectLifecycleManager
     }
 
     /**
+     * Assembles the `docker compose -f <base> [-f <user override>] -f <dde overlay>`
+     * argument chain in the order Compose applies overlays: base first,
+     * user override in the middle (so it merges on top of base while still
+     * losing to dde-controlled fields), dde runtime overlay last.
+     *
+     * @return list<string>
+     */
+    private function buildComposeFileChain(string $composeFile, ?string $userOverride, string $ddeOverride): array
+    {
+        return $userOverride !== null
+            ? [$composeFile, $userOverride, $ddeOverride]
+            : [$composeFile, $ddeOverride];
+    }
+
+    /**
      * Collects the project's reachable domains.
      *
      * Mirrors the worktree-first policy of `project:open` (see commit d3d654c):
@@ -256,18 +290,19 @@ readonly class ProjectLifecycleManager
      * `$runningServices` means "include every declared Traefik host" — used
      * as the safety fallback when `docker compose ps` could not be parsed.
      *
-     * @param list<string>|null $runningServices
+     * @param array<string, array<string, mixed>> $mergedServices Compose-merged service set (base + user override)
+     * @param list<string>|null                   $runningServices
      *
      * @return list<string>
      */
     private function collectProjectDomains(
-        string $composeFile,
+        array $mergedServices,
         string $projectName,
         ?WorktreeInfo $worktreeInfo,
         ?string $worktreeHostname,
         ?array $runningServices,
     ): array {
-        $domains = $this->composeParser->extractTraefikDomains($composeFile, $runningServices);
+        $domains = $this->dockerComposeManager->extractTraefikDomainsFromServices($mergedServices, $runningServices);
 
         if (! $worktreeInfo instanceof WorktreeInfo) {
             return $domains;
@@ -360,27 +395,27 @@ readonly class ProjectLifecycleManager
             $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$serviceName]);
         }
 
-        // Attach global services that need in-network reachability (Traefik for
-        // routing, Mailpit for its `mail` alias). Services opt in by returning
-        // a non-null `getProjectNetworkAliases()` from AbstractSystemService.
+        // Attach global services that need in-network reachability (Traefik
+        // for routing, Mailpit for its `mail` alias). Opt in by implementing
+        // ProjectNetworkAwareInterface.
         foreach ($this->serviceRegistry->getGlobalServices() as $globalService) {
-            $aliases = $globalService->getProjectNetworkAliases();
-
-            if ($aliases === null) {
+            if (! $globalService instanceof ProjectNetworkAwareInterface) {
                 continue;
             }
 
             $container = $globalService->getContainerName();
             $alreadyConnected = in_array($container, $connectedContainers, true);
 
-            $this->dockerManager->connectContainerToNetwork($container, $projectNetwork, $aliases);
+            if (! $alreadyConnected) {
+                $this->dockerManager->connectContainerToNetwork($container, $projectNetwork, $globalService->getProjectNetworkAliases());
 
-            // Some services (Traefik) cache their network list at process
-            // startup; a runtime `docker network connect` is not picked up
-            // until the container is restarted.
-            if (! $alreadyConnected && $globalService->requiresRestartAfterProjectNetworkAttach()) {
-                $this->dockerManager->stop($container);
-                $this->dockerManager->start($container);
+                // Some services (Traefik) cache their network list at process
+                // startup; a runtime `docker network connect` is not picked up
+                // until the container is restarted.
+                if ($globalService->requiresRestartAfterProjectNetworkAttach()) {
+                    $this->dockerManager->stop($container);
+                    $this->dockerManager->start($container);
+                }
             }
         }
     }

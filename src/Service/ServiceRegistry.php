@@ -59,12 +59,12 @@ readonly class ServiceRegistry
     ];
 
     /**
-     * @var array<AbstractSystemService>
+     * @var array<ServiceInterface>
      */
     private array $resolvedGlobalServices;
 
     /**
-     * @param iterable<AbstractSystemService> $globalServices
+     * @param iterable<ServiceInterface> $globalServices
      */
     public function __construct(
         #[AutowireIterator('app.global_service')]
@@ -77,7 +77,7 @@ readonly class ServiceRegistry
     /**
      * Returns all global services (traefik, dnsmasq, ssh-agent) started by system:up.
      *
-     * @return array<AbstractSystemService>
+     * @return array<ServiceInterface>
      */
     public function getGlobalServices(): array
     {

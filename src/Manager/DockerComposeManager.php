@@ -8,11 +8,11 @@ use App\Adapter\AdapterRegistry;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Model\UserContext;
-use App\Service\TraefikService;
 use App\Util\ComposeEnvEntryParser;
 use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
 use App\Util\TempFileUtil;
+use App\Util\TraefikLabelGenerator;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use Symfony\Component\Dotenv\Dotenv;
@@ -27,7 +27,6 @@ readonly class DockerComposeManager
     public function __construct(
         private AdapterRegistry $adapterRegistry,
         private DockerManager $dockerManager,
-        private TraefikService $traefikService,
         private UserContext $userContext,
         private WorktreeManager $worktreeManager,
         private Filesystem $filesystem = new Filesystem(),
@@ -202,13 +201,130 @@ readonly class DockerComposeManager
     }
 
     /**
+     * Returns the effective service configuration as Compose itself would
+     * assemble it. With no user override the base file IS the merged view
+     * and a YAML parse is sufficient; once a user override is present, we
+     * shell out to `docker compose config` so Compose's own override rules
+     * (`!override`, `!reset`, list-form label key-dedupe, env substitution,
+     * and image/entrypoint/command resolution) are applied — the same rules
+     * Compose will use at runtime when dde hands it the same `-f` chain.
+     *
+     * @return array<string, array<string, mixed>>
+     *
+     * @throws \RuntimeException
+     */
+    public function getMergedServices(string $projectDir, ?string $userOverrideFile = null): array
+    {
+        if ($userOverrideFile === null) {
+            return $this->parseComposeServicesFromBaseFile($projectDir);
+        }
+
+        $composeFile = $this->findComposeFile($projectDir);
+
+        $cmd = ['docker', 'compose', '-f', $composeFile, '-f', $userOverrideFile, 'config', '--format', 'json'];
+
+        $process = $this->processFactory->create($cmd, $projectDir, null);
+        $process->run();
+
+        // `docker compose config` resolves env vars into the output, including
+        // secrets like DB passwords or API keys. Exception messages bubble up
+        // into CLI output and CI artifacts, so we never include the body here
+        // — only stderr (which Compose uses for parse errors) plus a length
+        // hint so callers can tell whether stdout was empty or just hidden.
+        $output = $process->getOutput();
+        $outputSize = strlen($output);
+
+        if (! $process->isSuccessful()) {
+            throw new \RuntimeException(sprintf(
+                "docker compose config failed:\nstderr:\n%s\n(stdout omitted, %d bytes)",
+                $process->getErrorOutput(),
+                $outputSize,
+            ));
+        }
+
+        try {
+            $data = json_decode($output, true, flags: JSON_THROW_ON_ERROR);
+        } catch (\JsonException $jsonException) {
+            throw new \RuntimeException(sprintf(
+                "docker compose config returned invalid JSON: %s\nstderr:\n%s\n(stdout omitted, %d bytes)",
+                $jsonException->getMessage(),
+                $process->getErrorOutput(),
+                $outputSize,
+            ), $jsonException->getCode(), previous: $jsonException);
+        }
+
+        if (! is_array($data) || ! is_array($data['services'] ?? null)) {
+            throw new \RuntimeException(sprintf(
+                "docker compose config returned unexpected structure (no `services` map).\nstderr:\n%s\n(stdout omitted, %d bytes)",
+                $process->getErrorOutput(),
+                $outputSize,
+            ));
+        }
+
+        $services = [];
+
+        foreach ($data['services'] as $name => $config) {
+            if (is_string($name) && is_array($config)) {
+                $services[$name] = $config;
+            }
+        }
+
+        return $services;
+    }
+
+    /**
+     * Extracts unique Traefik `Host()` domains from the merged service set.
+     * The merged set reflects Compose's actual label resolution including
+     * `!override`/`!reset`, so callers don't have to re-implement those rules
+     * to predict the effective router list.
+     *
+     * @param array<string, array<string, mixed>> $services
+     * @param list<string>|null                   $onlyServices service names to include (null = all)
+     *
+     * @return list<string>
+     */
+    public function extractTraefikDomainsFromServices(array $services, ?array $onlyServices = null): array
+    {
+        $domains = [];
+
+        foreach ($services as $serviceName => $service) {
+            if ($onlyServices !== null && ! in_array($serviceName, $onlyServices, true)) {
+                continue;
+            }
+
+            $labels = $this->unwrapTaggedLabels($service['labels'] ?? []);
+
+            foreach ($labels as $key => $value) {
+                $label = is_int($key) ? (string) $value : $key.'='.$value;
+
+                if (preg_match_all('/Host\(([^)]+)\)/', $label, $hostMatches)) {
+                    foreach ($hostMatches[1] as $hostContent) {
+                        if (preg_match_all('/`([^`]+)`/', $hostContent, $domainMatches)) {
+                            foreach ($domainMatches[1] as $domain) {
+                                $domains[] = $domain;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($domains));
+    }
+
+    /**
      * Returns true if any image-based service in the compose file has an image that is not yet present locally.
      * Build-only services (using `build:` without `image:`) are excluded.
      * Services with both `build:` and `image:` are also excluded (built locally, not pulled).
+     *
+     * @param array<string, array<string, mixed>>|null $services already-resolved service set.
+     *        Pass the merged view when a user override is in play so override-only / override-changed
+     *        images are checked too; otherwise the silent pre-pull skips them and `docker compose up`
+     *        spam-pulls (or fails) for them later.
      */
-    public function needsPull(string $projectDir): bool
+    public function needsPull(string $projectDir, ?array $services = null): bool
     {
-        $services = $this->discoverComposeServicesWithConfig($projectDir);
+        $services ??= $this->parseComposeServicesFromBaseFile($projectDir);
 
         foreach ($services as $serviceConfig) {
             if (! is_string($serviceConfig['image'] ?? null)) {
@@ -290,9 +406,23 @@ readonly class DockerComposeManager
         }
     }
 
-    public function generateOverride(ResolvedConfig $config, string $projectDir, ?WorktreeInfo $worktreeInfo = null, ?string $projectNetwork = null): string
+    /**
+     * @param array<string, array<string, mixed>>|null $mergedServices already-resolved
+     *        service set (e.g. from a previous {@see self::getMergedServices()} call).
+     *        When `null` we compute it ourselves; pass it through whenever the caller
+     *        has already paid for `docker compose config` to avoid running it twice
+     *        per `project:up` on stacks with user overrides.
+     *
+     * @throws \RuntimeException
+     */
+    public function generateOverride(ResolvedConfig $config, string $projectDir, ?WorktreeInfo $worktreeInfo = null, ?string $projectNetwork = null, ?string $userOverrideFile = null, ?array $mergedServices = null): string
     {
-        $composeServices = $this->discoverComposeServicesWithConfig($projectDir);
+        // Source of truth is Compose's own merged view of base + user
+        // override: it resolves label `!override`/`!reset`, picks the
+        // effective `image`/`entrypoint`/`command`, and exposes services
+        // declared only in the override — all things a hand-rolled merge in
+        // PHP would have to re-implement (and historically got wrong).
+        $composeServices = $mergedServices ?? $this->getMergedServices($projectDir, $userOverrideFile);
 
         if ($composeServices === []) {
             throw new \RuntimeException(sprintf('No services found in docker-compose.yml in "%s"', $projectDir));
@@ -338,7 +468,7 @@ readonly class DockerComposeManager
 
             if ($worktreeInfo instanceof WorktreeInfo) {
                 $worktreeHostname = $this->worktreeManager->resolveHostname($config->projectName, $worktreeInfo);
-                $labels = array_merge($labels, $this->overrideTraefikLabels($serviceConfig['labels'] ?? [], $config->projectName, $worktreeInfo, $worktreeHostname, $serviceName));
+                $labels = array_merge($labels, $this->overrideTraefikLabels($this->unwrapTaggedLabels($serviceConfig['labels'] ?? []), $config->projectName, $worktreeInfo, $worktreeHostname, $serviceName));
             }
 
             $containerHostname = $this->resolveContainerHostname($serviceName, $serviceConfig, $config);
@@ -497,6 +627,15 @@ readonly class DockerComposeManager
 
         $this->filesystem->dumpFile($tempFile, $yaml);
 
+        // `Filesystem::dumpFile()` writes through `tempnam + chmod(0666 & ~umask) + rename`,
+        // which lands at 0644 with the default umask 0022 — world-readable. The
+        // overlay can carry secrets (DB passwords, API keys) inlined from
+        // `env_file` values when a worktree is active, so tighten the mode to
+        // 0600 explicitly. On single-user dev hosts the practical risk is low,
+        // but multi-tenant build boxes and shared CI runners do not get to
+        // accidentally leak the contents to other UIDs.
+        $this->filesystem->chmod($tempFile, 0o600);
+
         return $tempFile;
     }
 
@@ -551,7 +690,7 @@ readonly class DockerComposeManager
      */
     public function discoverServiceNames(string $projectDir): array
     {
-        return array_keys($this->discoverComposeServicesWithConfig($projectDir));
+        return array_keys($this->parseComposeServicesFromBaseFile($projectDir));
     }
 
     /**
@@ -599,7 +738,7 @@ readonly class DockerComposeManager
      *
      * @return array<string, array<string, mixed>>
      */
-    private function discoverComposeServicesWithConfig(string $projectDir): array
+    private function parseComposeServicesFromBaseFile(string $projectDir): array
     {
         try {
             $composeFile = $this->findComposeFile($projectDir);
@@ -844,6 +983,23 @@ readonly class DockerComposeManager
     }
 
     /**
+     * Unwraps a `labels: !override [...]` or `labels: !reset [...]` TaggedValue
+     * to its inner array so downstream label scanning can iterate it. Compose
+     * itself drops the base labels on either tag; for dde's overlay purposes
+     * we treat the inner list as the effective label set.
+     *
+     * @return array<int|string, mixed>
+     */
+    private function unwrapTaggedLabels(mixed $labels): array
+    {
+        if ($labels instanceof TaggedValue) {
+            $labels = $labels->getValue();
+        }
+
+        return is_array($labels) ? $labels : [];
+    }
+
+    /**
      * Overrides Traefik labels from compose.yml for worktree usage.
      *
      * Rewrites every `Host(`<x>.<project>.test`)` value (including the bare
@@ -927,7 +1083,7 @@ readonly class DockerComposeManager
 
         // Fallback: generate new labels if compose.yml has none
         if (! $hasTraefikLabels) {
-            return $this->traefikService->generateLabels([$worktreeHostname], $serviceName);
+            return TraefikLabelGenerator::generateLabels([$worktreeHostname], $serviceName);
         }
 
         return $overrideLabels;

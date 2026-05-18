@@ -12,7 +12,6 @@ use App\Config\WorktreeInfo;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
 use App\Model\UserContext;
-use App\Service\TraefikService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
@@ -400,6 +399,303 @@ final class DockerComposeManagerTest extends TestCase
         $this->assertArrayNotHasKey('volumes', $data['services']['mercure']);
 
         unlink($overridePath);
+    }
+
+    public function testGetMergedServicesParsesBaseFileWithoutOverride(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+            'worker' => [
+                'image' => 'php:8.5',
+            ],
+        ]);
+
+        $services = $this->manager->getMergedServices($this->tempDir);
+
+        $this->assertArrayHasKey('web', $services);
+        $this->assertArrayHasKey('worker', $services);
+        $this->assertSame('nginx:latest', $services['web']['image']);
+    }
+
+    public function testGetMergedServicesReturnsEmptyForMissingBaseFile(): void
+    {
+        $this->assertSame([], $this->manager->getMergedServices($this->tempDir));
+    }
+
+    public function testGetMergedServicesExceptionOnProcessFailureRedactsStdout(): void
+    {
+        // Regression: `docker compose config --format json` resolves env vars
+        // into stdout, so the body can include secrets like DB passwords. The
+        // exception must NOT echo stdout — only stderr plus a byte count.
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $userOverride = $this->tempDir.'/docker-compose.override.yml';
+        file_put_contents($userOverride, Yaml::dump([
+            'services' => [],
+        ]));
+
+        $secret = 'POSTGRES_PASSWORD=super-secret-do-not-leak';
+        $processFactory = $this->createStub(\App\Util\ProcessFactory::class);
+        $processFactory->method('create')->willReturn(
+            new \Symfony\Component\Process\Process(['sh', '-c', sprintf('echo "%s"; echo "boom" >&2; exit 1', $secret)]),
+        );
+
+        $resourcesDir = dirname(__DIR__, 3).'/resources';
+        $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
+        $worktreeManager = $this->createStub(\App\Manager\WorktreeManager::class);
+        $manager = new DockerComposeManager(
+            $adapterRegistry,
+            $this->createStub(DockerManager::class),
+            new UserContext(),
+            $worktreeManager,
+            new \Symfony\Component\Filesystem\Filesystem(),
+            $processFactory,
+        );
+
+        try {
+            $manager->getMergedServices($this->tempDir, $userOverride);
+            $this->fail('Expected RuntimeException');
+        } catch (\RuntimeException $runtimeException) {
+            $this->assertStringNotContainsString('super-secret-do-not-leak', $runtimeException->getMessage());
+            $this->assertStringContainsString('boom', $runtimeException->getMessage());
+            $this->assertStringContainsString('stdout omitted', $runtimeException->getMessage());
+        }
+    }
+
+    public function testGetMergedServicesExceptionOnInvalidJsonRedactsStdout(): void
+    {
+        // Same redaction promise as the process-failure branch: when Compose
+        // emits stdout that is not parseable JSON (corrupted plugin, mid-way
+        // crash) the body can still contain inlined env_file secrets.
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $userOverride = $this->tempDir.'/docker-compose.override.yml';
+        file_put_contents($userOverride, Yaml::dump([
+            'services' => [],
+        ]));
+
+        $secret = 'POSTGRES_PASSWORD=super-secret-do-not-leak';
+        $processFactory = $this->createStub(\App\Util\ProcessFactory::class);
+        $processFactory->method('create')->willReturn(
+            // Exit 0 (process succeeds) but stdout is not JSON. Adds a stderr
+            // marker so the assertion confirms stderr survives the redaction.
+            new \Symfony\Component\Process\Process(['sh', '-c', sprintf('echo "%s {not-json"; echo "parse hint" >&2', $secret)]),
+        );
+
+        $resourcesDir = dirname(__DIR__, 3).'/resources';
+        $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
+        $worktreeManager = $this->createStub(\App\Manager\WorktreeManager::class);
+        $manager = new DockerComposeManager(
+            $adapterRegistry,
+            $this->createStub(DockerManager::class),
+            new UserContext(),
+            $worktreeManager,
+            new \Symfony\Component\Filesystem\Filesystem(),
+            $processFactory,
+        );
+
+        try {
+            $manager->getMergedServices($this->tempDir, $userOverride);
+            $this->fail('Expected RuntimeException');
+        } catch (\RuntimeException $runtimeException) {
+            $this->assertStringNotContainsString('super-secret-do-not-leak', $runtimeException->getMessage());
+            $this->assertStringContainsString('invalid JSON', $runtimeException->getMessage());
+            $this->assertStringContainsString('parse hint', $runtimeException->getMessage());
+            $this->assertStringContainsString('stdout omitted', $runtimeException->getMessage());
+        }
+    }
+
+    public function testGetMergedServicesExceptionOnUnexpectedStructureRedactsStdout(): void
+    {
+        // Third redaction branch: Compose succeeds AND returns valid JSON,
+        // but the JSON is not a `{services: {...}}` map (Compose CLI bug,
+        // hostile plugin, etc.). The body still needs the same scrubbing.
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $userOverride = $this->tempDir.'/docker-compose.override.yml';
+        file_put_contents($userOverride, Yaml::dump([
+            'services' => [],
+        ]));
+
+        $secret = 'POSTGRES_PASSWORD=super-secret-do-not-leak';
+        // Valid JSON, but services is a string instead of a map.
+        $payload = json_encode([
+            'services' => $secret,
+        ], JSON_THROW_ON_ERROR);
+        $processFactory = $this->createStub(\App\Util\ProcessFactory::class);
+        $processFactory->method('create')->willReturn(
+            new \Symfony\Component\Process\Process(['sh', '-c', sprintf('printf "%%s" %s; echo "structure hint" >&2', escapeshellarg($payload))]),
+        );
+
+        $resourcesDir = dirname(__DIR__, 3).'/resources';
+        $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
+        $worktreeManager = $this->createStub(\App\Manager\WorktreeManager::class);
+        $manager = new DockerComposeManager(
+            $adapterRegistry,
+            $this->createStub(DockerManager::class),
+            new UserContext(),
+            $worktreeManager,
+            new \Symfony\Component\Filesystem\Filesystem(),
+            $processFactory,
+        );
+
+        try {
+            $manager->getMergedServices($this->tempDir, $userOverride);
+            $this->fail('Expected RuntimeException');
+        } catch (\RuntimeException $runtimeException) {
+            $this->assertStringNotContainsString('super-secret-do-not-leak', $runtimeException->getMessage());
+            $this->assertStringContainsString('unexpected structure', $runtimeException->getMessage());
+            $this->assertStringContainsString('structure hint', $runtimeException->getMessage());
+            $this->assertStringContainsString('stdout omitted', $runtimeException->getMessage());
+        }
+    }
+
+    public function testExtractTraefikDomainsFromServicesScansListFormLabels(): void
+    {
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => [
+                    'traefik.http.routers.web.rule=Host(`app.test`)',
+                    'traefik.http.routers.web-tls.rule=Host(`app.test`)',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(['app.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesScansMapFormLabels(): void
+    {
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => [
+                    'traefik.http.routers.web.rule' => 'Host(`app.test`)',
+                    'traefik.http.routers.api.rule' => 'Host(`api.test`)',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(['app.test', 'api.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesHandlesMultipleHostsInOneRule(): void
+    {
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => [
+                    'traefik.http.routers.web.rule=Host(`app.test`) || Host(`www.app.test`)',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(['app.test', 'www.app.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesUnwrapsTaggedLabels(): void
+    {
+        // Labels arriving as `!override` TaggedValue (after parsing a user
+        // override that replaced base labels) must still be scannable.
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => new \Symfony\Component\Yaml\Tag\TaggedValue('override', [
+                    'traefik.http.routers.replaced.rule=Host(`replaced.test`)',
+                ]),
+            ],
+        ]);
+
+        $this->assertSame(['replaced.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesFiltersByServiceList(): void
+    {
+        $services = [
+            'web' => [
+                'labels' => ['traefik.http.routers.web.rule=Host(`web.test`)'],
+            ],
+            'api' => [
+                'labels' => ['traefik.http.routers.api.rule=Host(`api.test`)'],
+            ],
+            'worker' => [
+                'labels' => ['traefik.http.routers.worker.rule=Host(`worker.test`)'],
+            ],
+        ];
+
+        $this->assertSame(
+            ['web.test', 'worker.test'],
+            $this->manager->extractTraefikDomainsFromServices($services, ['web', 'worker']),
+        );
+    }
+
+    public function testExtractTraefikDomainsFromServicesDeduplicates(): void
+    {
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => ['traefik.http.routers.web.rule=Host(`app.test`)'],
+            ],
+            'api' => [
+                'labels' => ['traefik.http.routers.api.rule=Host(`app.test`)'],
+            ],
+        ]);
+
+        $this->assertSame(['app.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesHandlesTraefikV2CommaSyntax(): void
+    {
+        // Traefik accepts `Host(`a`,`b`)` shorthand as an alternative to
+        // chaining `||`. Regression test ported from the old parser-level
+        // suite — the regex in extractTraefikDomainsFromServices() still
+        // covers it, but moving the test along with the method keeps the
+        // guarantee tied to the new owner.
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => [
+                    'traefik.http.routers.web.rule=Host(`app.test`,`www.app.test`)',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(['app.test', 'www.app.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesHandlesWhitespaceAroundHost(): void
+    {
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => [
+                    'traefik.http.routers.web.rule=Host( `app.test` )',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(['app.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesHandlesHostCombinedWithPathPrefix(): void
+    {
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => [
+                    'traefik.http.routers.web.rule=Host(`app.test`) && PathPrefix(`/api`)',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(['app.test'], $domains);
     }
 
     public function testGenerateOverrideThrowsWhenNoServicesFound(): void
@@ -1212,13 +1508,7 @@ ENV);
             },
         );
 
-        $traefikService = new TraefikService(
-            dockerManager: $dockerManager,
-            filesystem: new \Symfony\Component\Filesystem\Filesystem(),
-            dataDir: $this->tempDir,
-        );
-
-        return new DockerComposeManager($adapterRegistry, $dockerManager, $traefikService, new UserContext(), $worktreeManager);
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
     }
 
     private function createManagerWithRealWorktreeManager(): DockerComposeManager
@@ -1232,13 +1522,7 @@ ENV);
 
         $worktreeManager = new \App\Manager\WorktreeManager(new \App\Util\ProcessFactory());
 
-        $traefikService = new TraefikService(
-            dockerManager: $dockerManager,
-            filesystem: new \Symfony\Component\Filesystem\Filesystem(),
-            dataDir: $this->tempDir,
-        );
-
-        return new DockerComposeManager($adapterRegistry, $dockerManager, $traefikService, new UserContext(), $worktreeManager);
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
     }
 
     /**
@@ -1258,13 +1542,7 @@ ENV);
         $resourcesDir = dirname(__DIR__, 3).'/resources';
         $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
         $worktreeManager = $this->createStub(\App\Manager\WorktreeManager::class);
-        $traefikService = new TraefikService(
-            dockerManager: $dockerManager,
-            filesystem: new \Symfony\Component\Filesystem\Filesystem(),
-            dataDir: $this->tempDir,
-        );
-
-        return new DockerComposeManager($adapterRegistry, $dockerManager, $traefikService, new UserContext(), $worktreeManager);
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
     }
 
     protected function setUp(): void

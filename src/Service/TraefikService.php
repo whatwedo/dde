@@ -8,7 +8,7 @@ use App\Manager\DockerManager;
 use App\Model\ContainerConfig;
 use Symfony\Component\Filesystem\Filesystem;
 
-final class TraefikService extends AbstractSystemService
+final class TraefikService extends AbstractSystemService implements ProjectNetworkAwareInterface
 {
     public function __construct(
         DockerManager $dockerManager,
@@ -105,56 +105,6 @@ final class TraefikService extends AbstractSystemService
     public function ensureDynamicConfigDir(): void
     {
         $this->filesystem->mkdir($this->dataDir.'/traefik/dynamic');
-    }
-
-    /**
-     * @param list<string> $hostnames
-     *
-     * @return list<string>
-     *
-     * @throws \InvalidArgumentException
-     */
-    public function generateLabels(array $hostnames, string $serviceName, ?int $port = null): array
-    {
-        if ($hostnames === []) {
-            throw new \InvalidArgumentException('At least one hostname is required');
-        }
-
-        $primaryHostname = $hostnames[0];
-        $routerName = $this->generateRouterName($primaryHostname, $serviceName);
-        $hostRule = $this->generateHostRule($hostnames);
-
-        $labels = [
-            'traefik.enable=true',
-            sprintf('traefik.http.routers.%s.rule=%s', $routerName, $hostRule),
-        ];
-
-        if ($port !== null) {
-            $labels[] = sprintf('traefik.http.services.%s.loadbalancer.server.port=%d', $routerName, $port);
-        }
-
-        $labels[] = sprintf('traefik.http.routers.%s-tls.rule=%s', $routerName, $hostRule);
-        $labels[] = sprintf('traefik.http.routers.%s-tls.tls=true', $routerName);
-
-        return $labels;
-    }
-
-    public function generateRouterName(string $hostname, string $serviceName): string
-    {
-        return str_replace('.', '-', $hostname).'-'.$serviceName;
-    }
-
-    /**
-     * @param list<string> $hostnames
-     */
-    private function generateHostRule(array $hostnames): string
-    {
-        $parts = array_map(
-            static fn (string $h): string => sprintf('Host(`%s`)', $h),
-            $hostnames,
-        );
-
-        return implode(' || ', $parts);
     }
 
     private function ensureCertsDir(): void
