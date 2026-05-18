@@ -22,6 +22,7 @@ use App\Model\ServiceDefinition;
 use App\Parser\DockerComposeParser;
 use App\Service\AbstractSystemService;
 use App\Service\ServiceRegistry;
+use App\Service\TraefikService;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
@@ -125,6 +126,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         );
 
         $worktreeManager = $this->createStub(WorktreeManager::class);
+        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -133,6 +135,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -431,9 +434,8 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->method('createNetwork')
             ->with('dde-services-test-project');
 
-        $this->dockerManager->expects($this->once())
-            ->method('connectContainerToNetwork')
-            ->with('dde-mariadb-10.6', 'dde-services-test-project', ['mariadb']);
+        $calls = [];
+        $this->captureConnectContainerToNetworkCalls(2, $calls);
 
         $this->dockerComposeManager->method('findComposeFile')
             ->willReturn($projectDir.'/docker-compose.yml');
@@ -441,6 +443,9 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
 
         $this->manager->up($config, $projectDir, false);
+
+        self::assertContains(['dde-mariadb-10.6', 'dde-services-test-project', ['mariadb']], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project', []], $calls);
     }
 
     public function testUpSkipsNetworkCreationWhenAlreadyExists(): void
@@ -459,9 +464,8 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerManager->expects($this->never())
             ->method('createNetwork');
 
-        $this->dockerManager->expects($this->once())
-            ->method('connectContainerToNetwork')
-            ->with('dde-mariadb-10.6', 'dde-services-test-project', ['mariadb']);
+        $calls = [];
+        $this->captureConnectContainerToNetworkCalls(2, $calls);
 
         $this->dockerComposeManager->method('findComposeFile')
             ->willReturn($projectDir.'/docker-compose.yml');
@@ -469,6 +473,9 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
 
         $this->manager->up($config, $projectDir, false);
+
+        self::assertContains(['dde-mariadb-10.6', 'dde-services-test-project', ['mariadb']], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project', []], $calls);
     }
 
     public function testUpDisconnectsStaleServiceContainerOfDifferentVersion(): void
@@ -503,9 +510,8 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->method('disconnectContainerFromNetwork')
             ->with('dde-mariadb-11.8', 'dde-services-test-project');
 
-        $this->dockerManager->expects($this->once())
-            ->method('connectContainerToNetwork')
-            ->with('dde-mariadb-10.11', 'dde-services-test-project', ['mariadb']);
+        $calls = [];
+        $this->captureConnectContainerToNetworkCalls(2, $calls);
 
         $this->dockerComposeManager->method('findComposeFile')
             ->willReturn($projectDir.'/docker-compose.yml');
@@ -513,6 +519,9 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
 
         $this->manager->up($config, $projectDir, false);
+
+        self::assertContains(['dde-mariadb-10.11', 'dde-services-test-project', ['mariadb']], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project', []], $calls);
     }
 
     public function testUpKeepsServiceContainerOfMatchingVersionAttached(): void
@@ -542,9 +551,8 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerManager->expects($this->never())
             ->method('disconnectContainerFromNetwork');
 
-        $this->dockerManager->expects($this->once())
-            ->method('connectContainerToNetwork')
-            ->with('dde-mariadb-10.11', 'dde-services-test-project', ['mariadb']);
+        $calls = [];
+        $this->captureConnectContainerToNetworkCalls(2, $calls);
 
         $this->dockerComposeManager->method('findComposeFile')
             ->willReturn($projectDir.'/docker-compose.yml');
@@ -552,6 +560,9 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
 
         $this->manager->up($config, $projectDir, false);
+
+        self::assertContains(['dde-mariadb-10.11', 'dde-services-test-project', ['mariadb']], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project', []], $calls);
     }
 
     public function testUpSkipsStaleScanWhenNetworkIsFreshlyCreated(): void
@@ -582,9 +593,8 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerManager->expects($this->never())
             ->method('disconnectContainerFromNetwork');
 
-        $this->dockerManager->expects($this->once())
-            ->method('connectContainerToNetwork')
-            ->with('dde-mariadb-10.11', 'dde-services-test-project', ['mariadb']);
+        $calls = [];
+        $this->captureConnectContainerToNetworkCalls(2, $calls);
 
         $this->dockerComposeManager->method('findComposeFile')
             ->willReturn($projectDir.'/docker-compose.yml');
@@ -592,6 +602,9 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
 
         $this->manager->up($config, $projectDir, false);
+
+        self::assertContains(['dde-mariadb-10.11', 'dde-services-test-project', ['mariadb']], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project', []], $calls);
     }
 
     public function testDownDisconnectsServicesAndRemovesNetwork(): void
@@ -606,9 +619,8 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->with('dde-services-test-project')
             ->willReturn(true);
 
-        $this->dockerManager->expects($this->once())
-            ->method('disconnectContainerFromNetwork')
-            ->with('dde-mariadb-10.6', 'dde-services-test-project');
+        $calls = [];
+        $this->captureDisconnectContainerFromNetworkCalls(2, $calls);
 
         $this->dockerManager->expects($this->once())
             ->method('removeNetwork')
@@ -618,6 +630,9 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->method('down');
 
         $this->manager->down($config, $projectDir);
+
+        self::assertContains(['dde-mariadb-10.6', 'dde-services-test-project'], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project'], $calls);
     }
 
     public function testDownSkipsAllCleanupWhenNetworkMissing(): void
@@ -665,6 +680,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
+        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -673,6 +689,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -682,9 +699,8 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->with('dde-services-test-project-wt')
             ->willReturn(true);
 
-        $this->dockerManager->expects($this->once())
-            ->method('disconnectContainerFromNetwork')
-            ->with('dde-postgres-18', 'dde-services-test-project-wt');
+        $calls = [];
+        $this->captureDisconnectContainerFromNetworkCalls(2, $calls);
 
         $this->dockerManager->expects($this->once())
             ->method('removeNetwork')
@@ -693,6 +709,9 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->expects($this->once())->method('down');
 
         $manager->down($config, $projectDir);
+
+        self::assertContains(['dde-postgres-18', 'dde-services-test-project-wt'], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project-wt'], $calls);
     }
 
     /**
@@ -895,6 +914,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
+        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -903,6 +923,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -954,6 +975,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
+        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -962,6 +984,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1014,6 +1037,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
+        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1022,6 +1046,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1071,6 +1096,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
+        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1079,6 +1105,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1094,9 +1121,8 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->method('createNetwork')
             ->with('dde-services-test-project-wt');
 
-        $this->dockerManager->expects($this->once())
-            ->method('connectContainerToNetwork')
-            ->with('dde-postgres-18', 'dde-services-test-project-wt', ['postgres']);
+        $calls = [];
+        $this->captureConnectContainerToNetworkCalls(2, $calls);
 
         $this->dockerComposeManager->method('findComposeFile')
             ->willReturn($projectDir.'/docker-compose.yml');
@@ -1107,6 +1133,9 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willReturn('/tmp/override.yml');
 
         $manager->up($config, $projectDir, false);
+
+        self::assertContains(['dde-postgres-18', 'dde-services-test-project-wt', ['postgres']], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project-wt', []], $calls);
     }
 
     public function testBuildProjectNetworkNameAppendsSanitisedWorktreeSuffix(): void
@@ -1184,6 +1213,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
+        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1192,6 +1222,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1258,6 +1289,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             '/tmp/dde-data',
         );
 
+        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1266,6 +1298,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );
@@ -1287,6 +1320,30 @@ final class ProjectLifecycleManagerTest extends TestCase
             globalConfig: new GlobalConfig(),
             projectConfig: new ProjectConfig(name: 'test-project', services: $services),
         );
+    }
+
+    /**
+     * @param list<array{0: string, 1: string, 2: array<int, string>}> $calls
+     */
+    private function captureConnectContainerToNetworkCalls(int $expectedCount, array &$calls): void
+    {
+        $this->dockerManager->expects($this->exactly($expectedCount))
+            ->method('connectContainerToNetwork')
+            ->willReturnCallback(static function (string $container, string $network, array $aliases = []) use (&$calls): void {
+                $calls[] = [$container, $network, $aliases];
+            });
+    }
+
+    /**
+     * @param list<array{0: string, 1: string}> $calls
+     */
+    private function captureDisconnectContainerFromNetworkCalls(int $expectedCount, array &$calls): void
+    {
+        $this->dockerManager->expects($this->exactly($expectedCount))
+            ->method('disconnectContainerFromNetwork')
+            ->willReturnCallback(static function (string $container, string $network) use (&$calls): void {
+                $calls[] = [$container, $network];
+            });
     }
 
     protected function setUp(): void
@@ -1312,6 +1369,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         // so removeNetwork is never called unless a test explicitly stubs networkExists to true.
 
         $worktreeManager = $this->createStub(WorktreeManager::class);
+        $traefikService = new TraefikService($this->dockerManager, $this->systemFilesystem, '/tmp/dde-data');
         $this->manager = new ProjectLifecycleManager(
             $this->dockerComposeManager,
             $systemServiceManager,
@@ -1320,6 +1378,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $traefikService,
             $this->composeParser,
             $this->filesystem,
         );

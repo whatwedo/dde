@@ -103,12 +103,14 @@ The `.gitignore` file excludes `data/` and `snapshots/` so that database files a
 
 ## Networking
 
-dde uses two Docker networks per project, both attached to every project container:
+dde uses two Docker networks:
 
-- **`dde`** — a single, machine-wide network shared by **all** projects. Traefik lives on this network and uses it to reach every project container for HTTP/HTTPS routing. It is created by `system:install`.
-- **`dde-services-<project>`** (main checkout) or **`dde-services-<project>-<suffix>`** (worktree) — a per-worktree network. The versioned service containers picked in `.dde/config.yml` (e.g. `mariadb`, `postgres`, `valkey`, `mailpit`) are connected here under their canonical service names, so your application reaches them as `mariadb`, `postgres`, etc. — the same hostnames a classic single-project compose file would use. Each worktree owns its own network; `project:down` removes only the calling worktree's network, leaving main and sibling worktrees unaffected. The per-worktree network design also lets a branch run a different service version than main without canonical-alias collisions.
+- **`dde`** — a single, machine-wide network created by `system:install`. Traefik lives here, and global services that need cross-project DNS (e.g. Mailpit's `mail` alias) are attached to it.
+- **`dde-services-<project>`** (main checkout) or **`dde-services-<project>-<suffix>`** (worktree) — a per-worktree network. Project containers and the versioned service containers picked in `.dde/config.yml` (e.g. `mariadb`, `postgres`, `valkey`, `mailpit`) are connected here under their canonical service names, so your application reaches them as `mariadb`, `postgres`, etc. — the same hostnames a classic single-project compose file would use. Each worktree owns its own network; `project:down` removes only the calling worktree's network, leaving main and sibling worktrees unaffected. The per-worktree network design also lets a branch run a different service version than main without canonical-alias collisions.
 
-Neither network is declared in your committed `docker-compose.yml`. Both are **injected into the compose overlay** that `project:up` generates and torn down on `project:down`, so the project file stays free of dde infrastructure. If `.dde/config.yml` declares no services, only the shared `dde` network is attached.
+Project containers do not join the shared `dde` network when a per-project network exists: two checkouts of the same project (main + worktree) would otherwise register identical service-name aliases on `dde` and Docker DNS would round-robin between them. To keep inbound HTTP routing working, Traefik is attached to the per-project network on `project:up` and detached on `project:down`.
+
+Neither network is declared in your committed `docker-compose.yml`. Both are **injected into the compose overlay** that `project:up` generates and torn down on `project:down`, so the project file stays free of dde infrastructure. If `.dde/config.yml` declares no services, only the shared `dde` network is attached (there is no per-project network to isolate on).
 
 This split is what lets multiple projects use the same versioned service container (one `mariadb:11.8` serves all projects that asked for it) while keeping the service hostnames stable inside each project: `my-app` and `other-app` both talk to `mariadb`, but each sees only its own per-project network.
 

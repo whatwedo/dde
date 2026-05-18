@@ -8,6 +8,7 @@ use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Parser\DockerComposeParser;
 use App\Service\ServiceRegistry;
+use App\Service\TraefikService;
 use App\Util\IdentifierSanitizer;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -22,6 +23,7 @@ readonly class ProjectLifecycleManager
         private ServiceRegistry $serviceRegistry,
         private DockerManager $dockerManager,
         private WorktreeManager $worktreeManager,
+        private TraefikService $traefikService,
         private DockerComposeParser $composeParser = new DockerComposeParser(),
         private Filesystem $filesystem = new Filesystem(),
     ) {
@@ -173,7 +175,13 @@ readonly class ProjectLifecycleManager
             $this->dockerManager->disconnectContainerFromNetwork($containerName, $projectNetwork);
         }
 
-        // 3. Remove the now-empty per-project network
+        // 3. Disconnect Traefik (attached in ensureProjectNetwork).
+        $this->dockerManager->disconnectContainerFromNetwork(
+            $this->traefikService->getContainerName(),
+            $projectNetwork,
+        );
+
+        // 4. Remove the now-empty per-project network
         $this->dockerManager->removeNetwork($projectNetwork);
     }
 
@@ -346,6 +354,13 @@ readonly class ProjectLifecycleManager
         foreach ($desiredContainers as $serviceName => $containerName) {
             $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$serviceName]);
         }
+
+        // Traefik must join the per-project network so it can route inbound
+        // HTTP traffic — project containers no longer share `dde` with it.
+        $this->dockerManager->connectContainerToNetwork(
+            $this->traefikService->getContainerName(),
+            $projectNetwork,
+        );
     }
 
     /**

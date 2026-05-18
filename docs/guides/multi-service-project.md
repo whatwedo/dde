@@ -70,7 +70,7 @@ A few things to notice:
 
 - Shared infrastructure like a database, cache, or mail server is **not** declared inline. Those belong in `.dde/config.yml` under `services:` (see next step) so dde can run them as versioned, machine-wide containers instead of spinning up a dedicated copy per project.
 - `storage` is a project-local third-party container ([Garage](https://garagehq.deuxfleurs.fr/), an S3-compatible object store). It is declared inline precisely because it is not part of dde's built-in service catalogue. The application reaches it at `storage:3900` over the per-project network, just like any compose-defined sibling.
-- The file declares no `networks:` block and no `dde_ssh-agent_socket-dir` volume — both the shared `dde` network, the per-project `dde-services-<project>` (or `dde-services-<project>-<suffix>` for a worktree) network, and the SSH-Agent volume are injected by the overlay that `project:up` generates.
+- The file declares no `networks:` block and no `dde_ssh-agent_socket-dir` volume — the per-project `dde-services-<project>` (or `dde-services-<project>-<suffix>` for a worktree) network and the SSH-Agent volume are injected by the overlay that `project:up` generates.
 
 ## 2. Initialize the Project
 
@@ -99,7 +99,7 @@ containers:
 
 When `dde project:up` runs, it generates a docker-compose override for **every service** in the compose file. Every service gets:
 
-- Attached to the shared `dde` network and the per-project `dde-services-<project>` (or `dde-services-<project>-<suffix>` for a worktree) network
+- Attached to the per-project `dde-services-<project>` (or `dde-services-<project>-<suffix>` for a worktree) network
 - A `dde.managed=true` label
 
 In addition, services whose image has a shell (`web`, `worker`, `scheduler` in this example) also get:
