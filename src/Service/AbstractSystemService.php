@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Manager\DockerManager;
 use App\Model\ContainerConfig;
+use App\Model\ContainerInfo;
 use App\Model\ServiceStatus;
 
 abstract class AbstractSystemService implements ServiceInterface
@@ -127,6 +128,29 @@ abstract class AbstractSystemService implements ServiceInterface
 
         $networks = $this->dockerManager->listNetworksWithPrefix('dde-services-');
         $container = $this->getContainerName();
+
+        // Identify dde-managed infrastructure containers so they don't count
+        // as "project containers" on a stale network. Both global services
+        // (Traefik, Mailpit, …) and versioned services (`dde-postgres-18`, …)
+        // carry the `dde.service` label; user project containers do not.
+        // `com.docker.compose.project=dde` is unsafe here — a user project
+        // in a directory literally named `dde` would carry that same value
+        // and get misclassified, so reconciliation would skip its network.
+        try {
+            $ddeManagedContainers = $this->dockerManager->getContainersByLabel('dde.service');
+        } catch (\RuntimeException) {
+            // No reliable filter list → degrade to "skip reconciliation this
+            // run" instead of "every connected container counts as a
+            // project". The previous empty-array fallback caused Traefik to
+            // attach to every stale `dde-services-*` network that still had
+            // a leftover dde-managed container connected.
+            return;
+        }
+
+        $ddeManagedNames = array_flip(array_map(
+            static fn (ContainerInfo $info): string => $info->name,
+            $ddeManagedContainers,
+        ));
         $attached = false;
 
         foreach ($networks as $network) {
@@ -136,10 +160,18 @@ abstract class AbstractSystemService implements ServiceInterface
                 continue;
             }
 
-            $hasProjectContainers = array_filter(
-                $connected,
-                static fn (string $name): bool => $name !== $container,
-            ) !== [];
+            // Only project containers count: dde-managed containers (Traefik,
+            // Mailpit, versioned `dde-mariadb-*` services …) leftover on a
+            // stale network would otherwise reconcile each other indefinitely
+            // and keep an empty network alive.
+            $hasProjectContainers = false;
+
+            foreach ($connected as $name) {
+                if (! isset($ddeManagedNames[$name])) {
+                    $hasProjectContainers = true;
+                    break;
+                }
+            }
 
             if (! $hasProjectContainers) {
                 continue;
