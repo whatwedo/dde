@@ -184,6 +184,34 @@ readonly class DockerManager
         ));
     }
 
+    /**
+     * Returns the network names whose name matches the given prefix.
+     *
+     * @return list<string>
+     */
+    public function listNetworksWithPrefix(string $prefix): array
+    {
+        $process = $this->processFactory->create([
+            'docker',
+            'network',
+            'ls',
+            '--filter',
+            'name='.$prefix,
+            '--format',
+            '{{.Name}}',
+        ]);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            explode("\n", trim($process->getOutput())),
+            static fn (string $name): bool => $name !== '' && str_starts_with($name, $prefix),
+        ));
+    }
+
     public function createNetwork(string $name): void
     {
         $process = $this->processFactory->create(['docker', 'network', 'create', $name]);
