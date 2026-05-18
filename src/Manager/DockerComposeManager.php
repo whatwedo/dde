@@ -511,6 +511,26 @@ readonly class DockerComposeManager
     }
 
     /**
+     * Locate the user-supplied compose override paired with the given base file.
+     * Needed because `up()` passes explicit `-f` arguments, which disables
+     * Compose's default override discovery.
+     */
+    public function findUserOverrideFile(string $projectDir, string $composeFile): ?string
+    {
+        $candidates = ProjectConfigManager::COMPOSE_OVERRIDE_FILES[basename($composeFile)] ?? [];
+
+        foreach ($candidates as $candidate) {
+            $path = $projectDir.'/'.$candidate;
+
+            if ($this->filesystem->exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Discovers service names defined in the compose file.
      *
      * @return list<string>
