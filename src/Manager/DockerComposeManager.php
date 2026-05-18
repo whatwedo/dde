@@ -511,6 +511,28 @@ readonly class DockerComposeManager
     }
 
     /**
+     * Locate the user-supplied compose override that Docker Compose would normally
+     * merge automatically. `up()` passes explicit `-f` arguments, which disables
+     * Compose's default override discovery, so the project lifecycle needs to
+     * surface the file itself. The lookup is paired by base filename — a project
+     * on `compose.yml` does not pick up a stray `docker-compose.override.yml`.
+     */
+    public function findUserOverrideFile(string $projectDir, string $composeFile): ?string
+    {
+        $candidates = ProjectConfigManager::COMPOSE_OVERRIDE_FILES[basename($composeFile)] ?? [];
+
+        foreach ($candidates as $candidate) {
+            $path = $projectDir.'/'.$candidate;
+
+            if ($this->filesystem->exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Discovers service names defined in the compose file.
      *
      * @return list<string>

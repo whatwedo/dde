@@ -23,6 +23,22 @@ readonly class ProjectConfigManager
 
     public const array COMPOSE_FILES = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml'];
 
+    /**
+     * Map from a base compose filename to the user-supplied override variants
+     * Docker Compose would auto-merge by default. The override is paired by
+     * base stem (`docker-compose` vs. `compose`) so a project that uses
+     * `compose.yml` does not accidentally pick up a `docker-compose.override.yml`
+     * that belongs to a different setup.
+     *
+     * @var array<string, list<string>>
+     */
+    public const array COMPOSE_OVERRIDE_FILES = [
+        'docker-compose.yml' => ['docker-compose.override.yml', 'docker-compose.override.yaml'],
+        'docker-compose.yaml' => ['docker-compose.override.yaml', 'docker-compose.override.yml'],
+        'compose.yml' => ['compose.override.yml', 'compose.override.yaml'],
+        'compose.yaml' => ['compose.override.yaml', 'compose.override.yml'],
+    ];
+
     private const string PROJECT_MARKER = '.dde/config.yml';
 
     public function __construct(
