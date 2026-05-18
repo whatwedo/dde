@@ -202,6 +202,102 @@ readonly class DockerComposeManager
     }
 
     /**
+     * Returns the effective service configuration as Compose itself would
+     * assemble it. With no user override the base file IS the merged view
+     * and a YAML parse is sufficient; once a user override is present, we
+     * shell out to `docker compose config` so Compose's own override rules
+     * (`!override`, `!reset`, list-form label key-dedupe, env substitution,
+     * and image/entrypoint/command resolution) are applied — the same rules
+     * Compose will use at runtime when dde hands it the same `-f` chain.
+     *
+     * @return array<string, array<string, mixed>>
+     *
+     * @throws \RuntimeException
+     */
+    public function getMergedServices(string $projectDir, ?string $userOverrideFile = null): array
+    {
+        if ($userOverrideFile === null) {
+            return $this->discoverComposeServicesWithConfig($projectDir);
+        }
+
+        $composeFile = $this->findComposeFile($projectDir);
+
+        $cmd = ['docker', 'compose', '-f', $composeFile, '-f', $userOverrideFile, 'config', '--format', 'json'];
+
+        $process = $this->processFactory->create($cmd, $projectDir, null);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new \RuntimeException(sprintf(
+                "docker compose config failed:\n%s%s",
+                $process->getErrorOutput(),
+                $process->getOutput(),
+            ));
+        }
+
+        /** @var mixed $data */
+        $data = json_decode($process->getOutput(), true);
+
+        if (! is_array($data) || ! is_array($data['services'] ?? null)) {
+            return [];
+        }
+
+        $services = [];
+
+        foreach ($data['services'] as $name => $config) {
+            if (is_string($name) && is_array($config)) {
+                $services[$name] = $config;
+            }
+        }
+
+        return $services;
+    }
+
+    /**
+     * Extracts unique Traefik `Host()` domains from the merged service set.
+     * Use this over `DockerComposeParser::extractTraefikDomains()` whenever a
+     * user override might modify Traefik labels, because the merged set
+     * reflects Compose's actual label resolution including `!override`/`!reset`.
+     *
+     * @param array<string, array<string, mixed>> $services
+     * @param list<string>|null                   $onlyServices service names to include (null = all)
+     *
+     * @return list<string>
+     */
+    public function extractTraefikDomainsFromServices(array $services, ?array $onlyServices = null): array
+    {
+        $domains = [];
+
+        foreach ($services as $serviceName => $service) {
+            if ($onlyServices !== null && ! in_array($serviceName, $onlyServices, true)) {
+                continue;
+            }
+
+            $labels = $service['labels'] ?? [];
+
+            if (! is_array($labels)) {
+                continue;
+            }
+
+            foreach ($labels as $key => $value) {
+                $label = is_int($key) ? (string) $value : $key.'='.$value;
+
+                if (preg_match_all('/Host\(([^)]+)\)/', $label, $hostMatches)) {
+                    foreach ($hostMatches[1] as $hostContent) {
+                        if (preg_match_all('/`([^`]+)`/', $hostContent, $domainMatches)) {
+                            foreach ($domainMatches[1] as $domain) {
+                                $domains[] = $domain;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($domains));
+    }
+
+    /**
      * Returns true if any image-based service in the compose file has an image that is not yet present locally.
      * Build-only services (using `build:` without `image:`) are excluded.
      * Services with both `build:` and `image:` are also excluded (built locally, not pulled).
@@ -290,9 +386,14 @@ readonly class DockerComposeManager
         }
     }
 
-    public function generateOverride(ResolvedConfig $config, string $projectDir, ?WorktreeInfo $worktreeInfo = null, ?string $projectNetwork = null): string
+    public function generateOverride(ResolvedConfig $config, string $projectDir, ?WorktreeInfo $worktreeInfo = null, ?string $projectNetwork = null, ?string $userOverrideFile = null): string
     {
-        $composeServices = $this->discoverComposeServicesWithConfig($projectDir);
+        // Source of truth is Compose's own merged view of base + user
+        // override: it resolves label `!override`/`!reset`, picks the
+        // effective `image`/`entrypoint`/`command`, and exposes services
+        // declared only in the override — all things a hand-rolled merge in
+        // PHP would have to re-implement (and historically got wrong).
+        $composeServices = $this->getMergedServices($projectDir, $userOverrideFile);
 
         if ($composeServices === []) {
             throw new \RuntimeException(sprintf('No services found in docker-compose.yml in "%s"', $projectDir));

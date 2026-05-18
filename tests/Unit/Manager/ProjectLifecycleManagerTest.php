@@ -19,7 +19,6 @@ use App\Manager\SystemServiceManager;
 use App\Manager\WorktreeManager;
 use App\Model\ContainerConfig;
 use App\Model\ServiceDefinition;
-use App\Parser\DockerComposeParser;
 use App\Service\AbstractSystemService;
 use App\Service\ServiceRegistry;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -32,8 +31,6 @@ use Symfony\Component\Filesystem\Filesystem;
 final class ProjectLifecycleManagerTest extends TestCase
 {
     public $certificateManager;
-
-    public DockerComposeParser&Stub $composeParser;
 
     private DockerComposeManager&MockObject $dockerComposeManager;
 
@@ -135,7 +132,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $this->composeParser,
             $this->filesystem,
         );
 
@@ -260,7 +256,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('findComposeFile')
             ->willReturn($projectDir.'/docker-compose.yml');
 
-        $this->certificateManager->method('ensureForComposeFile')
+        $this->certificateManager->method('ensureForDomains')
             ->willThrowException(new \RuntimeException('mkcert not found'));
 
         $this->expectException(\RuntimeException::class);
@@ -631,7 +627,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $this->createStub(WorktreeManager::class),
-            $this->composeParser,
             $this->filesystem,
         );
 
@@ -681,7 +676,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $this->createStub(WorktreeManager::class),
-            $this->composeParser,
             $this->filesystem,
         );
 
@@ -862,7 +856,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $this->composeParser,
             $this->filesystem,
         );
 
@@ -953,7 +946,7 @@ final class ProjectLifecycleManagerTest extends TestCase
                 ],
             ]);
 
-        $this->composeParser->method('extractTraefikDomains')
+        $this->dockerComposeManager->method('extractTraefikDomainsFromServices')
             ->willReturn(['app.test', 'api.app.test']);
 
         $result = $this->manager->up($config, $projectDir, false);
@@ -973,7 +966,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
         $this->dockerComposeManager->method('ps')->willReturn([]);
 
-        $this->composeParser->method('extractTraefikDomains')->willReturn([]);
+        $this->dockerComposeManager->method('extractTraefikDomainsFromServices')->willReturn([]);
 
         $result = $this->manager->up($config, $projectDir, false);
 
@@ -999,9 +992,10 @@ final class ProjectLifecycleManagerTest extends TestCase
                 ],
             ]);
 
-        $this->composeParser->method('extractTraefikDomains')
-            ->with($projectDir.'/docker-compose.yml', ['web'])
-            ->willReturn(['app.test']);
+        $this->dockerComposeManager->method('extractTraefikDomainsFromServices')
+            ->willReturnCallback(static function (array $services, ?array $onlyServices = null): array {
+                return $onlyServices === ['web'] ? ['app.test'] : [];
+            });
 
         $result = $this->manager->up($config, $projectDir, false);
 
@@ -1044,9 +1038,10 @@ final class ProjectLifecycleManagerTest extends TestCase
                 ],
             ]);
 
-        $this->composeParser->method('extractTraefikDomains')
-            ->with($projectDir.'/docker-compose.yml', ['worker', 'api'])
-            ->willReturn(['worker.test', 'api.test']);
+        $this->dockerComposeManager->method('extractTraefikDomainsFromServices')
+            ->willReturnCallback(static function (array $services, ?array $onlyServices = null): array {
+                return $onlyServices === ['worker', 'api'] ? ['worker.test', 'api.test'] : [];
+            });
 
         $result = $this->manager->up($config, $projectDir, false);
 
@@ -1094,7 +1089,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $this->composeParser,
             $this->filesystem,
         );
 
@@ -1103,7 +1097,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->imageManager->method('ensureDevLayers')->willReturn(null);
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
         $this->dockerComposeManager->method('ps')->willThrowException(new \RuntimeException('ps json parse failed'));
-        $this->composeParser->method('extractTraefikDomains')->willReturn(['test-project.test']);
+        $this->dockerComposeManager->method('extractTraefikDomainsFromServices')->willReturn(['test-project.test']);
 
         $result = $manager->up($config, $projectDir, false);
 
@@ -1153,7 +1147,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $this->composeParser,
             $this->filesystem,
         );
 
@@ -1161,7 +1154,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willReturn($projectDir.'/docker-compose.yml');
         $this->imageManager->method('ensureDevLayers')->willReturn(null);
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
-        $this->composeParser->method('extractTraefikDomains')->willReturn(['test-project.test']);
+        $this->dockerComposeManager->method('extractTraefikDomainsFromServices')->willReturn(['test-project.test']);
 
         $result = $manager->up($config, $projectDir, false);
 
@@ -1213,7 +1206,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $this->composeParser,
             $this->filesystem,
         );
 
@@ -1221,7 +1213,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willReturn($projectDir.'/docker-compose.yml');
         $this->imageManager->method('ensureDevLayers')->willReturn(null);
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
-        $this->composeParser->method('extractTraefikDomains')->willReturn([
+        $this->dockerComposeManager->method('extractTraefikDomainsFromServices')->willReturn([
             'test-project.test',
             'preview.test-project.test',
             'playwright.test-project.test',
@@ -1270,7 +1262,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $this->composeParser,
             $this->filesystem,
         );
 
@@ -1351,22 +1342,16 @@ final class ProjectLifecycleManagerTest extends TestCase
                 };
             });
 
-        // Use a MockObject (not Stub) so we can assert on ensureForDomains expectations.
         $mkcertManager = $this->createMock(MkcertManager::class);
-        $mkcertManager->method('ensureForComposeFile');
+        $mkcertCalls = [];
         $mkcertManager
-            ->expects($this->atLeastOnce())
             ->method('ensureForDomains')
-            ->with(
-                'beispiel-feature-x',
-                $this->callback(static function (array $domains): bool {
-                    return in_array('beispiel-feature-x.test', $domains, true)
-                        && in_array('preview.beispiel-feature-x.test', $domains, true);
-                }),
-            );
+            ->willReturnCallback(static function (string $certName, array $domains) use (&$mkcertCalls): void {
+                $mkcertCalls[] = [$certName, $domains];
+            });
 
         // Compose file declares the bare project host and a subdomain.
-        $this->composeParser->method('extractTraefikDomains')
+        $this->dockerComposeManager->method('extractTraefikDomainsFromServices')
             ->willReturn(['beispiel.test', 'preview.beispiel.test']);
 
         $serviceRegistry = new ServiceRegistry([$this->traefikStub], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
@@ -1385,7 +1370,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $this->composeParser,
             $this->filesystem,
         );
 
@@ -1395,6 +1379,19 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
 
         $manager->up($config, $projectDir, build: false);
+
+        $worktreeCall = null;
+
+        foreach ($mkcertCalls as $call) {
+            if ($call[0] === 'beispiel-feature-x') {
+                $worktreeCall = $call;
+                break;
+            }
+        }
+
+        self::assertNotNull($worktreeCall, 'mkcert was not called for the worktree certificate');
+        self::assertContains('beispiel-feature-x.test', $worktreeCall[1]);
+        self::assertContains('preview.beispiel-feature-x.test', $worktreeCall[1]);
     }
 
     public function testUpExcludesUnrelatedExternalDomainsFromWorktreeCertificate(): void
@@ -1428,19 +1425,14 @@ final class ProjectLifecycleManagerTest extends TestCase
             });
 
         $mkcertManager = $this->createMock(MkcertManager::class);
-        $mkcertManager->method('ensureForComposeFile');
+        $mkcertCalls = [];
         $mkcertManager
-            ->expects($this->atLeastOnce())
             ->method('ensureForDomains')
-            ->with(
-                'beispiel-feature-x',
-                $this->callback(static function (array $domains): bool {
-                    return in_array('beispiel-feature-x.test', $domains, true)
-                        && ! in_array('partner.example.com', $domains, true);
-                }),
-            );
+            ->willReturnCallback(static function (string $certName, array $domains) use (&$mkcertCalls): void {
+                $mkcertCalls[] = [$certName, $domains];
+            });
 
-        $this->composeParser->method('extractTraefikDomains')
+        $this->dockerComposeManager->method('extractTraefikDomainsFromServices')
             ->willReturn(['beispiel.test', 'partner.example.com']);
 
         $serviceRegistry = new ServiceRegistry([$this->traefikStub], new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()]));
@@ -1459,7 +1451,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $this->composeParser,
             $this->filesystem,
         );
 
@@ -1469,6 +1460,19 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
 
         $manager->up($config, $projectDir, build: false);
+
+        $worktreeCall = null;
+
+        foreach ($mkcertCalls as $call) {
+            if ($call[0] === 'beispiel-feature-x') {
+                $worktreeCall = $call;
+                break;
+            }
+        }
+
+        self::assertNotNull($worktreeCall);
+        self::assertContains('beispiel-feature-x.test', $worktreeCall[1]);
+        self::assertNotContains('partner.example.com', $worktreeCall[1]);
     }
 
     /**
@@ -1528,7 +1532,6 @@ final class ProjectLifecycleManagerTest extends TestCase
         );
 
         $this->certificateManager = $this->createStub(MkcertManager::class);
-        $this->composeParser = $this->createStub(DockerComposeParser::class);
 
         // networkExists returns false by default (PHPUnit mock default for bool return),
         // so removeNetwork is never called unless a test explicitly stubs networkExists to true.
@@ -1542,7 +1545,6 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
-            $this->composeParser,
             $this->filesystem,
         );
     }

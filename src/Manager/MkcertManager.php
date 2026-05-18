@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Manager;
 
-use App\Parser\DockerComposeParser;
 use App\Util\ProcessFactory;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -16,28 +15,8 @@ readonly class MkcertManager
         private Filesystem $filesystem,
         private string $dataDir,
         private ClockInterface $clock,
-        private DockerComposeParser $composeParser = new DockerComposeParser(),
         private ProcessFactory $processFactory = new ProcessFactory(),
     ) {
-    }
-
-    /**
-     * Extracts domains from Traefik labels in the compose file and ensures TLS certificates exist.
-     */
-    public function ensureForComposeFile(string $projectName, string $composeFile): void
-    {
-        if (! $this->isMkcertInstalled()) {
-            return;
-        }
-
-        $domains = $this->composeParser->extractTraefikDomains($composeFile);
-
-        if ($domains === []) {
-            return;
-        }
-
-        $this->ensureCertificate($projectName, $domains);
-        $this->updateTraefikDynamicConfig();
     }
 
     /**

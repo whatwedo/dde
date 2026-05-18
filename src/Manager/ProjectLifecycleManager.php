@@ -6,7 +6,6 @@ namespace App\Manager;
 
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
-use App\Parser\DockerComposeParser;
 use App\Service\ServiceRegistry;
 use App\Util\IdentifierSanitizer;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -22,7 +21,6 @@ readonly class ProjectLifecycleManager
         private ServiceRegistry $serviceRegistry,
         private DockerManager $dockerManager,
         private WorktreeManager $worktreeManager,
-        private DockerComposeParser $composeParser = new DockerComposeParser(),
         private Filesystem $filesystem = new Filesystem(),
     ) {
     }
@@ -50,10 +48,21 @@ readonly class ProjectLifecycleManager
             : null;
         $this->ensureProjectNetwork($config, $projectNetwork);
 
-        // 4. Ensure TLS certificates for project domains
+        // 4. Discover the user override up-front and snapshot the effective
+        //    Compose service set (base + override merged) once. Every later
+        //    step that reads service config — TLS, dev layer, domain output —
+        //    works off this view, so a Traefik router declared only in
+        //    `docker-compose.override.yml` is covered without re-implementing
+        //    Compose's merge rules in PHP.
         $composeFile = $this->dockerComposeManager->findComposeFile($projectDir);
+        $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
+        $mergedServices = $this->dockerComposeManager->getMergedServices($projectDir, $userOverride);
         $projectName = $config->projectName;
-        $this->mkcertManager->ensureForComposeFile($projectName, $composeFile);
+
+        $this->mkcertManager->ensureForDomains(
+            $projectName,
+            $this->dockerComposeManager->extractTraefikDomainsFromServices($mergedServices),
+        );
 
         // 4b. Ensure TLS certificates for worktree domains
         $worktreeHostname = null;
@@ -62,7 +71,7 @@ readonly class ProjectLifecycleManager
             $worktreeHostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
             $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
 
-            $mainDomains = $this->composeParser->extractTraefikDomains($composeFile);
+            $mainDomains = $this->dockerComposeManager->extractTraefikDomainsFromServices($mergedServices);
             $worktreeDomains = [];
 
             // Only include domains the rewrite actually changed. Compose
@@ -88,8 +97,11 @@ readonly class ProjectLifecycleManager
             $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, $worktreeDomains);
         }
 
-        // 5. Image layer check — build dev layer for project containers
-        $devLayerResult = $this->imageManager->ensureDevLayers($config, $composeFile, $output);
+        // 5. Image layer check — build dev layer for project containers.
+        //    Reuse the merged service view from step 4 so a base file with
+        //    valid Compose custom tags (`!override`, `!reset`) doesn't fail a
+        //    second, narrower YAML parse here.
+        $devLayerResult = $this->imageManager->ensureDevLayers($config, $mergedServices, $output);
 
         // 6. Pre-build compose images
         $this->dockerComposeManager->build($projectDir, [], $output);
@@ -99,8 +111,11 @@ readonly class ProjectLifecycleManager
             $this->dockerComposeManager->pull($projectDir);
         }
 
-        // 8. Generate override (inject worktree info + per-project network)
-        $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork);
+        // 8. Generate the dde overlay from the merged service view discovered
+        //    in step 4 so override-only services and override-modified fields
+        //    (image, entrypoint, command, labels) get the same treatment as
+        //    base services.
+        $overrideFile = $this->dockerComposeManager->generateOverride($config, $projectDir, $worktreeInfo, $projectNetwork, $userOverride);
 
         // 9. Docker compose up, then query running services while the override
         //    file still exists — `finally` deletes it afterwards. A `ps`
@@ -110,7 +125,6 @@ readonly class ProjectLifecycleManager
         //
         //    Order: base → user override → dde override, so the dde overlay
         //    retains the final word on runtime-critical fields.
-        $userOverride = $this->dockerComposeManager->findUserOverrideFile($projectDir, $composeFile);
         $composeFiles = $userOverride !== null
             ? [$composeFile, $userOverride, $overrideFile]
             : [$composeFile, $overrideFile];
@@ -131,7 +145,7 @@ readonly class ProjectLifecycleManager
             $this->filesystem->remove($overrideFile);
         }
 
-        $domains = $this->collectProjectDomains($composeFile, $config->projectName, $worktreeInfo, $worktreeHostname, $runningServices);
+        $domains = $this->collectProjectDomains($mergedServices, $config->projectName, $worktreeInfo, $worktreeHostname, $runningServices);
 
         return [
             'serviceResults' => $serviceResults,
@@ -255,18 +269,19 @@ readonly class ProjectLifecycleManager
      * `$runningServices` means "include every declared Traefik host" — used
      * as the safety fallback when `docker compose ps` could not be parsed.
      *
-     * @param list<string>|null $runningServices
+     * @param array<string, array<string, mixed>> $mergedServices Compose-merged service set (base + user override)
+     * @param list<string>|null                   $runningServices
      *
      * @return list<string>
      */
     private function collectProjectDomains(
-        string $composeFile,
+        array $mergedServices,
         string $projectName,
         ?WorktreeInfo $worktreeInfo,
         ?string $worktreeHostname,
         ?array $runningServices,
     ): array {
-        $domains = $this->composeParser->extractTraefikDomains($composeFile, $runningServices);
+        $domains = $this->dockerComposeManager->extractTraefikDomainsFromServices($mergedServices, $runningServices);
 
         if (! $worktreeInfo instanceof WorktreeInfo) {
             return $domains;
