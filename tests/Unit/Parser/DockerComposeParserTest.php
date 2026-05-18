@@ -59,6 +59,27 @@ final class DockerComposeParserTest extends TestCase
         $this->parser->parse($path);
     }
 
+    public function testParseToleratesCustomYamlTags(): void
+    {
+        $yaml = <<<'YAML'
+            services:
+              web:
+                image: nginx
+                environment: !reset {}
+                labels: !override
+                  - "traefik.enable=true"
+            YAML;
+
+        $path = $this->createTempFile($yaml);
+
+        // Must not throw — `!reset` and `!override` are legitimate Compose tags
+        // that the parser has to surface untouched so callers see the original
+        // YAML structure (and Compose itself applies the semantics at runtime).
+        $parsed = $this->parser->parse($path);
+        $this->assertArrayHasKey('services', $parsed);
+        $this->assertArrayHasKey('web', $parsed['services']);
+    }
+
     public function testGenerateDiffReturnsEmptyForIdenticalConfigs(): void
     {
         $config = [
