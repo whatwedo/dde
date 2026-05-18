@@ -395,13 +395,18 @@ final class ProjectInitCommand extends AbstractProjectCommand
      */
     private function printStructureResult(SymfonyStyle $io, array $result, bool $isDryRun): void
     {
-        foreach ($result['created'] as $path) {
-            $label = $isDryRun ? 'Would create' : 'Created';
-            $io->writeln(sprintf('  <info>%s</info> %s', $label, $path));
-        }
-
+        // Print skipped entries first, then created entries in reverse order so
+        // the existing `.dde/` root surfaces at the top and the deepest leaves
+        // (config.yml, .gitignore) appear right under it — instead of being
+        // buried beneath every freshly created subdirectory.
         foreach ($result['skipped'] as $path) {
             $io->writeln(sprintf('  <comment>Skipped</comment> %s (already exists)', $path));
+        }
+
+        $label = $isDryRun ? 'Would create' : 'Created';
+
+        foreach (array_reverse($result['created']) as $path) {
+            $io->writeln(sprintf('  <info>%s</info> %s', $label, $path));
         }
     }
 
