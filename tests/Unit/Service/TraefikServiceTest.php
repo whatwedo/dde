@@ -195,6 +195,132 @@ final class TraefikServiceTest extends TestCase
         $this->service->start();
     }
 
+    public function testStartReconnectsTraefikToExistingProjectNetworksAfterRecreate(): void
+    {
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-traefik')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-traefik')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('networkExists')
+            ->with('dde')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('listNetworksWithPrefix')
+            ->with('dde-services-')
+            ->willReturn(['dde-services-alpha', 'dde-services-beta', 'dde-services-empty']);
+
+        $this->dockerManager
+            ->method('getConnectedContainerNames')
+            ->willReturnMap([
+                ['dde-services-alpha', ['alpha-web-1', 'dde-mariadb-11.8']],
+                ['dde-services-beta', ['beta-web-1']],
+                ['dde-services-empty', []],
+            ]);
+
+        $connectCalls = [];
+        $this->dockerManager
+            ->expects($this->exactly(2))
+            ->method('connectContainerToNetwork')
+            ->willReturnCallback(static function (string $container, string $network) use (&$connectCalls): void {
+                $connectCalls[] = [$container, $network];
+            });
+
+        $this->dockerManager
+            ->expects($this->exactly(2))
+            ->method('start')
+            ->with('dde-traefik');
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('stop')
+            ->with('dde-traefik');
+
+        $this->service->start();
+
+        self::assertContains(['dde-traefik', 'dde-services-alpha'], $connectCalls);
+        self::assertContains(['dde-traefik', 'dde-services-beta'], $connectCalls);
+    }
+
+    public function testStartSkipsReconciliationWhenTraefikAlreadyAttached(): void
+    {
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-traefik')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-traefik')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('networkExists')
+            ->with('dde')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('listNetworksWithPrefix')
+            ->with('dde-services-')
+            ->willReturn(['dde-services-alpha']);
+
+        $this->dockerManager
+            ->method('getConnectedContainerNames')
+            ->with('dde-services-alpha')
+            ->willReturn(['alpha-web-1', 'dde-traefik']);
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('connectContainerToNetwork');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('stop');
+
+        $this->service->start();
+    }
+
+    public function testStartSkipsReconciliationForEmptyProjectNetworks(): void
+    {
+        $this->dockerManager
+            ->method('isContainerRunning')
+            ->with('dde-traefik')
+            ->willReturn(false);
+
+        $this->dockerManager
+            ->method('containerExists')
+            ->with('dde-traefik')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('networkExists')
+            ->with('dde')
+            ->willReturn(true);
+
+        $this->dockerManager
+            ->method('listNetworksWithPrefix')
+            ->with('dde-services-')
+            ->willReturn(['dde-services-stale']);
+
+        $this->dockerManager
+            ->method('getConnectedContainerNames')
+            ->with('dde-services-stale')
+            ->willReturn([]);
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('connectContainerToNetwork');
+
+        $this->service->start();
+    }
+
     public function testStartSkipsWhenAlreadyRunning(): void
     {
         $this->dockerManager
