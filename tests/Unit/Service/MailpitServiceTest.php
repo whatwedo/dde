@@ -203,6 +203,11 @@ final class MailpitServiceTest extends TestCase
         $this->service->stop();
     }
 
+    public function testAttachesToProjectNetwork(): void
+    {
+        $this->assertTrue($this->service->attachesToProjectNetwork());
+    }
+
     public function testGetProjectNetworkAliasesExposesMailAlias(): void
     {
         $this->assertSame(['mail'], $this->service->getProjectNetworkAliases());

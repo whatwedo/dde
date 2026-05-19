@@ -181,9 +181,7 @@ final class ProjectOpenCommandTest extends TestCase
         // must still surface the worktree hostname.
         $dockerComposeManager = $this->createStub(\App\Manager\DockerComposeManager::class);
         $dockerComposeManager->method('findComposeFileOrNull')->willReturn('/tmp/test-project-wt-feature-x/docker-compose.yml');
-
-        $composeParser = $this->createStub(\App\Parser\DockerComposeParser::class);
-        $composeParser->method('extractTraefikDomains')->willReturn(['test-project.test']);
+        $dockerComposeManager->method('extractTraefikDomainsFromServices')->willReturn(['test-project.test']);
 
         $processFactory = $this->createMock(\App\Util\ProcessFactory::class);
         $processFactory->method('create')->willReturnCallback(static function (): Process {
@@ -199,7 +197,6 @@ final class ProjectOpenCommandTest extends TestCase
             $this->configManager,
             $formatterResolver,
             $dockerComposeManager,
-            $composeParser,
             $this->worktreeManager,
             new UrlOpenerUtil($processFactory),
         );
@@ -265,15 +262,12 @@ final class ProjectOpenCommandTest extends TestCase
 
         $dockerComposeManager = $this->createStub(\App\Manager\DockerComposeManager::class);
         $dockerComposeManager->method('findComposeFileOrNull')->willReturn(null);
-
-        $composeParser = $this->createStub(\App\Parser\DockerComposeParser::class);
-        $composeParser->method('extractTraefikDomains')->willReturn([]);
+        $dockerComposeManager->method('extractTraefikDomainsFromServices')->willReturn([]);
 
         $this->command = new ProjectOpenCommand(
             $this->configManager,
             $formatterResolver,
             $dockerComposeManager,
-            $composeParser,
             $this->worktreeManager,
             new UrlOpenerUtil($processFactory),
         );

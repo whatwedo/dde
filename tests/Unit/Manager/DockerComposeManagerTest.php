@@ -12,7 +12,6 @@ use App\Config\WorktreeInfo;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
 use App\Model\UserContext;
-use App\Service\TraefikService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
@@ -400,6 +399,119 @@ final class DockerComposeManagerTest extends TestCase
         $this->assertArrayNotHasKey('volumes', $data['services']['mercure']);
 
         unlink($overridePath);
+    }
+
+    public function testGetMergedServicesParsesBaseFileWithoutOverride(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+            'worker' => [
+                'image' => 'php:8.5',
+            ],
+        ]);
+
+        $services = $this->manager->getMergedServices($this->tempDir);
+
+        $this->assertArrayHasKey('web', $services);
+        $this->assertArrayHasKey('worker', $services);
+        $this->assertSame('nginx:latest', $services['web']['image']);
+    }
+
+    public function testGetMergedServicesReturnsEmptyForMissingBaseFile(): void
+    {
+        $this->assertSame([], $this->manager->getMergedServices($this->tempDir));
+    }
+
+    public function testExtractTraefikDomainsFromServicesScansListFormLabels(): void
+    {
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => [
+                    'traefik.http.routers.web.rule=Host(`app.test`)',
+                    'traefik.http.routers.web-tls.rule=Host(`app.test`)',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(['app.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesScansMapFormLabels(): void
+    {
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => [
+                    'traefik.http.routers.web.rule' => 'Host(`app.test`)',
+                    'traefik.http.routers.api.rule' => 'Host(`api.test`)',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(['app.test', 'api.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesHandlesMultipleHostsInOneRule(): void
+    {
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => [
+                    'traefik.http.routers.web.rule=Host(`app.test`) || Host(`www.app.test`)',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(['app.test', 'www.app.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesUnwrapsTaggedLabels(): void
+    {
+        // Labels arriving as `!override` TaggedValue (after parsing a user
+        // override that replaced base labels) must still be scannable.
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => new \Symfony\Component\Yaml\Tag\TaggedValue('override', [
+                    'traefik.http.routers.replaced.rule=Host(`replaced.test`)',
+                ]),
+            ],
+        ]);
+
+        $this->assertSame(['replaced.test'], $domains);
+    }
+
+    public function testExtractTraefikDomainsFromServicesFiltersByServiceList(): void
+    {
+        $services = [
+            'web' => [
+                'labels' => ['traefik.http.routers.web.rule=Host(`web.test`)'],
+            ],
+            'api' => [
+                'labels' => ['traefik.http.routers.api.rule=Host(`api.test`)'],
+            ],
+            'worker' => [
+                'labels' => ['traefik.http.routers.worker.rule=Host(`worker.test`)'],
+            ],
+        ];
+
+        $this->assertSame(
+            ['web.test', 'worker.test'],
+            $this->manager->extractTraefikDomainsFromServices($services, ['web', 'worker']),
+        );
+    }
+
+    public function testExtractTraefikDomainsFromServicesDeduplicates(): void
+    {
+        $domains = $this->manager->extractTraefikDomainsFromServices([
+            'web' => [
+                'labels' => ['traefik.http.routers.web.rule=Host(`app.test`)'],
+            ],
+            'api' => [
+                'labels' => ['traefik.http.routers.api.rule=Host(`app.test`)'],
+            ],
+        ]);
+
+        $this->assertSame(['app.test'], $domains);
     }
 
     public function testGenerateOverrideThrowsWhenNoServicesFound(): void
@@ -1212,13 +1324,7 @@ ENV);
             },
         );
 
-        $traefikService = new TraefikService(
-            dockerManager: $dockerManager,
-            filesystem: new \Symfony\Component\Filesystem\Filesystem(),
-            dataDir: $this->tempDir,
-        );
-
-        return new DockerComposeManager($adapterRegistry, $dockerManager, $traefikService, new UserContext(), $worktreeManager);
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
     }
 
     private function createManagerWithRealWorktreeManager(): DockerComposeManager
@@ -1232,13 +1338,7 @@ ENV);
 
         $worktreeManager = new \App\Manager\WorktreeManager(new \App\Util\ProcessFactory());
 
-        $traefikService = new TraefikService(
-            dockerManager: $dockerManager,
-            filesystem: new \Symfony\Component\Filesystem\Filesystem(),
-            dataDir: $this->tempDir,
-        );
-
-        return new DockerComposeManager($adapterRegistry, $dockerManager, $traefikService, new UserContext(), $worktreeManager);
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
     }
 
     /**
@@ -1258,13 +1358,7 @@ ENV);
         $resourcesDir = dirname(__DIR__, 3).'/resources';
         $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
         $worktreeManager = $this->createStub(\App\Manager\WorktreeManager::class);
-        $traefikService = new TraefikService(
-            dockerManager: $dockerManager,
-            filesystem: new \Symfony\Component\Filesystem\Filesystem(),
-            dataDir: $this->tempDir,
-        );
-
-        return new DockerComposeManager($adapterRegistry, $dockerManager, $traefikService, new UserContext(), $worktreeManager);
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
     }
 
     protected function setUp(): void

@@ -122,12 +122,7 @@ readonly class ProjectLifecycleManager
         //    JSON-parse failure must not tear down `up()`, so fall back to
         //    `null` (no service filter — include every Traefik-declared
         //    host) when the lookup fails.
-        //
-        //    Order: base → user override → dde override, so the dde overlay
-        //    retains the final word on runtime-critical fields.
-        $composeFiles = $userOverride !== null
-            ? [$composeFile, $userOverride, $overrideFile]
-            : [$composeFile, $overrideFile];
+        $composeFiles = $this->buildComposeFileChain($composeFile, $userOverride, $overrideFile);
         $runningServices = null;
 
         try {
@@ -138,7 +133,7 @@ readonly class ProjectLifecycleManager
 
             try {
                 $runningServices = $this->getRunningServiceNames($projectDir, $composeFiles);
-            } catch (\Throwable) {
+            } catch (\RuntimeException) {
                 $runningServices = null;
             }
         } finally {
@@ -189,7 +184,7 @@ readonly class ProjectLifecycleManager
 
         // 3. Disconnect global services attached in ensureProjectNetwork.
         foreach ($this->serviceRegistry->getGlobalServices() as $globalService) {
-            if ($globalService->getProjectNetworkAliases() === null) {
+            if (! $globalService->attachesToProjectNetwork()) {
                 continue;
             }
 
@@ -249,6 +244,21 @@ readonly class ProjectLifecycleManager
         foreach ($this->serviceRegistry->getGlobalServices() as $service) {
             $service->start();
         }
+    }
+
+    /**
+     * Assembles the `docker compose -f <base> [-f <user override>] -f <dde overlay>`
+     * argument chain in the order Compose applies overlays: base first,
+     * user override in the middle (so it merges on top of base while still
+     * losing to dde-controlled fields), dde runtime overlay last.
+     *
+     * @return list<string>
+     */
+    private function buildComposeFileChain(string $composeFile, ?string $userOverride, string $ddeOverride): array
+    {
+        return $userOverride !== null
+            ? [$composeFile, $userOverride, $ddeOverride]
+            : [$composeFile, $ddeOverride];
     }
 
     /**
@@ -378,20 +388,18 @@ readonly class ProjectLifecycleManager
             $this->dockerManager->connectContainerToNetwork($containerName, $projectNetwork, [$serviceName]);
         }
 
-        // Attach global services that need in-network reachability (Traefik for
-        // routing, Mailpit for its `mail` alias). Services opt in by returning
-        // a non-null `getProjectNetworkAliases()` from AbstractSystemService.
+        // Attach global services that need in-network reachability (Traefik
+        // for routing, Mailpit for its `mail` alias). Opt in via
+        // AbstractSystemService::attachesToProjectNetwork().
         foreach ($this->serviceRegistry->getGlobalServices() as $globalService) {
-            $aliases = $globalService->getProjectNetworkAliases();
-
-            if ($aliases === null) {
+            if (! $globalService->attachesToProjectNetwork()) {
                 continue;
             }
 
             $container = $globalService->getContainerName();
             $alreadyConnected = in_array($container, $connectedContainers, true);
 
-            $this->dockerManager->connectContainerToNetwork($container, $projectNetwork, $aliases);
+            $this->dockerManager->connectContainerToNetwork($container, $projectNetwork, $globalService->getProjectNetworkAliases());
 
             // Some services (Traefik) cache their network list at process
             // startup; a runtime `docker network connect` is not picked up

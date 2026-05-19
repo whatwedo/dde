@@ -8,11 +8,11 @@ use App\Adapter\AdapterRegistry;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Model\UserContext;
-use App\Service\TraefikService;
 use App\Util\ComposeEnvEntryParser;
 use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
 use App\Util\TempFileUtil;
+use App\Util\TraefikLabelGenerator;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use Symfony\Component\Dotenv\Dotenv;
@@ -27,7 +27,6 @@ readonly class DockerComposeManager
     public function __construct(
         private AdapterRegistry $adapterRegistry,
         private DockerManager $dockerManager,
-        private TraefikService $traefikService,
         private UserContext $userContext,
         private WorktreeManager $worktreeManager,
         private Filesystem $filesystem = new Filesystem(),
@@ -217,7 +216,7 @@ readonly class DockerComposeManager
     public function getMergedServices(string $projectDir, ?string $userOverrideFile = null): array
     {
         if ($userOverrideFile === null) {
-            return $this->discoverComposeServicesWithConfig($projectDir);
+            return $this->parseComposeServicesFromBaseFile($projectDir);
         }
 
         $composeFile = $this->findComposeFile($projectDir);
@@ -255,9 +254,9 @@ readonly class DockerComposeManager
 
     /**
      * Extracts unique Traefik `Host()` domains from the merged service set.
-     * Use this over `DockerComposeParser::extractTraefikDomains()` whenever a
-     * user override might modify Traefik labels, because the merged set
-     * reflects Compose's actual label resolution including `!override`/`!reset`.
+     * The merged set reflects Compose's actual label resolution including
+     * `!override`/`!reset`, so callers don't have to re-implement those rules
+     * to predict the effective router list.
      *
      * @param array<string, array<string, mixed>> $services
      * @param list<string>|null                   $onlyServices service names to include (null = all)
@@ -273,11 +272,7 @@ readonly class DockerComposeManager
                 continue;
             }
 
-            $labels = $service['labels'] ?? [];
-
-            if (! is_array($labels)) {
-                continue;
-            }
+            $labels = $this->unwrapTaggedLabels($service['labels'] ?? []);
 
             foreach ($labels as $key => $value) {
                 $label = is_int($key) ? (string) $value : $key.'='.$value;
@@ -304,7 +299,7 @@ readonly class DockerComposeManager
      */
     public function needsPull(string $projectDir): bool
     {
-        $services = $this->discoverComposeServicesWithConfig($projectDir);
+        $services = $this->parseComposeServicesFromBaseFile($projectDir);
 
         foreach ($services as $serviceConfig) {
             if (! is_string($serviceConfig['image'] ?? null)) {
@@ -427,7 +422,7 @@ readonly class DockerComposeManager
 
             if ($worktreeInfo instanceof WorktreeInfo) {
                 $worktreeHostname = $this->worktreeManager->resolveHostname($config->projectName, $worktreeInfo);
-                $labels = array_merge($labels, $this->overrideTraefikLabels($serviceConfig['labels'] ?? [], $config->projectName, $worktreeInfo, $worktreeHostname, $serviceName));
+                $labels = array_merge($labels, $this->overrideTraefikLabels($this->unwrapTaggedLabels($serviceConfig['labels'] ?? []), $config->projectName, $worktreeInfo, $worktreeHostname, $serviceName));
             }
 
             $containerHostname = $this->resolveContainerHostname($serviceName, $serviceConfig, $config);
@@ -640,7 +635,7 @@ readonly class DockerComposeManager
      */
     public function discoverServiceNames(string $projectDir): array
     {
-        return array_keys($this->discoverComposeServicesWithConfig($projectDir));
+        return array_keys($this->parseComposeServicesFromBaseFile($projectDir));
     }
 
     /**
@@ -688,7 +683,7 @@ readonly class DockerComposeManager
      *
      * @return array<string, array<string, mixed>>
      */
-    private function discoverComposeServicesWithConfig(string $projectDir): array
+    private function parseComposeServicesFromBaseFile(string $projectDir): array
     {
         try {
             $composeFile = $this->findComposeFile($projectDir);
@@ -933,6 +928,23 @@ readonly class DockerComposeManager
     }
 
     /**
+     * Unwraps a `labels: !override [...]` or `labels: !reset [...]` TaggedValue
+     * to its inner array so downstream label scanning can iterate it. Compose
+     * itself drops the base labels on either tag; for dde's overlay purposes
+     * we treat the inner list as the effective label set.
+     *
+     * @return array<int|string, mixed>
+     */
+    private function unwrapTaggedLabels(mixed $labels): array
+    {
+        if ($labels instanceof TaggedValue) {
+            $labels = $labels->getValue();
+        }
+
+        return is_array($labels) ? $labels : [];
+    }
+
+    /**
      * Overrides Traefik labels from compose.yml for worktree usage.
      *
      * Rewrites every `Host(`<x>.<project>.test`)` value (including the bare
@@ -1016,7 +1028,7 @@ readonly class DockerComposeManager
 
         // Fallback: generate new labels if compose.yml has none
         if (! $hasTraefikLabels) {
-            return $this->traefikService->generateLabels([$worktreeHostname], $serviceName);
+            return TraefikLabelGenerator::generateLabels([$worktreeHostname], $serviceName);
         }
 
         return $overrideLabels;

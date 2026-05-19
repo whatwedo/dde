@@ -23,6 +23,11 @@ final class MailpitService extends AbstractSystemService
         return 'axllent/mailpit';
     }
 
+    public function attachesToProjectNetwork(): bool
+    {
+        return true;
+    }
+
     /**
      * @return list<string>
      */

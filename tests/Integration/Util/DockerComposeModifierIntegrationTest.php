@@ -289,14 +289,13 @@ YAML);
             new PostgresAdapter(),
         ]);
         $dockerManager = $this->createStub(DockerManager::class);
-        $traefikService = new TraefikService(
+        new TraefikService(
             dockerManager: $dockerManager,
             filesystem: new Filesystem(),
             dataDir: sys_get_temp_dir(),
         );
         $this->modifier = new DockerComposeModifier(
             databaseAdapterRegistry: $adapterRegistry,
-            traefikService: $traefikService,
         );
         $this->parser = new DockerComposeParser();
     }

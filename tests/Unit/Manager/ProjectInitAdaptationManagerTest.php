@@ -888,7 +888,7 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         );
 
         $dockerManager = $this->createStub(\App\Manager\DockerManager::class);
-        $traefikService = new \App\Service\TraefikService(
+        new \App\Service\TraefikService(
             dockerManager: $dockerManager,
             filesystem: new Filesystem(),
             dataDir: sys_get_temp_dir(),
@@ -900,7 +900,6 @@ final class ProjectInitAdaptationManagerTest extends TestCase
                 new \App\Database\MariaDbAdapter(),
                 new \App\Database\PostgresAdapter(),
             ]),
-            traefikService: $traefikService,
         );
         $dockerfileParser = new DockerfileParser();
 

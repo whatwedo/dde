@@ -83,18 +83,28 @@ abstract class AbstractSystemService implements ServiceInterface
     }
 
     /**
-     * Network aliases this service should expose on every per-project network.
-     * Return `null` to opt out of project-network attachment entirely (the
-     * default). Return `[]` to attach without an alias (Traefik, which finds
-     * backends via labels). Return a non-empty list to attach with aliases —
-     * Mailpit, for instance, returns `['mail']` so existing applications can
-     * keep reaching it as `smtp://mail:1025` from inside the project network.
-     *
-     * @return list<string>|null
+     * Whether this service should attach to every per-project network.
+     * Default is opt-out. Overriders that return `true` are iterated by
+     * `ProjectLifecycleManager::ensureProjectNetwork()` and re-attached on
+     * `start()` via `reconcileProjectNetworkAttachments()`.
      */
-    public function getProjectNetworkAliases(): ?array
+    public function attachesToProjectNetwork(): bool
     {
-        return null;
+        return false;
+    }
+
+    /**
+     * DNS aliases this service exposes on the per-project network when
+     * `attachesToProjectNetwork()` is true. Empty list means "attach without
+     * an alias" (Traefik finds backends via labels). A non-empty list maps to
+     * `docker network connect --alias` — Mailpit, for instance, returns
+     * `['mail']` so existing applications keep reaching `smtp://mail:1025`.
+     *
+     * @return list<string>
+     */
+    public function getProjectNetworkAliases(): array
+    {
+        return [];
     }
 
     /**
@@ -110,22 +120,34 @@ abstract class AbstractSystemService implements ServiceInterface
     }
 
     /**
-     * Re-attaches this service to every existing per-project network that still
-     * has project containers connected. Docker does not preserve runtime
-     * `network connect` attachments across a container re-create (`system:update`,
-     * `system:down` + `system:up`), so without this, projects that were running
-     * before the restart would become unreachable from their dependencies.
-     *
-     * No-op for services that opt out via `getProjectNetworkAliases() === null`.
+     * @return array<string, string>
      */
-    protected function reconcileProjectNetworkAttachments(): void
+    protected function getDefaultLabels(): array
     {
-        $aliases = $this->getProjectNetworkAliases();
+        return [
+            'dde.managed' => 'true',
+            'dde.service' => $this->getName(),
+            'com.docker.compose.project' => 'dde',
+        ];
+    }
 
-        if ($aliases === null) {
+    /**
+     * Re-attaches this service to every existing per-project network that still
+     * has project containers connected. Called from `start()` on every
+     * invocation; the dominant case is the cheap no-op path (no opt-in or no
+     * networks to scan). Necessary because Docker does not preserve runtime
+     * `network connect` attachments across a container re-create
+     * (`system:update`, `system:down` + `system:up`) — without this, projects
+     * that were running before the restart would become unreachable from
+     * their dependencies until the next `project:up`.
+     */
+    private function reconcileProjectNetworkAttachments(): void
+    {
+        if (! $this->attachesToProjectNetwork()) {
             return;
         }
 
+        $aliases = $this->getProjectNetworkAliases();
         $networks = $this->dockerManager->listNetworksWithPrefix('dde-services-');
         $container = $this->getContainerName();
 
@@ -180,17 +202,5 @@ abstract class AbstractSystemService implements ServiceInterface
             $this->dockerManager->stop($container);
             $this->dockerManager->start($container);
         }
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected function getDefaultLabels(): array
-    {
-        return [
-            'dde.managed' => 'true',
-            'dde.service' => $this->getName(),
-            'com.docker.compose.project' => 'dde',
-        ];
     }
 }
