@@ -110,7 +110,7 @@ dde uses two Docker networks:
 
 Project containers do not join the shared `dde` network when a per-project network exists: two checkouts of the same project (main + worktree) would otherwise register identical service-name aliases on `dde` and Docker DNS would round-robin between them. To keep inbound HTTP routing working, Traefik is attached to the per-project network on `project:up` and detached on `project:down`.
 
-Neither network is declared in your committed `docker-compose.yml`. Both are **injected into the compose overlay** that `project:up` generates and torn down on `project:down`, so the project file stays free of dde infrastructure. If `.dde/config.yml` declares no services, only the shared `dde` network is attached (there is no per-project network to isolate on).
+Neither network is declared in your committed `docker-compose.yml`. The shared `dde` network is created once by `system:install` and lives for the lifetime of the machine; the per-project network is **injected into the compose overlay** that `project:up` generates and removed on `project:down`. The per-project network is created unconditionally on every `project:up`, even for projects that declare no `services:` in `.dde/config.yml` — there is no fallback to the shared `dde` network for project containers.
 
 This split is what lets multiple projects use the same versioned service container (one `mariadb:11.8` serves all projects that asked for it) while keeping the service hostnames stable inside each project: `my-app` and `other-app` both talk to `mariadb`, but each sees only its own per-project network.
 
