@@ -30,7 +30,7 @@ sudo apt update && sudo apt install dde
 
 # Alpine
 curl -fsSL https://packages.dde.sh/alpine/key.rsa.pub -o /etc/apk/keys/dde.rsa.pub
-echo "https://packages.dde.sh/alpine/main" >> /etc/apk/repositories
+echo "https://packages.dde.sh/alpine" >> /etc/apk/repositories
 apk add dde
 
 # Arch Linux
