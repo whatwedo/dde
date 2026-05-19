@@ -138,12 +138,15 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertContains($projectAdaptersDir.':/dde/adapters-project:ro', $volumes);
     }
 
-    public function testGenerateOverrideWithWorktreeInfoAddsTraefikLabels(): void
+    public function testGenerateOverrideWithWorktreeInfoRewritesDeclaredTraefikLabels(): void
     {
         $projectDir = $this->createProjectDir(<<<'YAML'
             services:
               web:
                 image: nginx:latest
+                labels:
+                  - "traefik.enable=true"
+                  - "traefik.http.routers.web.rule=Host(`myproject.test`)"
             YAML);
 
         $worktreeInfo = new WorktreeInfo(
@@ -168,8 +171,8 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertContains('dde.managed=true', $labels);
         self::assertContains('traefik.enable=true', $labels);
 
-        $traefikLabels = array_filter($labels, static fn (string $l): bool => str_contains($l, 'traefik.'));
-        self::assertNotEmpty($traefikLabels);
+        $joined = implode("\n", $labels);
+        self::assertStringContainsString('Host(`myproject-feature-branch.test`)', $joined);
     }
 
     public function testGenerateOverrideHandlesTaggedLabelsInWorktreeRewriter(): void

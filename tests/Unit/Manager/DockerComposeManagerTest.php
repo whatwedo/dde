@@ -824,8 +824,14 @@ final class DockerComposeManagerTest extends TestCase
         unlink($overridePath);
     }
 
-    public function testGenerateOverrideWorktreeFallbackWhenNoTraefikLabels(): void
+    public function testGenerateOverrideWorktreeDoesNotInventTraefikLabelsWhenNoneDeclared(): void
     {
+        // A service without any Traefik labels in compose.yml is not opted
+        // into routing. In the worktree overlay we mirror the main-checkout
+        // behaviour: leave the service unrouted instead of auto-generating
+        // `traefik.enable=true` + a Host rule, which would surface as
+        // "port is missing" in Traefik for helper containers with no exposed
+        // port (e.g. `playwright`, e2e runners).
         $this->createComposeFile([
             'web' => [
                 'image' => 'nginx:latest',
@@ -848,18 +854,66 @@ final class DockerComposeManagerTest extends TestCase
         $this->assertInstanceOf(\Symfony\Component\Yaml\Tag\TaggedValue::class, $data['services']['web']['labels']);
         $labels = $data['services']['web']['labels']->getValue();
 
-        // Should generate new labels with worktree hostname
-        $this->assertContains('traefik.enable=true', $labels);
-
-        $hasWorktreeHost = false;
-
         foreach ($labels as $label) {
-            if (str_contains($label, 'beispiel-feature.test')) {
-                $hasWorktreeHost = true;
+            $this->assertStringNotContainsString('traefik.enable', $label);
+            $this->assertStringNotContainsString('Host(', $label);
+            $this->assertStringNotContainsString('beispiel-feature.test', $label);
+        }
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeLeavesHelperContainersUnrouted(): void
+    {
+        // Regression: a multi-service compose where the primary service is
+        // routed via Traefik and a sibling helper container (think
+        // `playwright` in smartlearn) has no exposed port. The worktree
+        // overlay must rewrite the routed service's labels but must NOT
+        // generate routing for the helper — otherwise Traefik's docker
+        // provider picks the helper up and logs "port is missing".
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.web.rule=Host(`beispiel.test`)',
+                ],
+            ],
+            'playwright' => [
+                'image' => 'mcr.microsoft.com/playwright:v1.60.0',
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-wt-feature',
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $webLabels = $data['services']['web']['labels']->getValue();
+        $hasWorktreeHostRule = false;
+
+        foreach ($webLabels as $label) {
+            if (str_contains($label, 'Host(`beispiel-feature.test`)')) {
+                $hasWorktreeHostRule = true;
             }
         }
 
-        $this->assertTrue($hasWorktreeHost, 'Generated labels should contain worktree hostname');
+        $this->assertTrue($hasWorktreeHostRule, 'Routed service must keep its host rule rewritten to the worktree hostname');
+
+        $playwrightLabels = $data['services']['playwright']['labels']->getValue();
+
+        foreach ($playwrightLabels as $label) {
+            $this->assertStringNotContainsString('traefik.enable', $label);
+            $this->assertStringNotContainsString('Host(', $label);
+        }
 
         unlink($overridePath);
     }
