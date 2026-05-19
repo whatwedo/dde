@@ -12,7 +12,6 @@ use App\Util\ComposeEnvEntryParser;
 use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
 use App\Util\TempFileUtil;
-use App\Util\TraefikLabelGenerator;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use Symfony\Component\Dotenv\Dotenv;
@@ -464,11 +463,9 @@ readonly class DockerComposeManager
                 // containers that never join `dde`.
                 'traefik.docker.network='.$projectNetwork,
             ];
-            $worktreeHostname = null;
 
             if ($worktreeInfo instanceof WorktreeInfo) {
-                $worktreeHostname = $this->worktreeManager->resolveHostname($config->projectName, $worktreeInfo);
-                $labels = array_merge($labels, $this->overrideTraefikLabels($this->unwrapTaggedLabels($serviceConfig['labels'] ?? []), $config->projectName, $worktreeInfo, $worktreeHostname, $serviceName));
+                $labels = array_merge($labels, $this->overrideTraefikLabels($this->unwrapTaggedLabels($serviceConfig['labels'] ?? []), $config->projectName, $worktreeInfo));
             }
 
             $containerHostname = $this->resolveContainerHostname($serviceName, $serviceConfig, $config);
@@ -1013,11 +1010,18 @@ readonly class DockerComposeManager
      * `routers.` or `services.`) so a similarly named unrelated identifier
      * (`testproject-beispiel-test-…`) is not silently renamed.
      *
+     * Services without Traefik labels stay unrouted in the worktree, mirroring
+     * the main-checkout behaviour: dde does not invent routing for a service
+     * the user never opted into. Helper containers without an exposed port
+     * (e.g. `playwright`, e2e runners, background workers) would otherwise
+     * get auto-generated `traefik.enable=true` + `Host(...)` labels and crash
+     * Traefik with "port is missing".
+     *
      * @param array<int|string, mixed> $existingLabels
      *
      * @return list<string>
      */
-    private function overrideTraefikLabels(array $existingLabels, string $projectName, WorktreeInfo $worktreeInfo, string $worktreeHostname, string $serviceName): array
+    private function overrideTraefikLabels(array $existingLabels, string $projectName, WorktreeInfo $worktreeInfo): array
     {
         // First pass: collect every host we will rewrite so router/service
         // identifiers derived from those hosts can be renamed in *every*
@@ -1047,7 +1051,6 @@ readonly class DockerComposeManager
 
         // Second pass: emit the actual override labels.
         $overrideLabels = [];
-        $hasTraefikLabels = false;
 
         foreach ($existingLabels as $key => $value) {
             $label = is_int($key) ? (string) $value : $key.'='.$value;
@@ -1055,8 +1058,6 @@ readonly class DockerComposeManager
             if (! str_contains($label, 'traefik.')) {
                 continue;
             }
-
-            $hasTraefikLabels = true;
 
             $label = (string) preg_replace_callback(
                 '/Host\(`([^`]+)`\)/',
@@ -1079,11 +1080,6 @@ readonly class DockerComposeManager
             }
 
             $overrideLabels[] = $label;
-        }
-
-        // Fallback: generate new labels if compose.yml has none
-        if (! $hasTraefikLabels) {
-            return TraefikLabelGenerator::generateLabels([$worktreeHostname], $serviceName);
         }
 
         return $overrideLabels;
