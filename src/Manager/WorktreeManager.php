@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Manager;
 
 use App\Config\WorktreeInfo;
+use App\Database\DatabaseAdapterRegistry;
 use App\Util\ComposeEnvEntryParser;
 use App\Util\IdentifierSanitizer;
 use App\Util\ProcessFactory;
@@ -13,6 +14,7 @@ readonly class WorktreeManager
 {
     public function __construct(
         private ProcessFactory $processFactory,
+        private DatabaseAdapterRegistry $databaseAdapterRegistry,
     ) {
     }
 
@@ -149,7 +151,86 @@ readonly class WorktreeManager
     }
 
     /**
+     * Rewrites compose `extra_hosts` entries so the worktree container can
+     * resolve the worktree-suffixed hostnames it actually serves. Inside a
+     * container, `dde`'s host-side dnsmasq is unreachable — the only source
+     * of `<project>.test` resolution is `/etc/hosts`, populated from
+     * `extra_hosts`. Without this rewrite a worktree's container holds the
+     * main checkout's hostnames and cannot reach its own worktree URLs
+     * (e.g. Playwright targeting `preview.<project>-<branch>.test`).
+     *
+     * Both compose list-form (`['host:value']` or `['host=value']`) and
+     * map-form (`['host' => 'value']`) are accepted; the result is always
+     * the list-form Compose itself emits from `compose config`, preserving
+     * the original `:` or `=` separator on list-form entries (map-form
+     * entries are emitted as `host:value`). Unrelated entries pass through
+     * unchanged.
+     *
+     * Returns `null` when no entry references the project host — the caller
+     * uses that as the signal to skip emitting an `extra_hosts` override and
+     * leave the base file's entries in place.
+     *
+     * @param array<int|string, mixed> $existingExtraHosts
+     *
+     * @return list<string>|null
+     */
+    public function rewriteExtraHosts(array $existingExtraHosts, string $projectName, WorktreeInfo $worktreeInfo): ?array
+    {
+        if ($existingExtraHosts === []) {
+            return null;
+        }
+
+        $changed = false;
+        $rewritten = [];
+
+        foreach ($existingExtraHosts as $key => $value) {
+            if (is_string($key)) {
+                $host = $key;
+                $sep = ':';
+                $rest = is_string($value) ? $value : '';
+            } else {
+                $entry = is_string($value) ? $value : '';
+
+                // Compose accepts both `host:value` (legacy) and `host=value`
+                // (v2.24+, unambiguous for IPv6 values). Split on the first
+                // occurrence of either separator; the host part is pure ASCII
+                // so it cannot contain `:` or `=` itself.
+                $colonPos = strpos($entry, ':');
+                $equalsPos = strpos($entry, '=');
+                $sepPos = match (true) {
+                    $colonPos === false => $equalsPos,
+                    $equalsPos === false => $colonPos,
+                    default => min($colonPos, $equalsPos),
+                };
+
+                if ($sepPos === false) {
+                    $rewritten[] = $entry;
+
+                    continue;
+                }
+
+                $host = substr($entry, 0, $sepPos);
+                $sep = $entry[$sepPos];
+                $rest = substr($entry, $sepPos + 1);
+            }
+
+            $newHost = $this->rewriteHostname($host, $projectName, $worktreeInfo);
+
+            if ($newHost !== $host) {
+                $changed = true;
+            }
+
+            $rewritten[] = $newHost.$sep.$rest;
+        }
+
+        return $changed ? $rewritten : null;
+    }
+
+    /**
      * @param array<int|string, mixed> $existingEnv
+     * @param list<string>             $configuredServiceNames service names from `ProjectConfig::$services` —
+     *                                                         only env values whose URL scheme corresponds to
+     *                                                         a configured DB service get their DB name rewritten
      *
      * @return array<string, string>
      */
@@ -157,6 +238,7 @@ readonly class WorktreeManager
         array $existingEnv,
         string $projectName,
         WorktreeInfo $worktreeInfo,
+        array $configuredServiceNames,
     ): array {
         $projectHostname = $projectName.'.test';
         $worktreeHostname = $this->resolveHostname($projectName, $worktreeInfo);
@@ -179,8 +261,10 @@ readonly class WorktreeManager
                 $new = str_replace($projectHostname, $worktreeHostname, $new);
             }
 
-            // 2. DATABASE_URL path segment rewrite
-            if ($envKey === 'DATABASE_URL') {
+            // 2. DB URL path segment rewrite (scheme-driven, not key-driven, so
+            //    projects with multiple DB connections — e.g. `DATABASE_URL` +
+            //    `GUACAMOLE_DATABASE_URL` — all get rewritten consistently)
+            if ($this->shouldRewriteAsDatabaseUrl($new, $configuredServiceNames)) {
                 $new = $this->rewriteDatabaseUrl($new, $dbSuffix);
             }
 
@@ -280,6 +364,43 @@ readonly class WorktreeManager
         }
 
         return $realA === $realB;
+    }
+
+    /**
+     * @param list<string> $configuredServiceNames
+     */
+    private function shouldRewriteAsDatabaseUrl(string $value, array $configuredServiceNames): bool
+    {
+        // Capture scheme and host together so we can prove the URL points at a
+        // dde-managed DB *container*, not just any server speaking the same
+        // protocol. The host part rejects anything containing `:` or `/` so a
+        // missing host (e.g. `mysql:///path`) cannot satisfy the match.
+        if (preg_match('~^([a-z][a-z0-9+.-]*)://(?:[^@/]*@)?([^:/?#]+)~i', $value, $m) !== 1) {
+            return false;
+        }
+
+        // Each `DatabaseAdapter` owns its own URL-scheme list — see
+        // `DatabaseAdapterRegistry::getServiceTypeForUrlScheme()`. WorktreeManager
+        // never spells the schemes out itself so a new adapter only needs to be
+        // wired through there.
+        $serviceType = $this->databaseAdapterRegistry->getServiceTypeForUrlScheme($m[1]);
+
+        if ($serviceType === null) {
+            return false;
+        }
+
+        if (! in_array($serviceType, $configuredServiceNames, true)) {
+            return false;
+        }
+
+        // Last gate: the URL host must be one of the adapter's canonical aliases
+        // (e.g. `mariadb`/`mysql` or `postgres`/`postgresql`). These are the only
+        // hostnames a dde-managed DB container exposes on the per-project network,
+        // so any other host (`external.example`, `analytics.prod`, …) points at
+        // an external server and must be left alone — otherwise an
+        // `ANALYTICS_DATABASE_URL` of the same engine would silently get
+        // redirected to a non-existent `<db>_<suffix>` on the wrong server.
+        return $this->databaseAdapterRegistry->getAdapter($serviceType)->supports(strtolower($m[2]));
     }
 
     private function rewriteDatabaseUrl(string $value, string $dbSuffix): string

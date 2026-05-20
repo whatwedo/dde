@@ -38,4 +38,24 @@ final class DatabaseAdapterRegistry
 
         return false;
     }
+
+    /**
+     * Maps a DB URL scheme (e.g. `mysql`, `postgresql`) to the compose service
+     * type backing it (`mariadb`, `postgres`). Both `WorktreeManager` and
+     * `ProjectInitAdaptationManager` need this; centralising it on the registry
+     * means each adapter owns its own scheme list and a fourth DB adapter only
+     * has to be wired through once.
+     */
+    public function getServiceTypeForUrlScheme(string $scheme): ?string
+    {
+        $normalised = strtolower($scheme);
+
+        foreach ($this->adapters as $adapter) {
+            if (in_array($normalised, $adapter->getUrlSchemes(), true)) {
+                return $adapter->getServiceName();
+            }
+        }
+
+        return null;
+    }
 }

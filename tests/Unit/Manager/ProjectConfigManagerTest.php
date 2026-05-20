@@ -367,7 +367,7 @@ final class ProjectConfigManagerTest extends TestCase
         return new ProjectConfigManager(
             globalConfigManager: new GlobalConfigManager(configDir: $globalConfigDir),
             serviceRegistry: new ServiceRegistry([], new DatabaseAdapterRegistry([])),
-            worktreeManager: new \App\Manager\WorktreeManager(new ProcessFactory()),
+            worktreeManager: new \App\Manager\WorktreeManager(new ProcessFactory(), new DatabaseAdapterRegistry([])),
         );
     }
 

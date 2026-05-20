@@ -34,6 +34,14 @@ final class PostgresAdapter implements DatabaseAdapterInterface
     /**
      * @return list<string>
      */
+    public function getUrlSchemes(): array
+    {
+        return ['postgres', 'postgresql', 'pgsql'];
+    }
+
+    /**
+     * @return list<string>
+     */
     public function getDumpCommand(string $database): array
     {
         return [

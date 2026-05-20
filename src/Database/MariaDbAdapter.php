@@ -34,6 +34,14 @@ final class MariaDbAdapter implements DatabaseAdapterInterface
     /**
      * @return list<string>
      */
+    public function getUrlSchemes(): array
+    {
+        return ['mysql', 'mariadb'];
+    }
+
+    /**
+     * @return list<string>
+     */
     public function getDumpCommand(string $database): array
     {
         return [
