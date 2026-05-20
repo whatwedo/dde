@@ -5,16 +5,17 @@ description: Use when the user asks to create a release
 
 # Release Workflow
 
-The dde release process: version bump, changelog entry, signed commit, signed tag. Never push automatically.
+The dde release process: changelog entry, signed commit, signed tag. Never push automatically.
 
 ## Overview
 
-A dde release is three artifacts that must stay in lockstep:
+A dde release is two artifacts that must stay in lockstep:
 - `CHANGELOG.md` — new section at the top
-- `src/Application.php` — `APP_VERSION` constant
 - Annotated, GPG-signed git tag `v<version>`
 
-All three land in a single commit `chore(release): bump version to v<version>`, followed by the tag pointing at that commit.
+The release commit `chore(release): document v<version>` updates `CHANGELOG.md`, and the tag points at that commit.
+
+The version string the binary reports is **not** edited by hand. `src/Application.php` carries the literal `@APP_VERSION@` placeholder, and `.github/workflows/build.yml` substitutes it from the git tag at build time (stable) or the short SHA (nightly).
 
 ## Step 1: Determine the next version
 
@@ -65,21 +66,15 @@ CHANGELOG.md — insert a new section directly after the intro paragraph:
 
 Use today's date in ISO format. Omit empty subsections.
 
-`src/Application.php`:
-
-```php
-public const string APP_VERSION = 'v<new-version>';
-```
-
-This is the **single source of truth** for the binary version. `--version` reads from it; CI does not inject it.
+Do **not** touch `src/Application.php`. The `APP_VERSION` constant is the placeholder `@APP_VERSION@`; CI substitutes it with `${GITHUB_REF_NAME}` when building from the tag. Editing it by hand bypasses the build pipeline and ships the wrong version string.
 
 ## Step 4: Commit and tag
 
 Both commit and tag must be GPG-signed. Sign-off is required (AGENTS.md: "Never use `--no-verify`, `--no-gpg-sign`").
 
 ```bash
-git add CHANGELOG.md src/Application.php
-git commit -S --signoff -m "chore(release): bump version to v<new-version>"
+git add CHANGELOG.md
+git commit -S --signoff -m "chore(release): document v<new-version>"
 git tag -s v<new-version> -m "v<new-version>"
 ```
 
@@ -139,8 +134,8 @@ Verify in the browser at `https://github.com/whatwedo/dde/releases/tag/v<version
 - [ ] User confirmed target version
 - [ ] CHANGELOG entry lists only user-visible changes
 - [ ] Today's date, ISO format
-- [ ] `APP_VERSION` bumped
-- [ ] Commit signed + signed-off, subject `chore(release): bump version to v<version>`
+- [ ] `src/Application.php` NOT modified (placeholder is injected by CI)
+- [ ] Commit signed + signed-off, subject `chore(release): document v<version>`
 - [ ] Annotated tag signed, subject exactly `v<version>`
 - [ ] No push without explicit user approval
 - [ ] GitHub release notes populated from CHANGELOG section
@@ -154,6 +149,7 @@ Verify in the browser at `https://github.com/whatwedo/dde/releases/tag/v<version
 | Treating every `feat(...)` as **Added** | Only if user-visible; internal-only `feat` commits are rare but happen — check the diff. |
 | Amending an earlier release commit | Always a new commit; never rewrite a published tag. |
 | Missing tag signature (`git tag v…` instead of `git tag -s v…`) | Re-create with `-s`. |
+| Hand-editing `Application::APP_VERSION` | Leave it as `@APP_VERSION@`; the build pipeline substitutes it. |
 | Pushing the tag without asking | The release workflow is expensive and public; always confirm. |
 | Leaving the GitHub release description empty | Run Step 6 — users land on the release page from "Latest release" links and expect to see the changelog. |
 | Tagging `-alpha.N` as a stable release | Always pass `--prerelease` when editing alpha/beta/rc tags, otherwise GitHub marks them as the "Latest" release. |

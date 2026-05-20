@@ -55,7 +55,7 @@ final class AboutCommand extends AbstractBaseCommand
     private function gatherInfo(): array
     {
         return [
-            'version' => Application::APP_VERSION,
+            'version' => Application::resolveVersion(),
             'php' => PHP_VERSION,
             'symfony' => Kernel::VERSION,
             'config_dir' => $this->configDir,

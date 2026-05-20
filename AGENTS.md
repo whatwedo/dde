@@ -50,11 +50,14 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
 - PHAR context: `bin/console` detects PHAR via `str_starts_with(__DIR__, 'phar://')` and disables Dotenv
 - Kernel overrides `getCacheDir()`/`getLogDir()` for PHAR (pre-warmed cache, temp log dir)
 - PHP version: single source of truth in `composer.json` (`require.php`), propagated to build.sh and CI workflows
+- `Application::APP_VERSION` ships as the literal `@APP_VERSION@`. `.github/workflows/build.yml` substitutes it before `box compile`: the stable release workflow injects the git tag, the nightly workflow injects the short SHA. Local `bin/console` keeps the placeholder; a constructor fallback reports `dev` in that case. Do **not** hand-edit the constant.
 
 ## CI/CD
 - `.github/workflows/ci.yml` — ECS + PHPStan + Rector + Tests on push/PR
-- `.github/workflows/release.yml` — Multi-platform build on tag `v*` (4 platforms: macOS/Linux x86_64+arm64)
-- PHP version extracted from `composer.json` in both workflows
+- `.github/workflows/build.yml` — reusable (`workflow_call`) multi-platform build (4 platforms: macOS/Linux x86_64+arm64); takes `app-version-string` input and substitutes `@APP_VERSION@`
+- `.github/workflows/release.yml` — stable channel, triggered by tag `v*`, calls `build.yml` with the tag name, publishes via `publish-*.sh ... stable`
+- `.github/workflows/nightly.yml` — nightly channel, triggered by push to `v2`, calls `build.yml` with the short SHA, publishes via `publish-*.sh ... nightly` (no GitHub Release). Package version is a UTC `YYYYMMDD.HHMM` stamp; the nightly package name is `dde-nightly` with `Conflicts: dde`.
+- PHP version extracted from `composer.json` in both build workflows
 - PHPStan requires Symfony cache warmup (dev env) for container XML analysis
 - Tests with `#[Group('e2e')]` require Docker and are excluded from CI (`--exclude-group=e2e`)
 
