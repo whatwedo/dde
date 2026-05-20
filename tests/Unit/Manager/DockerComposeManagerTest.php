@@ -11,6 +11,7 @@ use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
+use App\Model\ServiceDefinition;
 use App\Model\UserContext;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
@@ -940,7 +941,10 @@ final class DockerComposeManagerTest extends TestCase
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(
+            new GlobalConfig(),
+            new ProjectConfig(name: 'beispiel', services: [new ServiceDefinition(name: 'mariadb')]),
+        );
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1322,7 +1326,10 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(
+            new GlobalConfig(),
+            new ProjectConfig(name: 'beispiel', services: [new ServiceDefinition(name: 'mariadb')]),
+        );
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1364,7 +1371,7 @@ ENV);
             },
         );
         $worktreeManager->method('computeEnvironmentOverrides')->willReturnCallback(
-            function (array $env, string $project, \App\Config\WorktreeInfo $info) use ($worktreeHostname): array {
+            function (array $env, string $project, \App\Config\WorktreeInfo $info, array $configuredServiceNames) use ($worktreeHostname): array {
                 $result = [];
                 foreach ($env as $k => $v) {
                     $key = is_int($k) ? explode('=', (string) $v, 2)[0] : $k;

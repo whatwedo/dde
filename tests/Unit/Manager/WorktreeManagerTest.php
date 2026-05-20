@@ -224,7 +224,7 @@ final class WorktreeManagerTest extends TestCase
             'APP_SECRET' => 'abc',
         ];
 
-        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info);
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, []);
 
         $this->assertSame([
             'APP_URL' => 'https://beispiel-feature-xyz.test',
@@ -239,7 +239,7 @@ final class WorktreeManagerTest extends TestCase
             'APP_SECRET=abc',
         ];
 
-        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info);
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, []);
 
         $this->assertSame([
             'APP_URL' => 'https://beispiel-feature-xyz.test',
@@ -253,7 +253,7 @@ final class WorktreeManagerTest extends TestCase
             'DATABASE_URL' => 'mysql://root:pw@db:3306/beispiel?serverVersion=11.8.0-MariaDB',
         ];
 
-        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info);
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['mariadb']);
 
         $this->assertArrayHasKey('DATABASE_URL', $result);
         $this->assertSame(
@@ -269,7 +269,7 @@ final class WorktreeManagerTest extends TestCase
             'DATABASE_URL' => 'mysql://root@db:3306',
         ];
 
-        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info);
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['mariadb']);
 
         $this->assertArrayNotHasKey('DATABASE_URL', $result);
     }
@@ -281,7 +281,7 @@ final class WorktreeManagerTest extends TestCase
             'DATABASE_URL' => 'mysql://root@db:3306/',
         ];
 
-        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info);
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['mariadb']);
 
         $this->assertArrayNotHasKey('DATABASE_URL', $result);
     }
@@ -293,7 +293,7 @@ final class WorktreeManagerTest extends TestCase
             'DATABASE_URL' => 'not a url',
         ];
 
-        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info);
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['mariadb']);
 
         $this->assertArrayNotHasKey('DATABASE_URL', $result);
     }
@@ -305,7 +305,7 @@ final class WorktreeManagerTest extends TestCase
             'DATABASE_URL' => 'mysql://user:p%40ss@db:3306/mydb?opt=1',
         ];
 
-        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info);
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['mariadb']);
 
         $this->assertSame(
             'mysql://user:p%40ss@db:3306/mydb_feature?opt=1',
@@ -320,7 +320,7 @@ final class WorktreeManagerTest extends TestCase
             'DATABASE_URL' => 'mysql://root@db:3306/'.str_repeat('b', 40),
         ];
 
-        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info);
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['mariadb']);
 
         $this->assertArrayHasKey('DATABASE_URL', $result);
         // Path segment between "@db:3306/" and next "?" or end must be <= 63
@@ -337,12 +337,82 @@ final class WorktreeManagerTest extends TestCase
             'DATABASE_URL' => 'mysql://root@beispiel.test:3306/beispiel',
         ];
 
-        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info);
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['mariadb']);
 
         $this->assertSame(
             'mysql://root@beispiel-feature-xyz.test:3306/beispiel_feature_xyz',
             $result['DATABASE_URL'],
         );
+    }
+
+    public function testComputeEnvironmentOverridesRewritesNonDatabaseUrlEnvKeyByScheme(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature-xyz');
+        $env = [
+            'GUACAMOLE_DATABASE_URL' => 'postgresql://user:pw@db:5432/guacamole_db?sslmode=disable',
+        ];
+
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['postgres']);
+
+        $this->assertSame(
+            'postgresql://user:pw@db:5432/guacamole_db_feature_xyz?sslmode=disable',
+            $result['GUACAMOLE_DATABASE_URL'],
+        );
+    }
+
+    public function testComputeEnvironmentOverridesRewritesMultipleDatabaseUrls(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature-xyz');
+        $env = [
+            'DATABASE_URL' => 'mysql://root:pw@db:3306/app',
+            'GUACAMOLE_DATABASE_URL' => 'mariadb://root:pw@db:3306/guac',
+            'APP_SECRET' => 'leave-me-alone',
+        ];
+
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['mariadb']);
+
+        $this->assertSame([
+            'DATABASE_URL' => 'mysql://root:pw@db:3306/app_feature_xyz',
+            'GUACAMOLE_DATABASE_URL' => 'mariadb://root:pw@db:3306/guac_feature_xyz',
+        ], $result);
+    }
+
+    public function testComputeEnvironmentOverridesSkipsDatabaseUrlWhenNoDatabaseServiceConfigured(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature-xyz');
+        $env = [
+            'DATABASE_URL' => 'mysql://root@db:3306/beispiel',
+        ];
+
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, []);
+
+        $this->assertArrayNotHasKey('DATABASE_URL', $result);
+    }
+
+    public function testComputeEnvironmentOverridesSkipsDatabaseUrlWhenSchemeDoesNotMatchConfiguredService(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature-xyz');
+        // mysql:// implies a MariaDB/MySQL backend, but only postgres is configured
+        // — the URL must point at an external DB and must not be rewritten.
+        $env = [
+            'DATABASE_URL' => 'mysql://root@external-db:3306/external',
+        ];
+
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['postgres']);
+
+        $this->assertArrayNotHasKey('DATABASE_URL', $result);
+    }
+
+    public function testComputeEnvironmentOverridesIgnoresUnsupportedScheme(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature-xyz');
+        $env = [
+            'REDIS_URL' => 'redis://cache:6379/0',
+        ];
+
+        $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['mariadb', 'postgres']);
+
+        $this->assertArrayNotHasKey('REDIS_URL', $result);
     }
 
     public function testRewriteHostnameRewritesProjectHost(): void

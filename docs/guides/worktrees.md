@@ -83,15 +83,19 @@ Typical candidates that benefit from this:
 - `E2E_TARGET_URL` and similar test-runner URLs that point at preview subdomains
 - Anything else that hard-codes the project's `.test` domain.
 
-### DATABASE_URL rewrite
+### Database URL rewrite
 
-If the primary container declares a `DATABASE_URL` in its compose environment, the database name in the URL path segment is extended with the sanitized worktree suffix (via `IdentifierSanitizer::forDatabaseSuffix`, separator `_`). The rest of the URL — scheme, credentials, host, port, query string — stays untouched, including percent-encoded values.
+Every environment variable whose value starts with a database URL scheme (`mysql://`, `mariadb://`, `postgres://`, `postgresql://`, `pgsql://`) has its database name in the URL path segment extended with the sanitized worktree suffix (via `IdentifierSanitizer::forDatabaseSuffix`, separator `_`). The rest of the URL — scheme, credentials, host, port, query string — stays untouched, including percent-encoded values.
+
+The variable name is irrelevant: `DATABASE_URL`, `GUACAMOLE_DATABASE_URL`, `LEGACY_DB_URL`, … all get rewritten consistently as long as their value parses as a DB URL.
 
 | Main | Worktree `my-app-feature-x` |
 |---|---|
 | `mysql://root:root@mariadb/my_app?serverVersion=11.8.0-MariaDB` | `mysql://root:root@mariadb/my_app_feature_x?serverVersion=11.8.0-MariaDB` |
 
 The final database name is clamped to 63 characters (MySQL/PostgreSQL identifier limit). The rewrite is skipped if the URL has no path segment (`mysql://host:3306` or `mysql://host:3306/`).
+
+The rewrite is **gated on a configured dde database service**: it only applies when the URL's scheme corresponds to a service that the project actually declares in `.dde/config.yml` (`mysql://` / `mariadb://` ⇒ `mariadb` service, `postgres://` / `postgresql://` / `pgsql://` ⇒ `postgres` service). A project without a managed DB service — or with a different DB engine than the URL's scheme — has its DB URLs left untouched, because the URL must be pointing at an external database the worktree shouldn't redirect.
 
 > **You are responsible for creating the worktree database.** dde does not create it automatically. Use `dde database:snapshot` on the main project and restore the dump into the worktree DB, or run your project's migration command inside the worktree container.
 

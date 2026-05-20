@@ -11,6 +11,19 @@ use App\Util\ProcessFactory;
 
 readonly class WorktreeManager
 {
+    /**
+     * Maps DB-URL schemes to the dde database service name backing them. Mirrors
+     * the scheme list used by `ProjectInitAdaptationManager::proposeDatabaseUrlRule()`
+     * — both must move in lockstep when new DB service types are added.
+     */
+    private const DATABASE_URL_SCHEMES = [
+        'mysql' => 'mariadb',
+        'mariadb' => 'mariadb',
+        'postgres' => 'postgres',
+        'postgresql' => 'postgres',
+        'pgsql' => 'postgres',
+    ];
+
     public function __construct(
         private ProcessFactory $processFactory,
     ) {
@@ -150,6 +163,9 @@ readonly class WorktreeManager
 
     /**
      * @param array<int|string, mixed> $existingEnv
+     * @param list<string>             $configuredServiceNames service names from `ProjectConfig::$services` —
+     *                                                         only env values whose URL scheme corresponds to
+     *                                                         a configured DB service get their DB name rewritten
      *
      * @return array<string, string>
      */
@@ -157,6 +173,7 @@ readonly class WorktreeManager
         array $existingEnv,
         string $projectName,
         WorktreeInfo $worktreeInfo,
+        array $configuredServiceNames,
     ): array {
         $projectHostname = $projectName.'.test';
         $worktreeHostname = $this->resolveHostname($projectName, $worktreeInfo);
@@ -179,8 +196,10 @@ readonly class WorktreeManager
                 $new = str_replace($projectHostname, $worktreeHostname, $new);
             }
 
-            // 2. DATABASE_URL path segment rewrite
-            if ($envKey === 'DATABASE_URL') {
+            // 2. DB URL path segment rewrite (scheme-driven, not key-driven, so
+            //    projects with multiple DB connections — e.g. `DATABASE_URL` +
+            //    `GUACAMOLE_DATABASE_URL` — all get rewritten consistently)
+            if ($this->shouldRewriteAsDatabaseUrl($new, $configuredServiceNames)) {
                 $new = $this->rewriteDatabaseUrl($new, $dbSuffix);
             }
 
@@ -280,6 +299,25 @@ readonly class WorktreeManager
         }
 
         return $realA === $realB;
+    }
+
+    /**
+     * @param list<string> $configuredServiceNames
+     */
+    private function shouldRewriteAsDatabaseUrl(string $value, array $configuredServiceNames): bool
+    {
+        if (preg_match('~^([a-z][a-z0-9+.-]*)://~i', $value, $m) !== 1) {
+            return false;
+        }
+
+        $scheme = strtolower($m[1]);
+        $serviceType = self::DATABASE_URL_SCHEMES[$scheme] ?? null;
+
+        if ($serviceType === null) {
+            return false;
+        }
+
+        return in_array($serviceType, $configuredServiceNames, true);
     }
 
     private function rewriteDatabaseUrl(string $value, string $dbSuffix): string

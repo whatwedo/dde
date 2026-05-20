@@ -489,6 +489,7 @@ readonly class DockerComposeManager
                     $combinedEnv,
                     $config->projectName,
                     $worktreeInfo,
+                    array_values(array_map(static fn (\App\Model\ServiceDefinition $service): string => $service->name, $config->services)),
                 );
 
                 foreach ($envOverrides as $key => $value) {
