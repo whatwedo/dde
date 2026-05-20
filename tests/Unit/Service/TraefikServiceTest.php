@@ -216,7 +216,7 @@ final class TraefikServiceTest extends TestCase
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('com.docker.compose.project', 'dde')
+            ->with('dde.service')
             ->willReturn([
                 new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
                 new ContainerInfo('dde-mariadb-11.8', ContainerStatus::RUNNING, 'mariadb:11.8'),
@@ -278,7 +278,7 @@ final class TraefikServiceTest extends TestCase
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('com.docker.compose.project', 'dde')
+            ->with('dde.service')
             ->willReturn([
                 new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
             ]);
@@ -327,7 +327,7 @@ final class TraefikServiceTest extends TestCase
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('com.docker.compose.project', 'dde')
+            ->with('dde.service')
             ->willReturn([
                 new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
                 new ContainerInfo('dde-mailpit', ContainerStatus::RUNNING, 'axllent/mailpit:latest'),
@@ -375,7 +375,7 @@ final class TraefikServiceTest extends TestCase
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('com.docker.compose.project', 'dde')
+            ->with('dde.service')
             ->willReturn([
                 new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
             ]);
@@ -417,7 +417,7 @@ final class TraefikServiceTest extends TestCase
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('com.docker.compose.project', 'dde')
+            ->with('dde.service')
             ->willReturn([
                 new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
             ]);

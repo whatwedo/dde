@@ -227,7 +227,7 @@ final class MailpitServiceTest extends TestCase
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('com.docker.compose.project', 'dde')
+            ->with('dde.service')
             ->willReturn([
                 new ContainerInfo('dde-mailpit', ContainerStatus::RUNNING, 'axllent/mailpit:latest'),
             ]);

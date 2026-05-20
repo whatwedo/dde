@@ -151,15 +151,15 @@ abstract class AbstractSystemService implements ServiceInterface
         $networks = $this->dockerManager->listNetworksWithPrefix('dde-services-');
         $container = $this->getContainerName();
 
-        // Identify dde-managed containers so they don't count as "project
-        // containers" on a stale network. Both global services and versioned
-        // services tag themselves with `com.docker.compose.project=dde`;
-        // user project containers carry their own Compose project name there
-        // even when the directory happens to start with `dde-` (e.g.
-        // `dde-shop-web-1`). A name-prefix check (`dde-…`) would misclassify
-        // those.
+        // Identify dde-managed infrastructure containers so they don't count
+        // as "project containers" on a stale network. Both global services
+        // (Traefik, Mailpit, …) and versioned services (`dde-postgres-18`, …)
+        // carry the `dde.service` label; user project containers do not.
+        // `com.docker.compose.project=dde` is unsafe here — a user project
+        // in a directory literally named `dde` would carry that same value
+        // and get misclassified, so reconciliation would skip its network.
         try {
-            $ddeManagedContainers = $this->dockerManager->getContainersByLabel('com.docker.compose.project', 'dde');
+            $ddeManagedContainers = $this->dockerManager->getContainersByLabel('dde.service');
         } catch (\RuntimeException) {
             $ddeManagedContainers = [];
         }

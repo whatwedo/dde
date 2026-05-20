@@ -65,10 +65,7 @@ readonly class ProjectLifecycleManager
         );
 
         // 4b. Ensure TLS certificates for worktree domains
-        $worktreeHostname = null;
-
         if ($worktreeInfo instanceof WorktreeInfo) {
-            $worktreeHostname = $this->worktreeManager->resolveHostname($projectName, $worktreeInfo);
             $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
 
             $mainDomains = $this->dockerComposeManager->extractTraefikDomainsFromServices($mergedServices);
@@ -88,13 +85,11 @@ readonly class ProjectLifecycleManager
                 }
             }
 
-            // Always include the bare worktree hostname so the cert covers it even
-            // when the compose file declares no Traefik labels at all (the override
-            // generator falls back to generated labels in that case).
-            $worktreeDomains[] = $worktreeHostname;
             $worktreeDomains = array_values(array_unique($worktreeDomains));
 
-            $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, $worktreeDomains);
+            if ($worktreeDomains !== []) {
+                $this->mkcertManager->ensureForDomains($projectName.'-'.$suffix, $worktreeDomains);
+            }
         }
 
         // 5. Image layer check — build dev layer for project containers.
@@ -140,7 +135,7 @@ readonly class ProjectLifecycleManager
             $this->filesystem->remove($overrideFile);
         }
 
-        $domains = $this->collectProjectDomains($mergedServices, $config->projectName, $worktreeInfo, $worktreeHostname, $runningServices);
+        $domains = $this->collectProjectDomains($mergedServices, $config->projectName, $worktreeInfo, $runningServices);
 
         return [
             'serviceResults' => $serviceResults,
@@ -288,7 +283,6 @@ readonly class ProjectLifecycleManager
         array $mergedServices,
         string $projectName,
         ?WorktreeInfo $worktreeInfo,
-        ?string $worktreeHostname,
         ?array $runningServices,
     ): array {
         $domains = $this->dockerComposeManager->extractTraefikDomainsFromServices($mergedServices, $runningServices);
@@ -301,13 +295,6 @@ readonly class ProjectLifecycleManager
 
         foreach ($domains as $domain) {
             $rewritten[] = $this->worktreeManager->rewriteHostname($domain, $projectName, $worktreeInfo);
-        }
-
-        // Compose file with no Traefik labels at all: the override generator
-        // falls back to auto-generated labels for the bare worktree host, so
-        // mirror that here.
-        if ($rewritten === [] && $worktreeHostname !== null) {
-            $rewritten[] = $worktreeHostname;
         }
 
         return array_values(array_unique($rewritten));
