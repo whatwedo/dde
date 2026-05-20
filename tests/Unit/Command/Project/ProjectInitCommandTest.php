@@ -581,6 +581,10 @@ final class ProjectInitCommandTest extends TestCase
             $dockerComposeModifier,
             $dockerfileParser,
             $serviceRegistry,
+            new \App\Database\DatabaseAdapterRegistry([
+                new \App\Database\MariaDbAdapter(),
+                new \App\Database\PostgresAdapter(),
+            ]),
         );
 
         $command = new ProjectInitCommand(

@@ -23,6 +23,16 @@ interface DatabaseAdapterInterface
     public function getDefaultPort(): int;
 
     /**
+     * URL schemes (e.g. `mysql`, `postgresql`) that map to this adapter's
+     * compose service type. Owned here so each adapter is the single source
+     * of truth for its own DB URLs; callers that need a scheme→service-type
+     * mapping go through {@see DatabaseAdapterRegistry::getServiceTypeForUrlScheme()}.
+     *
+     * @return list<string>
+     */
+    public function getUrlSchemes(): array;
+
+    /**
      * @return list<string>
      */
     public function getDumpCommand(string $database): array;

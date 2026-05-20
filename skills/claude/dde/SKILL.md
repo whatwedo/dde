@@ -117,7 +117,7 @@ Options for all DB commands:
 
 ## Git worktrees
 
-dde has first-class support for [Git worktrees](https://git-scm.com/docs/git-worktree): when you run `dde project:up` from a non-main worktree checkout, dde automatically assigns that checkout its own hostname **and automatically rewrites `DATABASE_URL`** to point at a worktree-specific database name.
+dde has first-class support for [Git worktrees](https://git-scm.com/docs/git-worktree): when you run `dde project:up` from a non-main worktree checkout, dde automatically assigns that checkout its own hostname **and automatically rewrites every database-URL-valued environment variable** to point at a worktree-specific database name.
 
 ### What dde does automatically per worktree
 
@@ -126,8 +126,10 @@ Given a project named `my-app` and a worktree at `~/projects/my-app-feature-x`:
 | | Main checkout | Worktree checkout |
 |---|---|---|
 | URL | `https://my-app.test` | `https://my-app-feature-x.test` |
-| `DATABASE_URL` inside the container | `…/my_app?…` | `…/my_app_feature_x?…` |
+| Every env var holding a DB URL (`mysql://…`, `postgres://…`, …) — `DATABASE_URL`, `GUACAMOLE_DATABASE_URL`, … | `…/my_app?…` | `…/my_app_feature_x?…` |
 | Container env for `APP_URL`, `MERCURE_URL`, `TRUSTED_HOSTS`, … | unchanged | main `.test` hostname replaced with worktree hostname |
+
+The DB URL rewrite is scheme-driven: any env var whose value starts with `mysql://`, `mariadb://`, `postgres://`, `postgresql://`, or `pgsql://` is candidate. It runs only when the project declares a matching dde database service (`mariadb` or `postgres`) in `.dde/config.yml`; otherwise the URL is assumed to point at an external database and is left untouched.
 
 You do **not** need to edit `.env` or `docker-compose.yml` per worktree — dde patches all of this in the compose override at `project:up` time. The base `docker-compose.yml` and the `.env` file are never modified.
 
@@ -145,7 +147,7 @@ Returns `null` for the main checkout, otherwise an object with `branch`, `suffix
 
 ### Seeding the worktree database
 
-The worktree database does not exist yet. dde rewrites the `DATABASE_URL` to point at a new name (e.g. `my_app_feature_x`), but it does **not** issue `CREATE DATABASE`. You have to run a bootstrap step once per worktree.
+The worktree database does not exist yet. dde rewrites each DB-URL env var to point at a new name (e.g. `my_app_feature_x`), but it does **not** issue `CREATE DATABASE`. You have to run a bootstrap step once per worktree.
 
 Most projects ship a one-shot install script (f.ex. `make install`) that creates the database, runs migrations and loads fixtures. Run it inside the worktree container:
 

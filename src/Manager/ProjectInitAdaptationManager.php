@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Manager;
 
+use App\Database\DatabaseAdapterRegistry;
 use App\Parser\DockerComposeParser;
 use App\Parser\DockerfileParser;
 use App\Service\ServiceRegistry;
@@ -20,6 +21,7 @@ readonly class ProjectInitAdaptationManager
         private DockerComposeModifier $dockerComposeModifier,
         private DockerfileParser $dockerfileParser,
         private ServiceRegistry $serviceRegistry,
+        private DatabaseAdapterRegistry $databaseAdapterRegistry,
         private Filesystem $filesystem = new Filesystem(),
     ) {
     }
@@ -605,12 +607,10 @@ readonly class ProjectInitAdaptationManager
             return null;
         }
 
-        // Scheme → service type
-        $serviceType = match (strtolower($parsed['scheme'])) {
-            'mysql', 'mariadb' => 'mariadb',
-            'postgres', 'postgresql', 'pgsql' => 'postgres',
-            default => null,
-        };
+        // Scheme → service type. Owned by `DatabaseAdapterRegistry` so each
+        // adapter is the single source of truth for its own URL schemes —
+        // adding a fourth DB service only requires extending the new adapter.
+        $serviceType = $this->databaseAdapterRegistry->getServiceTypeForUrlScheme($parsed['scheme']);
 
         if ($serviceType === null) {
             return null;

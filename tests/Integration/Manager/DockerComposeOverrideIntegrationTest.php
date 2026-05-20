@@ -10,6 +10,9 @@ use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
+use App\Database\DatabaseAdapterRegistry;
+use App\Database\MariaDbAdapter;
+use App\Database\PostgresAdapter;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
 use App\Manager\WorktreeManager;
@@ -449,7 +452,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
             adapterRegistry: $this->adapterRegistry,
             dockerManager: $dockerManager,
             userContext: $userContext,
-            worktreeManager: new WorktreeManager(new ProcessFactory()),
+            worktreeManager: new WorktreeManager(new ProcessFactory(), new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()])),
         );
     }
 

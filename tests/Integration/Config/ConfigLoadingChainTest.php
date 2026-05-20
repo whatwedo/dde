@@ -226,7 +226,7 @@ final class ConfigLoadingChainTest extends TestCase
         return new ProjectConfigManager(
             globalConfigManager: new GlobalConfigManager(configDir: $configDir),
             serviceRegistry: $serviceRegistry ?? new ServiceRegistry([], new DatabaseAdapterRegistry([])),
-            worktreeManager: new WorktreeManager(new ProcessFactory()),
+            worktreeManager: new WorktreeManager(new ProcessFactory(), new DatabaseAdapterRegistry([])),
         );
     }
 

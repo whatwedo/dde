@@ -7,6 +7,7 @@ namespace App\Manager;
 use App\Adapter\AdapterRegistry;
 use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
+use App\Model\ServiceDefinition;
 use App\Model\UserContext;
 use App\Util\ComposeEnvEntryParser;
 use App\Util\NdJsonParser;
@@ -478,6 +479,21 @@ readonly class DockerComposeManager
                 ? new TaggedValue('override', $labels)
                 : $labels;
 
+            // Worktree containers — including shell-less ones — must resolve
+            // their own worktree-suffixed hostnames. `extra_hosts` is a
+            // container-runtime property only (no shell needed inside the
+            // image), so compute the override before the shell-less branch
+            // returns. Without this, scratch/distroless worktree containers
+            // would inherit the main checkout's hostnames and could not reach
+            // their own worktree URLs.
+            $rewrittenExtraHosts = $worktreeInfo instanceof WorktreeInfo
+                ? $this->worktreeManager->rewriteExtraHosts(
+                    $this->unwrapTaggedList($serviceConfig['extra_hosts'] ?? null),
+                    $config->projectName,
+                    $worktreeInfo,
+                )
+                : null;
+
             // Skip entrypoint override for shell-less images (scratch, single-binary)
             if (! $this->dockerManager->imageHasShell($imageName)) {
                 $shellLessOverride = [
@@ -487,6 +503,10 @@ readonly class DockerComposeManager
 
                 if ($containerHostname !== null) {
                     $shellLessOverride['hostname'] = $containerHostname;
+                }
+
+                if ($rewrittenExtraHosts !== null) {
+                    $shellLessOverride['extra_hosts'] = new TaggedValue('override', $rewrittenExtraHosts);
                 }
 
                 $overrideServices[$serviceName] = $shellLessOverride;
@@ -535,6 +555,7 @@ readonly class DockerComposeManager
                     $combinedEnv,
                     $config->projectName,
                     $worktreeInfo,
+                    array_values(array_map(static fn (ServiceDefinition $service): string => $service->name, $config->services)),
                 );
 
                 foreach ($envOverrides as $key => $value) {
@@ -565,6 +586,17 @@ readonly class DockerComposeManager
 
             if ($containerHostname !== null) {
                 $serviceOverride['hostname'] = $containerHostname;
+            }
+
+            // Rewrite extra_hosts only when in a worktree: container DNS for
+            // `<project>.test` lives in /etc/hosts (via extra_hosts) — host-side
+            // dnsmasq isn't reachable from inside the container, so without
+            // this rewrite the worktree container holds the main checkout's
+            // hostnames and can't reach its own worktree URLs. `!override`
+            // replaces the base list on the worktree only; the main checkout
+            // keeps the originals untouched.
+            if ($rewrittenExtraHosts !== null) {
+                $serviceOverride['extra_hosts'] = new TaggedValue('override', $rewrittenExtraHosts);
             }
 
             // Preserve original entrypoint + CMD when overriding entrypoint
@@ -989,11 +1021,26 @@ readonly class DockerComposeManager
      */
     private function unwrapTaggedLabels(mixed $labels): array
     {
-        if ($labels instanceof TaggedValue) {
-            $labels = $labels->getValue();
+        return $this->unwrapTaggedList($labels);
+    }
+
+    /**
+     * Same TaggedValue unwrap as `unwrapTaggedLabels()`, generalised for any
+     * compose list value that may arrive wrapped in `!override` or `!reset`
+     * after the base file is parsed with `PARSE_CUSTOM_TAGS`. Used for
+     * `extra_hosts` (and any other list-shaped service field that needs the
+     * same treatment) so a `!override` base entry is honoured instead of
+     * being silently coerced to `[]`.
+     *
+     * @return array<int|string, mixed>
+     */
+    private function unwrapTaggedList(mixed $value): array
+    {
+        if ($value instanceof TaggedValue) {
+            $value = $value->getValue();
         }
 
-        return is_array($labels) ? $labels : [];
+        return is_array($value) ? $value : [];
     }
 
     /**

@@ -11,8 +11,10 @@ use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
+use App\Model\ServiceDefinition;
 use App\Model\UserContext;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Yaml\Tag\TaggedValue;
 use Symfony\Component\Yaml\Yaml;
 
 final class DockerComposeManagerTest extends TestCase
@@ -1111,7 +1113,7 @@ final class DockerComposeManagerTest extends TestCase
                     'VIRTUAL_HOST=beispiel.test',
                     'MERCURE_URL=http://mercure.beispiel.test/.well-known/mercure',
                     'OPEN_URL=https://beispiel.test',
-                    'DATABASE_URL=mysql://root@db:3306/app',
+                    'DATABASE_URL=mysql://root@mariadb:3306/app',
                 ],
             ],
         ]);
@@ -1124,7 +1126,10 @@ final class DockerComposeManagerTest extends TestCase
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(
+            new GlobalConfig(),
+            new ProjectConfig(name: 'beispiel', services: [new ServiceDefinition(name: 'mariadb')]),
+        );
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1136,7 +1141,7 @@ final class DockerComposeManagerTest extends TestCase
         $this->assertSame('https://beispiel-wt-feature.test', $env['OPEN_URL']);
 
         // DATABASE_URL path segment gets worktree suffix appended
-        $this->assertSame('mysql://root@db:3306/app_wt_feature', $env['DATABASE_URL']);
+        $this->assertSame('mysql://root@mariadb:3306/app_wt_feature', $env['DATABASE_URL']);
 
         unlink($overridePath);
     }
@@ -1506,7 +1511,10 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(
+            new GlobalConfig(),
+            new ProjectConfig(name: 'beispiel', services: [new ServiceDefinition(name: 'mariadb')]),
+        );
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1517,6 +1525,160 @@ ENV);
             $env['DATABASE_URL'],
         );
         $this->assertSame('https://beispiel-wt-feature.test', $env['APP_URL']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeRewritesExtraHosts(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'extra_hosts' => [
+                    'preview.beispiel.test:host-gateway',
+                    'admin.beispiel.test:host-gateway',
+                    'partner-api.example.com:1.2.3.4',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $extraHosts = $data['services']['web']['extra_hosts'];
+
+        // !override tag ensures Compose replaces the base list (not merges),
+        // mirroring the Traefik-labels strategy: the worktree container ends
+        // up with the worktree-hostname variants only, while the main checkout
+        // keeps the original entries from the base file.
+        $this->assertInstanceOf(TaggedValue::class, $extraHosts);
+        $this->assertSame('override', $extraHosts->getTag());
+        $this->assertSame([
+            'preview.beispiel-wt-feature.test:host-gateway',
+            'admin.beispiel-wt-feature.test:host-gateway',
+            'partner-api.example.com:1.2.3.4',
+        ], $extraHosts->getValue());
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideRewritesExtraHostsForShellLessImage(): void
+    {
+        // Regression: shell-less images (scratch / single-binary) used to
+        // skip the extra_hosts rewrite because the shell-less branch
+        // `continue`d before the rewrite block ran. extra_hosts is a
+        // container-runtime property only — no shell needed inside — so a
+        // worktree container based on a scratch image must still resolve
+        // its own worktree-suffixed hostnames.
+        $this->createComposeFile([
+            'app' => [
+                'image' => 'static-binary:latest',
+                'extra_hosts' => [
+                    'preview.beispiel.test:host-gateway',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManagerForShellLess();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $extraHosts = $data['services']['app']['extra_hosts'];
+        $this->assertInstanceOf(TaggedValue::class, $extraHosts);
+        $this->assertSame('override', $extraHosts->getTag());
+        $this->assertSame([
+            'preview.beispiel-wt-feature.test:host-gateway',
+        ], $extraHosts->getValue());
+
+        // Shell-less services skip the entrypoint override block entirely.
+        $this->assertArrayNotHasKey('entrypoint', $data['services']['app']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideUnwrapsExtraHostsTaggedValueFromBaseFile(): void
+    {
+        // Regression: a base file that declares `extra_hosts: !override [...]`
+        // was being silently dropped to `[]` by the previous `is_array` check
+        // — the resulting worktree container would inherit the main checkout's
+        // hostnames and the `!override` semantics the user had asked for were
+        // lost.
+        $composeYaml = <<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+                extra_hosts: !override
+                  - preview.beispiel.test:host-gateway
+            YAML;
+        file_put_contents($this->tempDir.'/docker-compose.yml', $composeYaml);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $extraHosts = $data['services']['web']['extra_hosts'];
+        $this->assertInstanceOf(TaggedValue::class, $extraHosts);
+        $this->assertSame([
+            'preview.beispiel-wt-feature.test:host-gateway',
+        ], $extraHosts->getValue());
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideDoesNotEmitExtraHostsWhenNothingToRewrite(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'extra_hosts' => [
+                    'partner-api.example.com:1.2.3.4',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        // Nothing to rewrite — base extra_hosts stays untouched, no override emitted.
+        $this->assertArrayNotHasKey('extra_hosts', $data['services']['web']);
 
         unlink($overridePath);
     }
@@ -1548,7 +1710,7 @@ ENV);
             },
         );
         $worktreeManager->method('computeEnvironmentOverrides')->willReturnCallback(
-            function (array $env, string $project, \App\Config\WorktreeInfo $info) use ($worktreeHostname): array {
+            function (array $env, string $project, \App\Config\WorktreeInfo $info, array $configuredServiceNames) use ($worktreeHostname): array {
                 $result = [];
                 foreach ($env as $k => $v) {
                     $key = is_int($k) ? explode('=', (string) $v, 2)[0] : $k;
@@ -1574,7 +1736,32 @@ ENV);
         $resourcesDir = dirname(__DIR__, 3).'/resources';
         $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
 
-        $worktreeManager = new \App\Manager\WorktreeManager(new \App\Util\ProcessFactory());
+        $worktreeManager = new \App\Manager\WorktreeManager(
+            new \App\Util\ProcessFactory(),
+            new \App\Database\DatabaseAdapterRegistry([
+                new \App\Database\MariaDbAdapter(),
+                new \App\Database\PostgresAdapter(),
+            ]),
+        );
+
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
+    }
+
+    private function createManagerWithRealWorktreeManagerForShellLess(): DockerComposeManager
+    {
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(false);
+
+        $resourcesDir = dirname(__DIR__, 3).'/resources';
+        $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
+
+        $worktreeManager = new \App\Manager\WorktreeManager(
+            new \App\Util\ProcessFactory(),
+            new \App\Database\DatabaseAdapterRegistry([
+                new \App\Database\MariaDbAdapter(),
+                new \App\Database\PostgresAdapter(),
+            ]),
+        );
 
         return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
     }

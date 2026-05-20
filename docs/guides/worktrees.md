@@ -83,9 +83,11 @@ Typical candidates that benefit from this:
 - `E2E_TARGET_URL` and similar test-runner URLs that point at preview subdomains
 - Anything else that hard-codes the project's `.test` domain.
 
-### DATABASE_URL rewrite
+### Database URL rewrite
 
-If the primary container declares a `DATABASE_URL` in its compose environment, the database name in the URL path segment is extended with the sanitized worktree suffix (via `IdentifierSanitizer::forDatabaseSuffix`, separator `_`). The rest of the URL — scheme, credentials, host, port, query string — stays untouched, including percent-encoded values.
+Every environment variable whose value starts with a database URL scheme (`mysql://`, `mariadb://`, `postgres://`, `postgresql://`, `pgsql://`) has its database name in the URL path segment extended with the sanitized worktree suffix (via `IdentifierSanitizer::forDatabaseSuffix`, separator `_`). The rest of the URL — scheme, credentials, host, port, query string — stays untouched, including percent-encoded values.
+
+The variable name is irrelevant: `DATABASE_URL`, `GUACAMOLE_DATABASE_URL`, `LEGACY_DB_URL`, … all get rewritten consistently as long as their value parses as a DB URL.
 
 | Main | Worktree `my-app-feature-x` |
 |---|---|
@@ -93,11 +95,26 @@ If the primary container declares a `DATABASE_URL` in its compose environment, t
 
 The final database name is clamped to 63 characters (MySQL/PostgreSQL identifier limit). The rewrite is skipped if the URL has no path segment (`mysql://host:3306` or `mysql://host:3306/`).
 
+The rewrite is **gated on the URL pointing at a dde-managed DB container**, in two layers:
+
+1. The URL's scheme must correspond to a service the project declares in `.dde/config.yml` (`mysql://` / `mariadb://` ⇒ `mariadb` service, `postgres://` / `postgresql://` / `pgsql://` ⇒ `postgres` service).
+2. The URL's host must match the canonical alias the matching DB adapter exposes on the per-project network — `mariadb` or `mysql` for the MariaDB adapter, `postgres` or `postgresql` for the Postgres adapter. Any other host (`external.example`, `db.production.com`, `127.0.0.1`, a custom Compose alias, …) is treated as external and passes through unchanged.
+
+The two gates together mean a project with a dde-managed Postgres can still declare `ANALYTICS_DATABASE_URL=postgresql://readonly@external.example/analytics` next to its main `DATABASE_URL` — the analytics URL is left alone because its host is not a managed alias.
+
 > **You are responsible for creating the worktree database.** dde does not create it automatically. Use `dde database:snapshot` on the main project and restore the dump into the worktree DB, or run your project's migration command inside the worktree container.
 
 ### Database commands target the worktree DB
 
 Every `project:db*` command run from inside a worktree automatically targets the worktree-suffixed database, matching the rewritten `DATABASE_URL`. This covers `project:db`, `project:db:open`, `project:db:export`, `project:db:import`, `project:db:snapshot:create`, and `project:db:snapshot:restore`. Pass `--database <name>` to override the automatic selection (the explicit value is forwarded verbatim, with no suffix applied).
+
+### `extra_hosts` rewrite
+
+`extra_hosts` entries whose hostname is `<project>.test` or a subdomain thereof get the worktree-hostname variant emitted in the overlay (e.g. `preview.beispiel.test:host-gateway` → `preview.beispiel-feature-x.test:host-gateway`). Unrelated entries (`partner-api.example.com:1.2.3.4`) pass through untouched.
+
+**Why:** inside a container, dde's host-side dnsmasq is unreachable — the only way for the worktree container to resolve `<project>.test` hostnames is `/etc/hosts`, populated from `extra_hosts`. Without the rewrite, a worktree container would hold the main checkout's hostnames and could not reach its own worktree URLs (e.g. a Playwright service running inside the project, targeting `preview.<project>-<branch>.test`, would get `ERR_NAME_NOT_RESOLVED`).
+
+The override uses YAML's `!override` tag, so the worktree's `extra_hosts` list **replaces** the base list on the worktree container only — the main checkout keeps the originals from `docker-compose.yml`. If no entry in the base file references the project host, no override is emitted (the base list passes through unchanged).
 
 ## Parallel Execution
 
