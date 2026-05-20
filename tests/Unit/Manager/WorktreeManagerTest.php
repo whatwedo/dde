@@ -453,6 +453,98 @@ final class WorktreeManagerTest extends TestCase
         );
     }
 
+    public function testRewriteExtraHostsRewritesListFormProjectSubdomain(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+        $hosts = ['preview.beispiel.test:host-gateway'];
+
+        $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
+
+        $this->assertSame(['preview.beispiel-feature.test:host-gateway'], $result);
+    }
+
+    public function testRewriteExtraHostsRewritesListFormBareProjectHost(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+        $hosts = ['beispiel.test:host-gateway'];
+
+        $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
+
+        $this->assertSame(['beispiel-feature.test:host-gateway'], $result);
+    }
+
+    public function testRewriteExtraHostsAcceptsEqualsSeparator(): void
+    {
+        // Compose v2.24+ recommends `host=ip` to disambiguate IPv6 values.
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+        $hosts = ['preview.beispiel.test=host-gateway'];
+
+        $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
+
+        $this->assertSame(['preview.beispiel-feature.test=host-gateway'], $result);
+    }
+
+    public function testRewriteExtraHostsRewritesMapForm(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+        $hosts = [
+            'preview.beispiel.test' => 'host-gateway',
+        ];
+
+        $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
+
+        $this->assertSame(['preview.beispiel-feature.test:host-gateway'], $result);
+    }
+
+    public function testRewriteExtraHostsKeepsUnrelatedEntries(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+        $hosts = [
+            'preview.beispiel.test:host-gateway',
+            'partner-api.example.com:1.2.3.4',
+        ];
+
+        $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
+
+        $this->assertSame([
+            'preview.beispiel-feature.test:host-gateway',
+            'partner-api.example.com:1.2.3.4',
+        ], $result);
+    }
+
+    public function testRewriteExtraHostsReturnsNullWhenNothingChanged(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+        $hosts = ['partner-api.example.com:1.2.3.4'];
+
+        $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
+
+        $this->assertNull($result);
+    }
+
+    public function testRewriteExtraHostsReturnsNullForEmptyInput(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+
+        $this->assertNull($this->manager->rewriteExtraHosts([], 'beispiel', $info));
+    }
+
+    public function testRewriteExtraHostsRewritesMultipleSubdomains(): void
+    {
+        $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
+        $hosts = [
+            'preview.beispiel.test:host-gateway',
+            'admin.beispiel.test:host-gateway',
+        ];
+
+        $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
+
+        $this->assertSame([
+            'preview.beispiel-feature.test:host-gateway',
+            'admin.beispiel-feature.test:host-gateway',
+        ], $result);
+    }
+
     public function testDetectReturnsWorktreeInfoWhenCwdIsInsideNestedWorktreeWithoutDdeDir(): void
     {
         // Models the real-world setup where the .dde/ directory only lives in

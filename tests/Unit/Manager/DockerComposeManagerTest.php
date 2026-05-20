@@ -14,6 +14,7 @@ use App\Manager\DockerManager;
 use App\Model\ServiceDefinition;
 use App\Model\UserContext;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Yaml\Tag\TaggedValue;
 use Symfony\Component\Yaml\Yaml;
 
 final class DockerComposeManagerTest extends TestCase
@@ -1340,6 +1341,79 @@ ENV);
             $env['DATABASE_URL'],
         );
         $this->assertSame('https://beispiel-wt-feature.test', $env['APP_URL']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeRewritesExtraHosts(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'extra_hosts' => [
+                    'preview.beispiel.test:host-gateway',
+                    'admin.beispiel.test:host-gateway',
+                    'partner-api.example.com:1.2.3.4',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $extraHosts = $data['services']['web']['extra_hosts'];
+
+        // !override tag ensures Compose replaces the base list (not merges),
+        // mirroring the Traefik-labels strategy: the worktree container ends
+        // up with the worktree-hostname variants only, while the main checkout
+        // keeps the original entries from the base file.
+        $this->assertInstanceOf(TaggedValue::class, $extraHosts);
+        $this->assertSame('override', $extraHosts->getTag());
+        $this->assertSame([
+            'preview.beispiel-wt-feature.test:host-gateway',
+            'admin.beispiel-wt-feature.test:host-gateway',
+            'partner-api.example.com:1.2.3.4',
+        ], $extraHosts->getValue());
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideDoesNotEmitExtraHostsWhenNothingToRewrite(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'extra_hosts' => [
+                    'partner-api.example.com:1.2.3.4',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-wt-feature',
+        );
+
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        // Nothing to rewrite — base extra_hosts stays untouched, no override emitted.
+        $this->assertArrayNotHasKey('extra_hosts', $data['services']['web']);
 
         unlink($overridePath);
     }

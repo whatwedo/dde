@@ -103,6 +103,14 @@ The rewrite is **gated on a configured dde database service**: it only applies w
 
 Every `project:db*` command run from inside a worktree automatically targets the worktree-suffixed database, matching the rewritten `DATABASE_URL`. This covers `project:db`, `project:db:open`, `project:db:export`, `project:db:import`, `project:db:snapshot:create`, and `project:db:snapshot:restore`. Pass `--database <name>` to override the automatic selection (the explicit value is forwarded verbatim, with no suffix applied).
 
+### `extra_hosts` rewrite
+
+`extra_hosts` entries whose hostname is `<project>.test` or a subdomain thereof get the worktree-hostname variant emitted in the overlay (e.g. `preview.beispiel.test:host-gateway` → `preview.beispiel-feature-x.test:host-gateway`). Unrelated entries (`partner-api.example.com:1.2.3.4`) pass through untouched.
+
+**Why:** inside a container, dde's host-side dnsmasq is unreachable — the only way for the worktree container to resolve `<project>.test` hostnames is `/etc/hosts`, populated from `extra_hosts`. Without the rewrite, a worktree container would hold the main checkout's hostnames and could not reach its own worktree URLs (e.g. a Playwright service running inside the project, targeting `preview.<project>-<branch>.test`, would get `ERR_NAME_NOT_RESOLVED`).
+
+The override uses YAML's `!override` tag, so the worktree's `extra_hosts` list **replaces** the base list on the worktree container only — the main checkout keeps the originals from `docker-compose.yml`. If no entry in the base file references the project host, no override is emitted (the base list passes through unchanged).
+
 ## Parallel Execution
 
 Main and worktree can run side-by-side. The Traefik routers emitted by dde are **unique per hostname**, so there is no router-name collision between the two containers. The override file is written with YAML's `!override` tag, so the labels from the base `docker-compose.yml` are **replaced** (not merged) on the worktree container.

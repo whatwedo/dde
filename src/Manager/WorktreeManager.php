@@ -162,6 +162,80 @@ readonly class WorktreeManager
     }
 
     /**
+     * Rewrites compose `extra_hosts` entries so the worktree container can
+     * resolve the worktree-suffixed hostnames it actually serves. Inside a
+     * container, `dde`'s host-side dnsmasq is unreachable — the only source
+     * of `<project>.test` resolution is `/etc/hosts`, populated from
+     * `extra_hosts`. Without this rewrite a worktree's container holds the
+     * main checkout's hostnames and cannot reach its own worktree URLs
+     * (e.g. Playwright targeting `preview.<project>-<branch>.test`).
+     *
+     * Both compose list-form (`['host:value']` or `['host=value']`) and
+     * map-form (`['host' => 'value']`) are accepted; the result is always
+     * a list of `host:value` strings, matching the list-form Compose itself
+     * emits from `compose config`. Unrelated entries pass through unchanged.
+     *
+     * Returns `null` when no entry references the project host — the caller
+     * uses that as the signal to skip emitting an `extra_hosts` override and
+     * leave the base file's entries in place.
+     *
+     * @param array<int|string, mixed> $existingExtraHosts
+     *
+     * @return list<string>|null
+     */
+    public function rewriteExtraHosts(array $existingExtraHosts, string $projectName, WorktreeInfo $worktreeInfo): ?array
+    {
+        if ($existingExtraHosts === []) {
+            return null;
+        }
+
+        $changed = false;
+        $rewritten = [];
+
+        foreach ($existingExtraHosts as $key => $value) {
+            if (is_string($key)) {
+                $host = $key;
+                $sep = ':';
+                $rest = is_string($value) ? $value : '';
+            } else {
+                $entry = is_string($value) ? $value : '';
+
+                // Compose accepts both `host:value` (legacy) and `host=value`
+                // (v2.24+, unambiguous for IPv6 values). Split on the first
+                // occurrence of either separator; the host part is pure ASCII
+                // so it cannot contain `:` or `=` itself.
+                $colonPos = strpos($entry, ':');
+                $equalsPos = strpos($entry, '=');
+                $sepPos = match (true) {
+                    $colonPos === false => $equalsPos,
+                    $equalsPos === false => $colonPos,
+                    default => min($colonPos, $equalsPos),
+                };
+
+                if ($sepPos === false) {
+                    $rewritten[] = $entry;
+
+                    continue;
+                }
+
+                $host = substr($entry, 0, $sepPos);
+                $sep = $entry[$sepPos];
+                $rest = substr($entry, $sepPos + 1);
+            }
+
+            $newHost = $this->rewriteHostname($host, $projectName, $worktreeInfo);
+
+            if ($newHost !== $host) {
+                $changed = true;
+            }
+
+            $rewritten[] = $newHost.$sep.$rest;
+        }
+
+        return $changed ? $rewritten : null;
+    }
+
+    /**
      * @param array<int|string, mixed> $existingEnv
      * @param list<string>             $configuredServiceNames service names from `ProjectConfig::$services` —
      *                                                         only env values whose URL scheme corresponds to

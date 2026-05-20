@@ -522,6 +522,25 @@ readonly class DockerComposeManager
                 $serviceOverride['hostname'] = $containerHostname;
             }
 
+            // Rewrite extra_hosts only when in a worktree: container DNS for
+            // `<project>.test` lives in /etc/hosts (via extra_hosts) — host-side
+            // dnsmasq isn't reachable from inside the container, so without
+            // this rewrite the worktree container holds the main checkout's
+            // hostnames and can't reach its own worktree URLs. `!override`
+            // replaces the base list on the worktree only; the main checkout
+            // keeps the originals untouched.
+            if ($worktreeInfo instanceof WorktreeInfo) {
+                $rewrittenExtraHosts = $this->worktreeManager->rewriteExtraHosts(
+                    is_array($serviceConfig['extra_hosts'] ?? null) ? $serviceConfig['extra_hosts'] : [],
+                    $config->projectName,
+                    $worktreeInfo,
+                );
+
+                if ($rewrittenExtraHosts !== null) {
+                    $serviceOverride['extra_hosts'] = new TaggedValue('override', $rewrittenExtraHosts);
+                }
+            }
+
             // Preserve original entrypoint + CMD when overriding entrypoint
             // Mirror Docker's behavior:
             //   - compose entrypoint overrides image ENTRYPOINT and resets CMD
