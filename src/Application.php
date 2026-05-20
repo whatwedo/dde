@@ -14,7 +14,14 @@ use Symfony\Component\HttpKernel\KernelInterface;
 
 final class Application extends BaseApplication
 {
-    public const string APP_VERSION = 'v2.0.0-beta.1';
+    /**
+     * Build-time placeholder substituted by `.github/workflows/build.yml`
+     * (stable → git tag, nightly → short SHA). Public only because
+     * `box compile` and the publish pipeline need a stable anchor; callers
+     * MUST go through {@see Application::resolveVersion()} so an unbuilt
+     * checkout reports `dev` instead of the raw token.
+     */
+    public const string APP_VERSION = '@APP_VERSION@';
 
     private const array ALLOWED_COMMANDS = ['about', 'completion', 'help', 'list'];
 
@@ -27,7 +34,7 @@ final class Application extends BaseApplication
         parent::__construct($kernel);
 
         $this->setName('dde');
-        $this->setVersion(self::APP_VERSION);
+        $this->setVersion(self::resolveVersion());
     }
 
     /**
@@ -50,6 +57,26 @@ final class Application extends BaseApplication
 
             return false;
         }, ARRAY_FILTER_USE_KEY);
+    }
+
+    /**
+     * Single source of truth for the binary version string at runtime.
+     *
+     * Reads APP_VERSION via Reflection (return type `mixed`) to keep the
+     * comparison opaque to static analysers, which would otherwise collapse
+     * it to a literal and treat the runtime fallback as dead code. In an
+     * unbuilt checkout the constant still holds `@APP_VERSION@` — report
+     * `dev` so `dde --version` (and any other caller) stays readable.
+     */
+    public static function resolveVersion(): string
+    {
+        $value = (new \ReflectionClassConstant(self::class, 'APP_VERSION'))->getValue();
+
+        if (! is_string($value) || $value === '@APP_VERSION@') {
+            return 'dev';
+        }
+
+        return $value;
     }
 
     protected function getDefaultInputDefinition(): InputDefinition

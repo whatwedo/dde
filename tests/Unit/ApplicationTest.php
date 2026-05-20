@@ -17,7 +17,10 @@ final class ApplicationTest extends TestCase
         $application = new Application($this->createKernelMock());
 
         $this->assertSame('dde', $application->getName());
-        $this->assertSame(Application::APP_VERSION, $application->getVersion());
+        // Tests always run against an unbuilt checkout — the build pipeline only
+        // substitutes APP_VERSION before `box compile`, after the test suite.
+        // The constructor must therefore report the `dev` fallback.
+        $this->assertSame('dev', $application->getVersion());
     }
 
     public function testAllFiltersUnwantedCommands(): void

@@ -1,0 +1,136 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      app-version-string:
+        description: "Literal value that replaces @APP_VERSION@ in src/Application.php before the PHAR is compiled."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: darwin-amd64
+            runner: macos-15
+            binary: dde-darwin-amd64
+            micro_os: macos
+            micro_arch: x86_64
+
+          - name: darwin-arm64
+            runner: macos-15
+            binary: dde-darwin-arm64
+            micro_os: macos
+            micro_arch: aarch64
+
+          - name: linux-amd64
+            runner: ubuntu-latest
+            binary: dde-linux-amd64
+            micro_os: linux
+            micro_arch: x86_64
+
+          - name: linux-arm64
+            runner: ubuntu-24.04-arm
+            binary: dde-linux-arm64
+            micro_os: linux
+            micro_arch: aarch64
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Read PHP version
+        id: php
+        run: |
+          FULL=$(grep '"php":' composer.json | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+          echo "full=$FULL" >> "$GITHUB_OUTPUT"
+          echo "minor=$(echo "$FULL" | cut -d. -f1,2)" >> "$GITHUB_OUTPUT"
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ steps.php.outputs.minor }}
+          extensions: yaml, mbstring, json, phar, pcntl, posix
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-no-dev-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-no-dev-
+
+      - name: Install production dependencies
+        run: composer install --no-dev --optimize-autoloader --no-progress
+
+      - name: Warm Symfony cache
+        shell: bash
+        run: |
+          rm -rf var/cache/prod
+          APP_ENV=prod php bin/console cache:warmup --env=prod
+
+      - name: Substitute @APP_VERSION@ placeholder
+        shell: bash
+        env:
+          APP_VERSION_STRING: ${{ inputs.app-version-string }}
+        run: |
+          # Reject anything that isn't safe to embed unescaped in both the
+          # sed replacement string and a PHP single-quoted string literal.
+          # Git tags, short SHAs and `pr-<number>` all fit; anything weirder
+          # is almost certainly a misuse and should fail fast.
+          if [[ ! "$APP_VERSION_STRING" =~ ^[A-Za-z0-9._+-]+$ ]]; then
+            echo "Refusing to substitute APP_VERSION_STRING='$APP_VERSION_STRING' — must match ^[A-Za-z0-9._+-]+$" >&2
+            exit 1
+          fi
+          # Match only the constant assignment, not every `@APP_VERSION@`
+          # occurrence in the file — resolveVersion() compares against the
+          # literal placeholder and that comparison string must NOT be
+          # rewritten, or every built binary reports `dev`.
+          # `-i.bak` is the portable form: GNU sed and BSD sed (macOS) both accept it.
+          grep -q "APP_VERSION = '@APP_VERSION@'" src/Application.php
+          sed -i.bak "s|APP_VERSION = '@APP_VERSION@'|APP_VERSION = '${APP_VERSION_STRING}'|" src/Application.php
+          rm src/Application.php.bak
+          echo "Substituted @APP_VERSION@ → ${APP_VERSION_STRING}"
+
+      - name: Download box.phar
+        shell: bash
+        run: |
+          curl -fsSL https://github.com/box-project/box/releases/download/4.7.0/box.phar -o box.phar
+          if [ ! -s box.phar ]; then
+            echo "Error: box.phar download failed or file is empty"
+            exit 1
+          fi
+          php box.phar --version || { echo "Error: box.phar is corrupt"; exit 1; }
+          chmod +x box.phar
+
+      - name: Build PHAR
+        run: php box.phar compile
+
+      - name: Download micro.sfx
+        run: |
+          MICRO_URL="https://dl.static-php.dev/static-php-cli/common/php-${{ steps.php.outputs.full }}-micro-${{ matrix.micro_os }}-${{ matrix.micro_arch }}.tar.gz"
+          curl -fsSL "${MICRO_URL}" -o micro.tar.gz
+          if [ ! -s micro.tar.gz ]; then
+            echo "Error: micro.sfx download failed or file is empty"
+            exit 1
+          fi
+          tar -xzf micro.tar.gz
+          find . -maxdepth 2 -name 'micro.sfx' -exec mv {} micro.sfx \;
+          test -f micro.sfx
+
+      - name: Combine micro.sfx + PHAR
+        run: |
+          cat micro.sfx bin/dde.phar > ${{ matrix.binary }}
+          chmod +x ${{ matrix.binary }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.binary }}
+          path: ${{ matrix.binary }}
+          retention-days: 5

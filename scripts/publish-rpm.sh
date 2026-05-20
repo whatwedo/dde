@@ -2,17 +2,46 @@
 set -euo pipefail
 
 # Build .rpm packages and publish to S3 DNF/YUM repository
-# Usage: ./scripts/publish-rpm.sh <version> <dist-dir> <s3-bucket>
+# Usage: ./scripts/publish-rpm.sh <version> <dist-dir> <s3-bucket> <channel>
+# <channel> is "stable" or "nightly".
 
-VERSION="${1:?Usage: publish-rpm.sh <version> <dist-dir> <s3-bucket>}"
-DIST_DIR="${2:?Usage: publish-rpm.sh <version> <dist-dir> <s3-bucket>}"
-S3_BUCKET="${3:?Usage: publish-rpm.sh <version> <dist-dir> <s3-bucket>}"
+VERSION="${1:?Usage: publish-rpm.sh <version> <dist-dir> <s3-bucket> <channel>}"
+DIST_DIR="${2:?Usage: publish-rpm.sh <version> <dist-dir> <s3-bucket> <channel>}"
+S3_BUCKET="${3:?Usage: publish-rpm.sh <version> <dist-dir> <s3-bucket> <channel>}"
+CHANNEL="${4:?Usage: publish-rpm.sh <version> <dist-dir> <s3-bucket> <channel>}"
 VERSION="${VERSION#v}"
 # RPM version must not contain hyphens
 RPMVER="${VERSION//-/_}"
 
+case "${CHANNEL}" in
+    stable)
+        PKG_NAME="dde"
+        REPO_PATH="rpm"
+        EXTRA_SPEC=""
+        REPO_FILE_NAME="dde.repo"
+        REPO_FILE_ID="dde"
+        REPO_FILE_DESC="dde - Docker Development Environment"
+        ;;
+    nightly)
+        PKG_NAME="dde-nightly"
+        REPO_PATH="rpm-nightly"
+        # Only Conflicts: dde. We intentionally do NOT use Obsoletes: dde,
+        # which would auto-migrate stable users on `dnf upgrade` if they ever
+        # enable the nightly repo. The conflict is enough to block parallel
+        # installation; the switch must remain an explicit user choice.
+        EXTRA_SPEC=$'Conflicts:      dde\n'
+        REPO_FILE_NAME="dde-nightly.repo"
+        REPO_FILE_ID="dde-nightly"
+        REPO_FILE_DESC="dde-nightly - Docker Development Environment (nightly)"
+        ;;
+    *)
+        echo "Error: unknown channel '${CHANNEL}' (expected: stable, nightly)" >&2
+        exit 1
+        ;;
+esac
+
 REPO=$(mktemp -d)
-aws s3 sync "s3://${S3_BUCKET}/rpm/" "${REPO}/" --quiet 2>/dev/null || true
+aws s3 sync "s3://${S3_BUCKET}/${REPO_PATH}/" "${REPO}/" --quiet 2>/dev/null || true
 
 # Configure GPG agent for non-interactive signing (RPM 4.16+ uses GPGME)
 mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
@@ -35,14 +64,18 @@ for pair in "x86_64:dde-linux-amd64" "aarch64:dde-linux-arm64"; do
 
     BINARY_PATH="$(realpath "${DIST_DIR}/${BINARY}")"
 
-    cat > "${BUILD_DIR}/rpmbuild/SPECS/dde.spec" <<SPEC
-Name:           dde
+    {
+        cat <<SPEC
+Name:           ${PKG_NAME}
 Version:        ${RPMVER}
 Release:        1
 Summary:        Docker Development Environment
 License:        AGPL-3.0-or-later
 URL:            https://github.com/whatwedo/dde
 AutoReqProv:    no
+SPEC
+        printf '%s' "${EXTRA_SPEC}"
+        cat <<SPEC
 
 %description
 Docker Development Environment by whatwedo.
@@ -54,9 +87,9 @@ install -m 755 ${BINARY_PATH} %{buildroot}/usr/bin/dde
 
 %post
 if command -v dde >/dev/null 2>&1 && command -v docker >/dev/null 2>&1; then
-    if [ "$1" = "1" ]; then
+    if [ "\$1" = "1" ]; then
         dde system:install --no-interaction || true
-    elif [ "$1" = "2" ]; then
+    elif [ "\$1" = "2" ]; then
         dde system:update --no-interaction || true
     fi
 fi
@@ -64,10 +97,11 @@ fi
 %files
 /usr/bin/dde
 SPEC
+    } > "${BUILD_DIR}/rpmbuild/SPECS/${PKG_NAME}.spec"
 
     rpmbuild --define "_topdir ${BUILD_DIR}/rpmbuild" \
              --target "${ARCH}" \
-             -bb "${BUILD_DIR}/rpmbuild/SPECS/dde.spec"
+             -bb "${BUILD_DIR}/rpmbuild/SPECS/${PKG_NAME}.spec"
 
     ARCH_DIR="${REPO}/${ARCH}"
     mkdir -p "${ARCH_DIR}"
@@ -90,15 +124,15 @@ done
 
 gpg --armor --export > "${REPO}/key.gpg"
 
-cat > "${REPO}/dde.repo" <<'REPO'
-[dde]
-name=dde - Docker Development Environment
-baseurl=https://packages.dde.sh/rpm/$basearch
+cat > "${REPO}/${REPO_FILE_NAME}" <<REPO_FILE
+[${REPO_FILE_ID}]
+name=${REPO_FILE_DESC}
+baseurl=https://packages.dde.sh/${REPO_PATH}/\$basearch
 enabled=1
 gpgcheck=1
-gpgkey=https://packages.dde.sh/rpm/key.gpg
-REPO
+gpgkey=https://packages.dde.sh/${REPO_PATH}/key.gpg
+REPO_FILE
 
-aws s3 sync "${REPO}/" "s3://${S3_BUCKET}/rpm/" --delete --quiet
+aws s3 sync "${REPO}/" "s3://${S3_BUCKET}/${REPO_PATH}/" --delete --quiet
 rm -rf "${REPO}"
-echo "[ok] RPM repo published to s3://${S3_BUCKET}/rpm/"
+echo "[ok] RPM repo published to s3://${S3_BUCKET}/${REPO_PATH}/ (${PKG_NAME} ${RPMVER})"

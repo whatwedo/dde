@@ -27,7 +27,7 @@ final class AboutCommandTest extends TestCase
         $this->assertSame(0, $this->commandTester->getStatusCode());
         $display = $this->commandTester->getDisplay();
         $this->assertStringContainsString('dde - Docker Development Environment', $display);
-        $this->assertStringContainsString(Application::APP_VERSION, $display);
+        $this->assertStringContainsString(Application::resolveVersion(), $display);
         $this->assertStringContainsString(PHP_VERSION, $display);
     }
 
@@ -43,7 +43,7 @@ final class AboutCommandTest extends TestCase
         $decoded = json_decode($this->commandTester->getDisplay(), true);
         $this->assertIsArray($decoded);
         $this->assertSame('ok', $decoded['status']);
-        $this->assertSame(Application::APP_VERSION, $decoded['data']['version']);
+        $this->assertSame(Application::resolveVersion(), $decoded['data']['version']);
         $this->assertSame(PHP_VERSION, $decoded['data']['php']);
         $this->assertArrayHasKey('config_dir', $decoded['data']);
         $this->assertArrayHasKey('data_dir', $decoded['data']);

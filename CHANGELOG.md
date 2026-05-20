@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- A `dde-nightly` package is now built and published on every push to the `v2` branch (APT, Alpine, Arch, RPM, Homebrew). It installs the same `dde` binary as stable, declares `Conflicts: dde`, and tracks the latest commit on `v2`. See the "Nightly channel" section of the installation docs.
+
+### Changed
+
+- `dde --version` is now produced by the build pipeline. Stable builds report the git tag (e.g. `v2.0.0-beta.1`), nightly builds report the short commit SHA, and an unbuilt local checkout (`bin/console`) reports `dev`.
+
 ## [2.0.0-beta.1] - 2026-05-13
 
 ### BREAKING
