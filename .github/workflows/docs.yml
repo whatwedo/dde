@@ -6,16 +6,21 @@ on:
     paths:
       - 'website/**'
       - 'docs/**'
+  pull_request:
+    branches: [v2]
+    paths:
+      - 'website/**'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  # Push events all share `pages` so deploys serialise; PR events get their
+  # own group so a docs PR cannot block a v2 deploy and stale PR runs cancel.
+  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.pull_request.number) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -38,12 +43,20 @@ jobs:
         run: npm run build
 
       - uses: actions/upload-pages-artifact@v5
+        if: github.event_name != 'pull_request'
         with:
           path: website/dist
 
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    # Scoped to the deploy job so the PR-triggered build job runs with only
+    # `contents: read` — minimum blast radius if a PR ever runs untrusted
+    # workflow code.
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
