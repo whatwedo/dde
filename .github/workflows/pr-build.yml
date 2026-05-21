@@ -1,0 +1,23 @@
+name: PR Build
+
+# Smoke-tests the binary build on every pull request against v2. Reuses the
+# same `build.yml` that release.yml (tag) and nightly.yml (push to v2) use, so
+# a green PR proves the platform binaries still compile. No publishing.
+
+on:
+  pull_request:
+    branches: [v2]
+
+concurrency:
+  group: pr-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    uses: ./.github/workflows/build.yml
+    with:
+      app-version-string: pr-${{ github.event.pull_request.number }}
