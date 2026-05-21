@@ -888,6 +888,47 @@ final class DockerComposeManagerTest extends TestCase
         unlink($overridePath);
     }
 
+    public function testGenerateOverrideWorktreePreservesNonTraefikLabels(): void
+    {
+        // The worktree override emits labels with `!override`, which replaces
+        // the base file's label list outright. Non-Traefik labels (monitoring,
+        // logging, custom metadata) must therefore pass through unchanged —
+        // otherwise they silently disappear on worktree containers.
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.enable=true',
+                    'traefik.http.routers.beispiel-test-web.rule=Host(`beispiel.test`)',
+                    'log.level=debug',
+                    'team=platform',
+                    'monitoring.scrape=true',
+                ],
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-wt-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-wt-feature',
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $labels = $data['services']['web']['labels']->getValue();
+
+        $this->assertContains('log.level=debug', $labels);
+        $this->assertContains('team=platform', $labels);
+        $this->assertContains('monitoring.scrape=true', $labels);
+
+        unlink($overridePath);
+    }
+
     public function testGenerateOverrideWorktreeRewritesSubdomainTraefikLabels(): void
     {
         $this->createComposeFile([
