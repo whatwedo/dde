@@ -1096,13 +1096,18 @@ readonly class DockerComposeManager
             }
         }
 
-        // Second pass: emit the actual override labels.
+        // Second pass: emit the actual override labels. Non-Traefik labels
+        // (e.g. monitoring/logging metadata defined on the service) pass
+        // through verbatim — otherwise the `!override` we emit at the call
+        // site would silently drop every user label that is not a Traefik
+        // directive.
         $overrideLabels = [];
 
         foreach ($existingLabels as $key => $value) {
             $label = is_int($key) ? (string) $value : $key.'='.$value;
 
             if (! str_contains($label, 'traefik.')) {
+                $overrideLabels[] = $label;
                 continue;
             }
 
