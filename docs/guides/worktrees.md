@@ -14,7 +14,7 @@ dde project:up           # https://my-app.test, DB: my_app
 # Feature worktree
 git worktree add ~/projects/my-app-feature-x feature/x
 cd ~/projects/my-app-feature-x
-dde project:up           # https://my-app-feature-x.test, DB: my_app_feature_x
+dde project:up           # https://feature-x.my-app.test, DB: my_app_feature_x
 ```
 
 Both worktrees stay reachable at the same time. Each gets its own per-project Docker network, so a worktree can run a different service version than main (e.g. upgrading from Postgres 16 to 18 on a branch). Both write to different databases so the branches never corrupt each other's state.
@@ -35,8 +35,10 @@ If CWD is inside the main worktree, the repository has no worktrees, or CWD is o
 The hostname for a worktree follows the pattern:
 
 ```
-<project-name>-<suffix>.test
+<suffix>.<project-name>.test
 ```
+
+The suffix is prepended as a subdomain label in front of the unchanged `<project-name>.test`, so the registrable project domain stays intact and password managers keep matching the worktree against the main checkout. A project subdomain like `preview.my-app.test` becomes `preview.feature-x.my-app.test`.
 
 Where `<suffix>` is derived from the worktree directory name through `IdentifierSanitizer::forHostname()`:
 
@@ -55,15 +57,17 @@ Assuming project name `my-app`:
 | Worktree directory | Hostname |
 |-------------------|----------|
 | `~/projects/my-app` (main) | `my-app.test` |
-| `~/projects/my-app-feature-x` | `my-app-feature-x.test` |
-| `~/projects/my-app-PROJ-123` | `my-app-proj-123.test` |
-| `~/projects/my-app-hotfix` | `my-app-hotfix.test` |
+| `~/projects/my-app-feature-x` | `feature-x.my-app.test` |
+| `~/projects/my-app-PROJ-123` | `proj-123.my-app.test` |
+| `~/projects/my-app-hotfix` | `hotfix.my-app.test` |
 
 If the directory name does not start with the project name:
 
 | Worktree directory | Hostname |
 |-------------------|----------|
-| `~/worktrees/bugfix-login` | `my-app-bugfix-login.test` |
+| `~/worktrees/bugfix-login` | `bugfix-login.my-app.test` |
+
+> **Note:** a worktree whose suffix equals an existing project subdomain (e.g. worktree `feature-x` while the project already routes `feature-x.my-app.test`) collides with it — rename the worktree directory to avoid the clash.
 
 ## Environment Overrides
 
@@ -71,7 +75,7 @@ When running in a worktree, dde rewrites every environment value the base `docke
 
 ### Hostname rewrite
 
-Any occurrence of the main project hostname (`<project-name>.test`) is replaced with the worktree hostname in environment values, **including subdomain forms**: `preview.<project-name>.test` becomes `preview.<project-name>-<suffix>.test`. The rewrite covers values declared in the compose file's `environment:` block (map and list YAML forms) **and** values loaded from any file referenced via `env_file:`. The latter uses Symfony's Dotenv parser; missing optional files are skipped silently, malformed files are surfaced by Compose itself at runtime.
+Any occurrence of the main project hostname (`<project-name>.test`) is replaced with the worktree hostname in environment values, **including subdomain forms**: `preview.<project-name>.test` becomes `preview.<suffix>.<project-name>.test`. The rewrite covers values declared in the compose file's `environment:` block (map and list YAML forms) **and** values loaded from any file referenced via `env_file:`. The latter uses Symfony's Dotenv parser; missing optional files are skipped silently, malformed files are surfaced by Compose itself at runtime.
 
 Inline `environment:` values keep precedence over `env_file:` values when both define the same key, mirroring the precedence Docker Compose applies at runtime.
 
@@ -110,9 +114,9 @@ Every `project:db*` command run from inside a worktree automatically targets the
 
 ### `extra_hosts` rewrite
 
-`extra_hosts` entries whose hostname is `<project>.test` or a subdomain thereof get the worktree-hostname variant emitted in the overlay (e.g. `preview.beispiel.test:host-gateway` → `preview.beispiel-feature-x.test:host-gateway`). Unrelated entries (`partner-api.example.com:1.2.3.4`) pass through untouched.
+`extra_hosts` entries whose hostname is `<project>.test` or a subdomain thereof get the worktree-hostname variant emitted in the overlay (e.g. `preview.beispiel.test:host-gateway` → `preview.feature-x.beispiel.test:host-gateway`). Unrelated entries (`partner-api.example.com:1.2.3.4`) pass through untouched.
 
-**Why:** inside a container, dde's host-side dnsmasq is unreachable — the only way for the worktree container to resolve `<project>.test` hostnames is `/etc/hosts`, populated from `extra_hosts`. Without the rewrite, a worktree container would hold the main checkout's hostnames and could not reach its own worktree URLs (e.g. a Playwright service running inside the project, targeting `preview.<project>-<branch>.test`, would get `ERR_NAME_NOT_RESOLVED`).
+**Why:** inside a container, dde's host-side dnsmasq is unreachable — the only way for the worktree container to resolve `<project>.test` hostnames is `/etc/hosts`, populated from `extra_hosts`. Without the rewrite, a worktree container would hold the main checkout's hostnames and could not reach its own worktree URLs (e.g. a Playwright service running inside the project, targeting `preview.<branch>.<project>.test`, would get `ERR_NAME_NOT_RESOLVED`).
 
 The override uses YAML's `!override` tag, so the worktree's `extra_hosts` list **replaces** the base list on the worktree container only — the main checkout keeps the originals from `docker-compose.yml`. If no entry in the base file references the project host, no override is emitted (the base list passes through unchanged).
 
@@ -153,18 +157,18 @@ dde project:up
 ### 3. Access in browser
 
 - Main: `https://my-app.test`
-- Feature: `https://my-app-feature-x.test`
-- Ticket: `https://my-app-proj-123.test`
+- Feature: `https://feature-x.my-app.test`
+- Ticket: `https://proj-123.my-app.test`
 
 Each hostname gets its own trusted TLS certificate (generated by mkcert under the hood).
 
 ## TLS Certificates
 
-When a worktree is detected, `MkcertManager` generates a certificate that covers every Traefik-declared hostname in the project, each one rewritten to its worktree variant. Subdomains (`preview.<project>-<suffix>.test`) are therefore served with a trusted cert too — the global `*.test` wildcard from `system:install` only covers single-label `.test` hostnames and would surface as an "untrusted certificate" warning otherwise. The wildcard DNS resolution via dnsmasq (`.test` domain) ensures all worktree hostnames resolve correctly.
+When a worktree is detected, `MkcertManager` generates a certificate that covers every Traefik-declared hostname in the project, each one rewritten to its worktree variant. Because the subdomain scheme makes every worktree hostname a multi-label `.test` name, the global `*.test` wildcard from `system:install` (single-label only) does not cover them — without the dedicated cert even the bare worktree URL would surface an "untrusted certificate" warning. The wildcard DNS resolution via dnsmasq (`.test` domain) ensures all worktree hostnames resolve correctly.
 
 ## Traefik Labels
 
-The docker-compose override generated by `DockerComposeManager::generateOverride()` rewrites every Traefik label that references the project hostname or a subdomain of it. Both the `Host(\`<x>.<project>.test\`)` rule value and the router/service identifier derived from it are substituted with their worktree counterparts, so a service routed at `preview.<project>.test` on the main checkout is automatically routed at `preview.<project>-<suffix>.test` from the worktree. The `!override` YAML tag replaces the base file's labels rather than merging with them, so each container advertises exactly one router per role. This is what lets main and worktree containers coexist without Traefik logging "Router defined multiple times with different configurations".
+The docker-compose override generated by `DockerComposeManager::generateOverride()` rewrites every Traefik label that references the project hostname or a subdomain of it. Both the `Host(\`<x>.<project>.test\`)` rule value and the router/service identifier derived from it are substituted with their worktree counterparts, so a service routed at `preview.<project>.test` on the main checkout is automatically routed at `preview.<suffix>.<project>.test` from the worktree. The `!override` YAML tag replaces the base file's labels rather than merging with them, so each container advertises exactly one router per role. This is what lets main and worktree containers coexist without Traefik logging "Router defined multiple times with different configurations".
 
 A service that declares no Traefik labels in `docker-compose.yml` stays unrouted in the worktree too — dde does not invent routing for a container that never opted into it. Helper containers without an exposed port (e.g. `playwright`, e2e runners, background workers) therefore keep behaving the same way on a worktree as on the main checkout.
 

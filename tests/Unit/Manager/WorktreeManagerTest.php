@@ -182,18 +182,18 @@ final class WorktreeManagerTest extends TestCase
         $this->assertSame('beispiel.test', $this->manager->resolveHostname('beispiel', null));
     }
 
-    public function testResolveHostnameWithWorktreeAppendsSuffix(): void
+    public function testResolveHostnameWithWorktreePrependsSuffixAsSubdomain(): void
     {
         $info = new WorktreeInfo('/main', '/wt', 'feature/x', 'beispiel-feature-x');
 
-        $this->assertSame('beispiel-feature-x.test', $this->manager->resolveHostname('beispiel', $info));
+        $this->assertSame('feature-x.beispiel.test', $this->manager->resolveHostname('beispiel', $info));
     }
 
     public function testResolveHostnameSanitizesWorktreeSuffix(): void
     {
         $info = new WorktreeInfo('/main', '/wt', 'x', 'Beispiel-PROJ/123');
 
-        $this->assertSame('beispiel-proj-123.test', $this->manager->resolveHostname('beispiel', $info));
+        $this->assertSame('proj-123.beispiel.test', $this->manager->resolveHostname('beispiel', $info));
     }
 
     public function testResolveDatabaseNameWithoutWorktreeReturnsBase(): void
@@ -230,7 +230,7 @@ final class WorktreeManagerTest extends TestCase
         $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, []);
 
         $this->assertSame([
-            'APP_URL' => 'https://beispiel-feature-xyz.test',
+            'APP_URL' => 'https://feature-xyz.beispiel.test',
         ], $result);
     }
 
@@ -245,7 +245,7 @@ final class WorktreeManagerTest extends TestCase
         $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, []);
 
         $this->assertSame([
-            'APP_URL' => 'https://beispiel-feature-xyz.test',
+            'APP_URL' => 'https://feature-xyz.beispiel.test',
         ], $result);
     }
 
@@ -347,7 +347,7 @@ final class WorktreeManagerTest extends TestCase
         $result = $this->manager->computeEnvironmentOverrides($env, 'beispiel', $info, ['mariadb']);
 
         $this->assertSame(
-            'mysql://root@beispiel-feature-xyz.test:3306/beispiel',
+            'mysql://root@feature-xyz.beispiel.test:3306/beispiel',
             $result['DATABASE_URL'],
         );
     }
@@ -458,7 +458,7 @@ final class WorktreeManagerTest extends TestCase
     {
         $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
 
-        $this->assertSame('beispiel-feature.test', $this->manager->rewriteHostname('beispiel.test', 'beispiel', $info));
+        $this->assertSame('feature.beispiel.test', $this->manager->rewriteHostname('beispiel.test', 'beispiel', $info));
     }
 
     public function testRewriteHostnameRewritesSubdomain(): void
@@ -466,7 +466,7 @@ final class WorktreeManagerTest extends TestCase
         $info = new WorktreeInfo('/main', '/wt', 'x', 'beispiel-feature');
 
         $this->assertSame(
-            'preview.beispiel-feature.test',
+            'preview.feature.beispiel.test',
             $this->manager->rewriteHostname('preview.beispiel.test', 'beispiel', $info),
         );
     }
@@ -499,7 +499,7 @@ final class WorktreeManagerTest extends TestCase
 
         $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
 
-        $this->assertSame(['preview.beispiel-feature.test:host-gateway'], $result);
+        $this->assertSame(['preview.feature.beispiel.test:host-gateway'], $result);
     }
 
     public function testRewriteExtraHostsRewritesListFormBareProjectHost(): void
@@ -509,7 +509,7 @@ final class WorktreeManagerTest extends TestCase
 
         $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
 
-        $this->assertSame(['beispiel-feature.test:host-gateway'], $result);
+        $this->assertSame(['feature.beispiel.test:host-gateway'], $result);
     }
 
     public function testRewriteExtraHostsAcceptsEqualsSeparator(): void
@@ -520,7 +520,7 @@ final class WorktreeManagerTest extends TestCase
 
         $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
 
-        $this->assertSame(['preview.beispiel-feature.test=host-gateway'], $result);
+        $this->assertSame(['preview.feature.beispiel.test=host-gateway'], $result);
     }
 
     public function testRewriteExtraHostsRewritesMapForm(): void
@@ -532,7 +532,7 @@ final class WorktreeManagerTest extends TestCase
 
         $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
 
-        $this->assertSame(['preview.beispiel-feature.test:host-gateway'], $result);
+        $this->assertSame(['preview.feature.beispiel.test:host-gateway'], $result);
     }
 
     public function testRewriteExtraHostsKeepsUnrelatedEntries(): void
@@ -546,7 +546,7 @@ final class WorktreeManagerTest extends TestCase
         $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
 
         $this->assertSame([
-            'preview.beispiel-feature.test:host-gateway',
+            'preview.feature.beispiel.test:host-gateway',
             'partner-api.example.com:1.2.3.4',
         ], $result);
     }
@@ -579,8 +579,8 @@ final class WorktreeManagerTest extends TestCase
         $result = $this->manager->rewriteExtraHosts($hosts, 'beispiel', $info);
 
         $this->assertSame([
-            'preview.beispiel-feature.test:host-gateway',
-            'admin.beispiel-feature.test:host-gateway',
+            'preview.feature.beispiel.test:host-gateway',
+            'admin.feature.beispiel.test:host-gateway',
         ], $result);
     }
 

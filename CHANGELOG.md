@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Worktree hostnames are now a subdomain of the project host (`<suffix>.<project>.test`, e.g. `feature-x.my-app.test`) instead of a sibling TLD (`<project>-<suffix>.test`), so password managers keep matching the worktree against the main project. Database names are unchanged; re-run `dde project:up` in existing worktrees to pick up the new hostname.
 - `dde --version` is now produced by the build pipeline. Stable builds report the git tag (e.g. `v2.0.0-beta.1`), nightly builds report the short commit SHA, and an unbuilt local checkout (`bin/console`) reports `dev`.
 
 ## [2.0.0-beta.1] - 2026-05-13

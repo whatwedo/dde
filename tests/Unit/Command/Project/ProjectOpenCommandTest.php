@@ -70,14 +70,14 @@ final class ProjectOpenCommandTest extends TestCase
             ->method('detect')
             ->willReturn(new WorktreeInfo(
                 mainDirectory: '/tmp/main',
-                worktreeDirectory: '/tmp/wt-feature-x',
+                worktreeDirectory: '/tmp/feature-x',
                 branch: 'feature/x',
-                suffix: 'wt-feature-x',
+                suffix: 'feature-x',
             ));
 
         $this->worktreeManager
             ->method('resolveHostname')
-            ->willReturn('test-project-feature-x.test');
+            ->willReturn('feature-x.test-project.test');
 
         $this->commandTester->execute([
             '--url-only' => true,
@@ -86,7 +86,7 @@ final class ProjectOpenCommandTest extends TestCase
         ]);
 
         $this->assertSame(0, $this->commandTester->getStatusCode());
-        $this->assertSame('https://test-project-feature-x.test', trim($this->commandTester->getDisplay()));
+        $this->assertSame('https://feature-x.test-project.test', trim($this->commandTester->getDisplay()));
     }
 
     public function testJsonOutputContainsUrl(): void
@@ -122,14 +122,14 @@ final class ProjectOpenCommandTest extends TestCase
             ->method('detect')
             ->willReturn(new WorktreeInfo(
                 mainDirectory: '/tmp/main',
-                worktreeDirectory: '/tmp/wt-bugfix',
+                worktreeDirectory: '/tmp/bugfix',
                 branch: 'bugfix/login',
-                suffix: 'wt-bugfix',
+                suffix: 'bugfix',
             ));
 
         $this->worktreeManager
             ->method('resolveHostname')
-            ->willReturn('test-project-bugfix.test');
+            ->willReturn('bugfix.test-project.test');
 
         $this->commandTester->execute([
             '--output' => 'json',
@@ -139,7 +139,7 @@ final class ProjectOpenCommandTest extends TestCase
 
         $this->assertSame(0, $this->commandTester->getStatusCode());
         $decoded = json_decode($this->commandTester->getDisplay(), true);
-        $this->assertSame('https://test-project-bugfix.test', $decoded['data']['url']);
+        $this->assertSame('https://bugfix.test-project.test', $decoded['data']['url']);
     }
 
     public function testErrorWhenNoProjectDirectoryFound(): void
@@ -168,19 +168,19 @@ final class ProjectOpenCommandTest extends TestCase
             ->method('detect')
             ->willReturn(new WorktreeInfo(
                 mainDirectory: '/tmp/main',
-                worktreeDirectory: '/tmp/test-project-wt-feature-x',
+                worktreeDirectory: '/tmp/test-project-feature-x',
                 branch: 'feature/x',
-                suffix: 'test-project-wt-feature-x',
+                suffix: 'test-project-feature-x',
             ));
 
         $this->worktreeManager
             ->method('resolveHostname')
-            ->willReturn('test-project-wt-feature-x.test');
+            ->willReturn('feature-x.test-project.test');
 
         // Compose file exists and declares the MAIN hostname — the command
         // must still surface the worktree hostname.
         $dockerComposeManager = $this->createStub(\App\Manager\DockerComposeManager::class);
-        $dockerComposeManager->method('findComposeFileOrNull')->willReturn('/tmp/test-project-wt-feature-x/docker-compose.yml');
+        $dockerComposeManager->method('findComposeFileOrNull')->willReturn('/tmp/test-project-feature-x/docker-compose.yml');
         $dockerComposeManager->method('extractTraefikDomainsFromServices')->willReturn(['test-project.test']);
 
         $processFactory = $this->createMock(\App\Util\ProcessFactory::class);
@@ -221,7 +221,7 @@ final class ProjectOpenCommandTest extends TestCase
         $decoded = json_decode($tester->getDisplay(), true);
         $this->assertSame('ok', $decoded['status']);
         $this->assertSame(
-            'https://test-project-wt-feature-x.test',
+            'https://feature-x.test-project.test',
             $decoded['data']['url'],
             'dde open from a worktree must surface the worktree hostname, not the main hostname from the compose file',
         );
