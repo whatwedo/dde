@@ -103,7 +103,7 @@ readonly class WorktreeManager
 
         $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
 
-        return $projectName.'-'.$suffix.'.test';
+        return $suffix.'.'.$projectName.'.test';
     }
 
     public function resolveDatabaseName(
@@ -127,9 +127,10 @@ readonly class WorktreeManager
 
     /**
      * Rewrites a hostname from the main checkout to its worktree variant.
-     * Replaces the substring `<projectName>.test` with `<worktreeProjectName>.test`,
-     * which preserves any subdomain prefix (e.g. `preview.beispiel.test` ->
-     * `preview.beispiel-feature-x.test`). Bare project hostnames are rewritten too.
+     * Replaces the substring `<projectName>.test` with `<suffix>.<projectName>.test`,
+     * i.e. prepends the worktree suffix as a subdomain label (e.g. `beispiel.test` ->
+     * `feature-x.beispiel.test`, `preview.beispiel.test` -> `preview.feature-x.beispiel.test`).
+     * Bare project hostnames are rewritten too.
      * Unrelated hosts (no `.<project>.test` suffix and not equal to `<project>.test`)
      * pass through unchanged so external integrations declared on the same compose
      * service are never mangled.
@@ -157,7 +158,7 @@ readonly class WorktreeManager
      * of `<project>.test` resolution is `/etc/hosts`, populated from
      * `extra_hosts`. Without this rewrite a worktree's container holds the
      * main checkout's hostnames and cannot reach its own worktree URLs
-     * (e.g. Playwright targeting `preview.<project>-<branch>.test`).
+     * (e.g. Playwright targeting `preview.<branch>.<project>.test`).
      *
      * Both compose list-form (`['host:value']` or `['host=value']`) and
      * map-form (`['host' => 'value']`) are accepted; the result is always

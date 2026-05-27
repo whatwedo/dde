@@ -1206,13 +1206,13 @@ final class ProjectLifecycleManagerTest extends TestCase
 
         $worktreeManager = $this->createMock(WorktreeManager::class);
         $worktreeManager->method('detect')->willReturn($worktreeInfo);
-        $worktreeManager->method('resolveHostname')->willReturn('beispiel-feature-x.test');
+        $worktreeManager->method('resolveHostname')->willReturn('feature-x.beispiel.test');
         $worktreeManager
             ->method('rewriteHostname')
             ->willReturnCallback(static function (string $hostname, string $projectName, \App\Config\WorktreeInfo $worktreeInfo): string {
                 return match ($hostname) {
-                    'beispiel.test' => 'beispiel-feature-x.test',
-                    'preview.beispiel.test' => 'preview.beispiel-feature-x.test',
+                    'beispiel.test' => 'feature-x.beispiel.test',
+                    'preview.beispiel.test' => 'preview.feature-x.beispiel.test',
                     default => $hostname,
                 };
             });
@@ -1251,8 +1251,8 @@ final class ProjectLifecycleManagerTest extends TestCase
         }
 
         self::assertNotNull($worktreeCall, 'mkcert was not called for the worktree certificate');
-        self::assertContains('beispiel-feature-x.test', $worktreeCall[1]);
-        self::assertContains('preview.beispiel-feature-x.test', $worktreeCall[1]);
+        self::assertContains('feature-x.beispiel.test', $worktreeCall[1]);
+        self::assertContains('preview.feature-x.beispiel.test', $worktreeCall[1]);
     }
 
     public function testUpExcludesUnrelatedExternalDomainsFromWorktreeCertificate(): void
@@ -1275,12 +1275,12 @@ final class ProjectLifecycleManagerTest extends TestCase
 
         $worktreeManager = $this->createMock(WorktreeManager::class);
         $worktreeManager->method('detect')->willReturn($worktreeInfo);
-        $worktreeManager->method('resolveHostname')->willReturn('beispiel-feature-x.test');
+        $worktreeManager->method('resolveHostname')->willReturn('feature-x.beispiel.test');
         $worktreeManager
             ->method('rewriteHostname')
             ->willReturnCallback(static function (string $hostname, string $projectName, \App\Config\WorktreeInfo $worktreeInfo): string {
                 return match ($hostname) {
-                    'beispiel.test' => 'beispiel-feature-x.test',
+                    'beispiel.test' => 'feature-x.beispiel.test',
                     default => $hostname,
                 };
             });
@@ -1318,7 +1318,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         }
 
         self::assertNotNull($worktreeCall);
-        self::assertContains('beispiel-feature-x.test', $worktreeCall[1]);
+        self::assertContains('feature-x.beispiel.test', $worktreeCall[1]);
         self::assertNotContains('partner.example.com', $worktreeCall[1]);
     }
 
