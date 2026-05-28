@@ -117,7 +117,7 @@ Options for all DB commands:
 
 ## Git worktrees
 
-dde has first-class support for [Git worktrees](https://git-scm.com/docs/git-worktree): when you run `dde project:up` from a non-main worktree checkout, dde automatically assigns that checkout its own hostname **and automatically rewrites every database-URL-valued environment variable** to point at a worktree-specific database name.
+dde has first-class support for [Git worktrees](https://git-scm.com/docs/git-worktree): when you run `dde project:up` from a non-main worktree checkout, dde automatically assigns that checkout its own hostname (`<suffix>.<project>.test`, a subdomain of the project host) **and automatically rewrites every database-URL-valued environment variable** to point at a worktree-specific database name.
 
 ### What dde does automatically per worktree
 
@@ -125,7 +125,7 @@ Given a project named `my-app` and a worktree at `~/projects/my-app-feature-x`:
 
 | | Main checkout | Worktree checkout |
 |---|---|---|
-| URL | `https://my-app.test` | `https://my-app-feature-x.test` |
+| URL | `https://my-app.test` | `https://feature-x.my-app.test` |
 | Every env var holding a DB URL (`mysql://…`, `postgres://…`, …) — `DATABASE_URL`, `GUACAMOLE_DATABASE_URL`, … | `…/my_app?…` | `…/my_app_feature_x?…` |
 | Container env for `APP_URL`, `MERCURE_URL`, `TRUSTED_HOSTS`, … | unchanged | main `.test` hostname replaced with worktree hostname |
 

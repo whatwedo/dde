@@ -851,12 +851,12 @@ final class DockerComposeManagerTest extends TestCase
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
-        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
@@ -872,9 +872,9 @@ final class DockerComposeManagerTest extends TestCase
         // worktree containers can coexist without Traefik router-name conflicts.
         // Host() rules are rewritten to the worktree hostname.
         $this->assertContains('traefik.enable=true', $labels);
-        $this->assertContains('traefik.http.routers.beispiel-feature-test-web.rule=Host(`beispiel-feature.test`)', $labels);
-        $this->assertContains('traefik.http.routers.beispiel-feature-test-web-tls.rule=Host(`beispiel-feature.test`)', $labels);
-        $this->assertContains('traefik.http.routers.beispiel-feature-test-web-tls.tls=true', $labels);
+        $this->assertContains('traefik.http.routers.feature-beispiel-test-web.rule=Host(`feature.beispiel.test`)', $labels);
+        $this->assertContains('traefik.http.routers.feature-beispiel-test-web-tls.rule=Host(`feature.beispiel.test`)', $labels);
+        $this->assertContains('traefik.http.routers.feature-beispiel-test-web-tls.tls=true', $labels);
 
         // Must NOT contain the original router name or the original hostname
         foreach ($labels as $label) {
@@ -909,12 +909,12 @@ final class DockerComposeManagerTest extends TestCase
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
-        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
@@ -954,12 +954,12 @@ final class DockerComposeManagerTest extends TestCase
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
-        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
@@ -969,11 +969,11 @@ final class DockerComposeManagerTest extends TestCase
 
         // Subdomain Host() rule must be rewritten to the worktree variant.
         $this->assertContains(
-            'traefik.http.routers.preview-beispiel-feature-test-preview.rule=Host(`preview.beispiel-feature.test`)',
+            'traefik.http.routers.preview-feature-beispiel-test-preview.rule=Host(`preview.feature.beispiel.test`)',
             $previewLabels,
         );
         $this->assertContains(
-            'traefik.http.routers.preview-beispiel-feature-test-preview-tls.rule=Host(`preview.beispiel-feature.test`)',
+            'traefik.http.routers.preview-feature-beispiel-test-preview-tls.rule=Host(`preview.feature.beispiel.test`)',
             $previewLabels,
         );
 
@@ -1015,12 +1015,12 @@ final class DockerComposeManagerTest extends TestCase
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
-        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
@@ -1045,7 +1045,8 @@ final class DockerComposeManagerTest extends TestCase
         );
 
         foreach ($testprojectLabels as $label) {
-            $this->assertStringNotContainsString('beispiel-feature', $label, 'Unrelated hostname must not gain the worktree suffix');
+            $this->assertStringNotContainsString('feature.beispiel.test', $label, 'Unrelated host must not gain the worktree subdomain');
+            $this->assertStringNotContainsString('feature-beispiel-test', $label, 'Unrelated router must not gain the worktree identifier');
         }
 
         unlink($overridePath);
@@ -1067,12 +1068,12 @@ final class DockerComposeManagerTest extends TestCase
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
-        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
@@ -1084,7 +1085,7 @@ final class DockerComposeManagerTest extends TestCase
         foreach ($labels as $label) {
             $this->assertStringNotContainsString('traefik.enable', $label);
             $this->assertStringNotContainsString('Host(', $label);
-            $this->assertStringNotContainsString('beispiel-feature.test', $label);
+            $this->assertStringNotContainsString('feature.beispiel.test', $label);
         }
 
         unlink($overridePath);
@@ -1113,12 +1114,12 @@ final class DockerComposeManagerTest extends TestCase
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
-        $manager = $this->createManagerWithWorktreeSupport('beispiel-feature.test');
+        $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
         $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
@@ -1128,7 +1129,7 @@ final class DockerComposeManagerTest extends TestCase
         $hasWorktreeHostRule = false;
 
         foreach ($webLabels as $label) {
-            if (str_contains($label, 'Host(`beispiel-feature.test`)')) {
+            if (str_contains($label, 'Host(`feature.beispiel.test`)')) {
                 $hasWorktreeHostRule = true;
             }
         }
@@ -1161,9 +1162,9 @@ final class DockerComposeManagerTest extends TestCase
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1177,12 +1178,12 @@ final class DockerComposeManagerTest extends TestCase
 
         $env = $data['services']['web']['environment'];
 
-        $this->assertSame('beispiel-wt-feature.test', $env['VIRTUAL_HOST']);
-        $this->assertSame('http://mercure.beispiel-wt-feature.test/.well-known/mercure', $env['MERCURE_URL']);
-        $this->assertSame('https://beispiel-wt-feature.test', $env['OPEN_URL']);
+        $this->assertSame('feature.beispiel.test', $env['VIRTUAL_HOST']);
+        $this->assertSame('http://mercure.feature.beispiel.test/.well-known/mercure', $env['MERCURE_URL']);
+        $this->assertSame('https://feature.beispiel.test', $env['OPEN_URL']);
 
         // DATABASE_URL path segment gets worktree suffix appended
-        $this->assertSame('mysql://root@mariadb:3306/app_wt_feature', $env['DATABASE_URL']);
+        $this->assertSame('mysql://root@mariadb:3306/app_feature', $env['DATABASE_URL']);
 
         unlink($overridePath);
     }
@@ -1206,9 +1207,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1220,8 +1221,8 @@ ENV);
         $env = $data['services']['web']['environment'];
 
         // Both the bare project host and the subdomain host must be rewritten.
-        $this->assertSame('https://beispiel-wt-feature.test', $env['APP_URL']);
-        $this->assertSame('https://preview.beispiel-wt-feature.test', $env['E2E_TARGET_URL']);
+        $this->assertSame('https://feature.beispiel.test', $env['APP_URL']);
+        $this->assertSame('https://preview.feature.beispiel.test', $env['E2E_TARGET_URL']);
 
         // Untouched values must NOT leak into the override (no rewrite => no override).
         $this->assertArrayNotHasKey('APP_SECRET', $env);
@@ -1246,9 +1247,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1258,7 +1259,7 @@ ENV);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         // Inline environment wins over env_file when both define APP_URL.
-        $this->assertSame('https://override.beispiel-wt-feature.test', $data['services']['web']['environment']['APP_URL']);
+        $this->assertSame('https://override.feature.beispiel.test', $data['services']['web']['environment']['APP_URL']);
 
         unlink($this->tempDir.'/.env');
         unlink($overridePath);
@@ -1285,9 +1286,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1329,9 +1330,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1361,9 +1362,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1372,7 +1373,7 @@ ENV);
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
-        $this->assertSame('https://beispiel-wt-feature.test', $data['services']['web']['environment']['APP_URL']);
+        $this->assertSame('https://feature.beispiel.test', $data['services']['web']['environment']['APP_URL']);
 
         unlink($this->tempDir.'/.env');
         unlink($overridePath);
@@ -1400,9 +1401,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1411,7 +1412,7 @@ ENV);
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
-        $this->assertSame('https://beispiel-wt-feature.test', $data['services']['web']['environment']['APP_URL']);
+        $this->assertSame('https://feature.beispiel.test', $data['services']['web']['environment']['APP_URL']);
 
         unlink($this->tempDir.'/.env');
         unlink($overridePath);
@@ -1513,9 +1514,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1526,7 +1527,7 @@ ENV);
 
         $env = $data['services']['web']['environment'];
 
-        $this->assertSame('https://beispiel-wt-feature.test', $env['OPEN_URL']);
+        $this->assertSame('https://feature.beispiel.test', $env['OPEN_URL']);
         $this->assertArrayNotHasKey('APP_SECRET', $env);
 
         unlink($overridePath);
@@ -1546,9 +1547,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1562,10 +1563,10 @@ ENV);
         $env = $data['services']['web']['environment'];
 
         $this->assertSame(
-            'mysql://root:pw@mariadb:3306/beispiel_wt_feature?serverVersion=11.8.0-MariaDB',
+            'mysql://root:pw@mariadb:3306/beispiel_feature?serverVersion=11.8.0-MariaDB',
             $env['DATABASE_URL'],
         );
-        $this->assertSame('https://beispiel-wt-feature.test', $env['APP_URL']);
+        $this->assertSame('https://feature.beispiel.test', $env['APP_URL']);
 
         unlink($overridePath);
     }
@@ -1585,9 +1586,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1605,8 +1606,8 @@ ENV);
         $this->assertInstanceOf(TaggedValue::class, $extraHosts);
         $this->assertSame('override', $extraHosts->getTag());
         $this->assertSame([
-            'preview.beispiel-wt-feature.test:host-gateway',
-            'admin.beispiel-wt-feature.test:host-gateway',
+            'preview.feature.beispiel.test:host-gateway',
+            'admin.feature.beispiel.test:host-gateway',
             'partner-api.example.com:1.2.3.4',
         ], $extraHosts->getValue());
 
@@ -1632,9 +1633,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManagerForShellLess();
@@ -1647,7 +1648,7 @@ ENV);
         $this->assertInstanceOf(TaggedValue::class, $extraHosts);
         $this->assertSame('override', $extraHosts->getTag());
         $this->assertSame([
-            'preview.beispiel-wt-feature.test:host-gateway',
+            'preview.feature.beispiel.test:host-gateway',
         ], $extraHosts->getValue());
 
         // Shell-less services skip the entrypoint override block entirely.
@@ -1674,9 +1675,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
@@ -1688,7 +1689,7 @@ ENV);
         $extraHosts = $data['services']['web']['extra_hosts'];
         $this->assertInstanceOf(TaggedValue::class, $extraHosts);
         $this->assertSame([
-            'preview.beispiel-wt-feature.test:host-gateway',
+            'preview.feature.beispiel.test:host-gateway',
         ], $extraHosts->getValue());
 
         unlink($overridePath);
@@ -1707,9 +1708,9 @@ ENV);
 
         $worktreeInfo = new WorktreeInfo(
             mainDirectory: '/projects/beispiel',
-            worktreeDirectory: '/projects/beispiel-wt-feature',
+            worktreeDirectory: '/projects/beispiel-feature',
             branch: 'feature/test',
-            suffix: 'beispiel-wt-feature',
+            suffix: 'beispiel-feature',
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();

@@ -177,7 +177,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertContains('traefik.enable=true', $labels);
 
         $joined = implode("\n", $labels);
-        self::assertStringContainsString('Host(`myproject-feature-branch.test`)', $joined);
+        self::assertStringContainsString('Host(`feature-branch.myproject.test`)', $joined);
     }
 
     public function testGenerateOverrideHandlesTaggedLabelsInWorktreeRewriter(): void
@@ -208,7 +208,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         $labels = $parsed['services']['web']['labels']->getValue();
 
         $joined = implode("\n", $labels);
-        self::assertStringContainsString('Host(`myproject-feature-x.test`)', $joined);
+        self::assertStringContainsString('Host(`feature-x.myproject.test`)', $joined);
     }
 
     public function testGenerateOverrideWritesToTempFile(): void

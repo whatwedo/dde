@@ -319,7 +319,7 @@ final class ProjectConfigManagerTest extends TestCase
             suffix: 'beispiel-feature-x',
         );
 
-        $this->assertSame('beispiel-feature-x.test', $this->createManager()->resolveProjectHostname('beispiel', $worktreeInfo));
+        $this->assertSame('feature-x.beispiel.test', $this->createManager()->resolveProjectHostname('beispiel', $worktreeInfo));
     }
 
     // --- detectWorktree tests ---

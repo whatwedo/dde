@@ -191,7 +191,7 @@ services:
 
 ### 7. Worktree Traefik Label Override
 
-When running in a git worktree, additional Traefik router labels are generated for the worktree hostname (e.g. `myproject-feature.test`).
+When running in a git worktree, additional Traefik router labels are generated for the worktree hostname (e.g. `feature.myproject.test`).
 
 ### 8. Worktree `extra_hosts` Rewrite
 
