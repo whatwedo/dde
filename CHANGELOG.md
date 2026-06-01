@@ -2,16 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [2.0.0-beta.2] - 2026-06-01
 
 ### Added
 
-- A `dde-nightly` package is now built and published on every push to the `v2` branch (APT, Alpine, Arch, RPM, Homebrew). It installs the same `dde` binary as stable, declares `Conflicts: dde`, and tracks the latest commit on `v2`. See the "Nightly channel" section of the installation docs.
+- A user-supplied `docker-compose.override.yml` is now honoured on `project:up`. (#163)
+- A `dde-nightly` package is now built on every push to `v2` (APT, Alpine, Arch, RPM, Homebrew).
 
 ### Changed
 
-- Worktree hostnames are now a subdomain of the project host (`<suffix>.<project>.test`, e.g. `feature-x.my-app.test`) instead of a sibling TLD (`<project>-<suffix>.test`), so password managers keep matching the worktree against the main project. Database names are unchanged; re-run `dde project:up` in existing worktrees to pick up the new hostname.
-- `dde --version` is now produced by the build pipeline. Stable builds report the git tag (e.g. `v2.0.0-beta.1`), nightly builds report the short commit SHA, and an unbuilt local checkout (`bin/console`) reports `dev`.
+- Worktree hostnames are now a subdomain of the project host (`<suffix>.<project>.test`). Re-run `dde project:up` in existing worktrees to pick it up.
+- `dde --version` now reports the git tag (stable), short SHA (nightly), or `dev` (local).
+
+### Fixed
+
+- Parallel checkouts (main + worktree) no longer collide on the shared `dde` network; Traefik attaches per project and reconciles on start, so `system:update` no longer leaves projects on 502/504. (#163)
+- A worktree's URLs and `extra_hosts` now resolve its own hostnames, including projects with multiple database connections.
+- Custom Compose tags (`!reset`, `!override`) and non-Traefik labels in a user override are now preserved instead of crashing or being dropped. (#163)
+- Label-less helper containers (e.g. Playwright) no longer get auto-Traefik labels that crashed Traefik with `port is missing`.
+- `project:up` restarts a stopped service container instead of failing with "container name already in use".
+- `project:init` lists skipped entries first, so `Skipped .dde/ (already exists)` is no longer buried. (#127)
 
 ## [2.0.0-beta.1] - 2026-05-13
 
