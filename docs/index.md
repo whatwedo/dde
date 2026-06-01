@@ -29,7 +29,7 @@ hero:
 
 ## Quick Start
 
-**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) and [mkcert](https://github.com/FiloSottile/mkcert) must be installed.
+**Prerequisites:** [Docker](https://docs.docker.com/get-started/get-docker/) and [mkcert](https://github.com/FiloSottile/mkcert) must be installed.
 
 **macOS**
 ```bash
@@ -71,7 +71,7 @@ Your application is now available at `https://my-app.test` with a trusted TLS ce
 
 ## Why dde instead of DDEV?
 
-[DDEV](https://ddev.readthedocs.io/) is the most mature tool in this space — well-documented, actively maintained, and great for standard setups. However, DDEV wraps every web image in its own Dockerfile layers (user setup, PHP-FPM config, Xdebug, Mailpit). This means you can't run your production images directly.
+[DDEV](https://docs.ddev.com/en/stable/) is the most mature tool in this space — well-documented, actively maintained, and great for standard setups. However, DDEV wraps every web image in its own Dockerfile layers (user setup, PHP-FPM config, Xdebug, Mailpit). This means you can't run your production images directly.
 
 **dde takes a different approach: your existing Docker images work as-is.** dde adds a thin runtime layer that remaps the container user's UID/GID to match the host, and uses service adapters (nginx, php-fpm, apache) to reconfigure processes at startup. The same image you deploy to production runs locally.
 
