@@ -1,8 +1,8 @@
 # dde -- Docker Development Environment
 
 [![CI](https://github.com/whatwedo/dde/actions/workflows/ci.yml/badge.svg?branch=v2)](https://github.com/whatwedo/dde/actions/workflows/ci.yml)
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![GitHub release](https://img.shields.io/github/v/release/whatwedo/dde)](https://github.com/whatwedo/dde/releases/latest)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html.en)
+[![GitHub release](https://img.shields.io/github/v/release/whatwedo/dde)](https://github.com/whatwedo/dde/releases)
 
 A CLI tool that manages local Docker development environments with automatic HTTPS, DNS, database services, and per-project isolation.
 
@@ -17,7 +17,7 @@ A CLI tool that manages local Docker development environments with automatic HTT
 
 ## Quick Start
 
-**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) and [mkcert](https://github.com/FiloSottile/mkcert) must be installed.
+**Prerequisites:** [Docker](https://docs.docker.com/get-started/get-docker/) and [mkcert](https://github.com/FiloSottile/mkcert) must be installed.
 
 ```bash
 # macOS
@@ -53,7 +53,7 @@ Your application is now available at `https://my-app.test` with a trusted TLS ce
 
 ## Why dde instead of DDEV?
 
-[DDEV](https://ddev.readthedocs.io/) is the most mature tool in this space — well-documented, actively maintained, and great for standard setups. However, DDEV wraps every web image in its own Dockerfile layers (user setup, PHP-FPM config, Xdebug, Mailpit). This means you can't run your production images directly — DDEV requires you to adopt its image ecosystem.
+[DDEV](https://docs.ddev.com/en/stable/) is the most mature tool in this space — well-documented, actively maintained, and great for standard setups. However, DDEV wraps every web image in its own Dockerfile layers (user setup, PHP-FPM config, Xdebug, Mailpit). This means you can't run your production images directly — DDEV requires you to adopt its image ecosystem.
 
 dde takes a different approach: **your existing Docker images work as-is.** dde adds a thin runtime layer that remaps the container user's UID/GID to match the host, and uses service adapters (nginx, php-fpm, apache) to reconfigure processes at startup. There is no custom Dockerfile layer — the same image you deploy to production runs locally.
 
