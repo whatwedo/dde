@@ -557,6 +557,24 @@ readonly class DockerManager
     }
 
     /**
+     * Returns a ready-to-run interactive `docker exec -it` Process without executing it.
+     * Callers receive the exit code via `$process->getExitCode()` after `$process->run()`.
+     *
+     * @param list<string> $command
+     */
+    public function createInteractiveExecProcess(string $containerName, array $command): Process
+    {
+        $cmd = ['docker', 'exec', '-it', $containerName, ...$command];
+        $process = $this->processFactory->create($cmd, null, null);
+
+        if (Process::isTtySupported()) {
+            $process->setTty(true);
+        }
+
+        return $process;
+    }
+
+    /**
      * @param list<string> $command
      * @param array<string, string> $env
      */

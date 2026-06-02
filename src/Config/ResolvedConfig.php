@@ -37,6 +37,10 @@ final class ResolvedConfig
 
     public string $projectName { get => $this->projectConfig->name; }
 
+    public bool $claudeAgentEnabled { get => $this->globalConfig->claudeAgentEnabled; }
+
+    public string $claudeAgentImage { get => $this->globalConfig->claudeAgentImage; }
+
     /**
      * @param array<string, string> $serviceVersions
      */

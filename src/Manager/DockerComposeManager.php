@@ -10,6 +10,7 @@ use App\Config\WorktreeInfo;
 use App\Model\ServiceDefinition;
 use App\Model\UserContext;
 use App\Util\ComposeEnvEntryParser;
+use App\Util\IdentifierSanitizer;
 use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
 use App\Util\TempFileUtil;
@@ -634,6 +635,25 @@ readonly class DockerComposeManager
             $overrideServices[$serviceName] = $serviceOverride;
         }
 
+        if ($config->claudeAgentEnabled) {
+            $home = $_SERVER['HOME'] ?? $_ENV['HOME'] ?? null;
+
+            if (is_string($home) && $home !== '') {
+                $overrideServices['dde-claude'] = [
+                    'image' => $config->claudeAgentImage,
+                    'container_name' => self::buildClaudeContainerName($config->projectName, $worktreeInfo),
+                    'volumes' => [
+                        $home.'/.claude:/root/.claude',
+                        $projectDir.':/workspace',
+                    ],
+                    'working_dir' => '/workspace',
+                    'command' => ['sleep', 'infinity'],
+                    'restart' => 'unless-stopped',
+                    'networks' => $serviceNetworks,
+                ];
+            }
+        }
+
         $networks = [
             $projectNetwork => [
                 'external' => true,
@@ -666,6 +686,17 @@ readonly class DockerComposeManager
         $this->filesystem->chmod($tempFile, 0o600);
 
         return $tempFile;
+    }
+
+    public static function buildClaudeContainerName(string $projectName, ?WorktreeInfo $worktreeInfo = null): string
+    {
+        if ($worktreeInfo instanceof WorktreeInfo) {
+            $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
+
+            return $projectName.'-'.$suffix.'-claude';
+        }
+
+        return $projectName.'-claude';
     }
 
     /**

@@ -16,6 +16,8 @@ final class GlobalConfigDefinition implements ConfigurationInterface
 
     public const array SSH_KEYS = [];
 
+    public const string CLAUDE_AGENT_IMAGE = 'ghcr.io/anthropics/claude-code:latest';
+
     /**
      * @return list<string>
      */
@@ -58,6 +60,17 @@ final class GlobalConfigDefinition implements ConfigurationInterface
                     ->arrayPrototype()
                         ->children()
                             ->scalarNode('version')->isRequired()->end()
+                        ->end()
+                    ->end()
+                ->end()
+                ->arrayNode('claude_agent')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->booleanNode('enabled')
+                            ->defaultTrue()
+                        ->end()
+                        ->scalarNode('image')
+                            ->defaultValue(self::CLAUDE_AGENT_IMAGE)
                         ->end()
                     ->end()
                 ->end()

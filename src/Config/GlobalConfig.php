@@ -20,6 +20,8 @@ final readonly class GlobalConfig
         public array $sshKeys = GlobalConfigDefinition::SSH_KEYS,
         public array $serviceVersions = [],
         public array $warnings = [],
+        public bool $claudeAgentEnabled = true,
+        public string $claudeAgentImage = GlobalConfigDefinition::CLAUDE_AGENT_IMAGE,
     ) {
     }
 
@@ -42,6 +44,10 @@ final readonly class GlobalConfig
             sshKeys: $processed['ssh']['keys'],
             serviceVersions: $serviceVersions,
             warnings: $warnings,
+            claudeAgentEnabled: (bool) ($processed['claude_agent']['enabled'] ?? true),
+            claudeAgentImage: is_string($processed['claude_agent']['image'] ?? null)
+                ? $processed['claude_agent']['image']
+                : GlobalConfigDefinition::CLAUDE_AGENT_IMAGE,
         );
     }
 }
