@@ -562,9 +562,22 @@ readonly class DockerManager
      *
      * @param list<string> $command
      */
-    public function createInteractiveExecProcess(string $containerName, array $command): Process
+    public function createInteractiveExecProcess(string $containerName, array $command, ?string $user = null): Process
     {
-        $cmd = ['docker', 'exec', '-it', $containerName, ...$command];
+        $cmd = ['docker', 'exec'];
+
+        if ($user !== null) {
+            $cmd[] = '-u';
+            $cmd[] = $user;
+        }
+
+        $cmd[] = '-it';
+        $cmd[] = $containerName;
+
+        foreach ($command as $part) {
+            $cmd[] = $part;
+        }
+
         $process = $this->processFactory->create($cmd, null, null);
 
         if (Process::isTtySupported()) {

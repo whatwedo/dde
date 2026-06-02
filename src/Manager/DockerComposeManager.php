@@ -643,10 +643,15 @@ readonly class DockerComposeManager
                     'image' => $config->claudeAgentImage,
                     'container_name' => self::buildClaudeContainerName($config->projectName, $worktreeInfo),
                     'volumes' => [
-                        $home.'/.claude:/root/.claude',
+                        $home.'/.claude:/home/dde/.claude',
                         $projectDir.':/workspace',
                     ],
                     'working_dir' => '/workspace',
+                    'environment' => [
+                        'DDE_UID' => (string) $this->userContext->uid,
+                        'DDE_GID' => (string) $this->userContext->gid,
+                        'HOME' => '/home/dde',
+                    ],
                     'command' => ['sleep', 'infinity'],
                     'restart' => 'unless-stopped',
                     'networks' => $serviceNetworks,
