@@ -4,16 +4,6 @@ title: "Guide: Claude Code"
 
 `dde project:claude` (alias: `dde claude`) starts an isolated [Claude Code](https://claude.ai/code) container for the current project. Each project gets its own ephemeral container with the project directory mounted as the workspace. Your existing Claude Code credentials and settings are shared from the host, so no separate login is required after the first run.
 
-## Prerequisites
-
-The feature requires a Docker image named `dde-claude:local` to be available on your machine. Build it once from the bundled Dockerfile:
-
-```bash
-docker build -t dde-claude:local /path/to/dde/resources/docker/claude/
-```
-
-A pre-built image will be published to GHCR in a future release. Until then, build locally.
-
 ## Usage
 
 ```bash
@@ -21,7 +11,7 @@ cd ~/projects/my-app
 dde project:claude    # or: dde claude
 ```
 
-dde starts `docker run --rm -it` with:
+dde pulls `ghcr.io/whatwedo/claude-code-container:latest` on first run (if not already present) and starts it with:
 
 - your project directory mounted at `/workspace` (the working directory)
 - `~/.claude/` and `~/.claude.json` mounted from your host so credentials and settings are shared
@@ -47,8 +37,8 @@ Both options live in `~/.dde/config.yml` under the `claude_agent` key:
 
 ```yaml
 claude_agent:
-  enabled: true                  # set to false to disable the command entirely
-  image: dde-claude:local        # override to use a custom or registry image
+  enabled: true                                          # set to false to disable the command entirely
+  image: ghcr.io/whatwedo/claude-code-container:latest  # override to pin a version or use a fork
 ```
 
 ### Disabling the Agent
@@ -64,29 +54,10 @@ claude_agent:
 
 ```yaml
 claude_agent:
-  image: ghcr.io/myorg/dde-claude:latest
+  image: ghcr.io/myorg/my-claude:latest
 ```
 
-The image must follow the same contract as the bundled Dockerfile: a `developer` user at UID 1000, Claude Code installed globally, and `/workspace` as the working directory.
-
-## How the Image Works
-
-The bundled image (`resources/docker/claude/Dockerfile`) is based on `node:22-slim`. The `node` user is renamed to `developer` and Claude Code is installed globally via npm:
-
-```dockerfile
-FROM node:22-slim
-
-RUN usermod -l developer -d /home/developer -m node && \
-    groupmod -n developer node && \
-    npm install -g @anthropic-ai/claude-code && \
-    rm -rf /var/lib/apt/lists/*
-
-USER developer
-WORKDIR /workspace
-CMD ["sleep", "infinity"]
-```
-
-`docker run` always passes `-u developer` so the process runs as UID 1000 regardless of how the image was tagged or pulled.
+The image must provide a `developer` user at UID 1000 with home at `/home/developer`, Claude Code installed globally, and `/workspace` as the working directory. See [ghcr.io/whatwedo/claude-code-container](https://github.com/whatwedo/claude-code-container) for the reference Dockerfile.
 
 ## Worktree Support
 
