@@ -62,10 +62,17 @@ final class ProjectClaudeCommand extends AbstractProjectCommand
         $projectNetwork = ProjectLifecycleManager::buildProjectNetworkName($config->projectName, $worktreeInfo);
         $network = $this->dockerManager->networkExists($projectNetwork) ? $projectNetwork : null;
 
+        $claudeJson = $home.'/.claude.json';
+
+        if (! file_exists($claudeJson)) {
+            file_put_contents($claudeJson, '{}');
+        }
+
         $process = $this->dockerManager->createInteractiveRunProcess(
             $config->claudeAgentImage,
             [
                 $home.'/.claude:/home/'.self::AGENT_USER.'/.claude',
+                $claudeJson.':/home/'.self::AGENT_USER.'/.claude.json',
                 $projectDir.':/workspace',
             ],
             ['HOME' => '/home/'.self::AGENT_USER],
