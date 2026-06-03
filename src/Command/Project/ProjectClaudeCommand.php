@@ -10,7 +10,6 @@ use App\Manager\DockerManager;
 use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
 use App\Manager\WorktreeManager;
-use App\Model\UserContext;
 use App\Output\FormatterResolver;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -30,7 +29,6 @@ final class ProjectClaudeCommand extends AbstractProjectCommand
         private readonly DockerManager $dockerManager,
         private readonly ProjectLifecycleManager $lifecycleManager,
         private readonly WorktreeManager $worktreeManager,
-        private readonly UserContext $userContext,
         FormatterResolver $formatterResolver,
     ) {
         parent::__construct($configManager, $formatterResolver);
@@ -80,8 +78,7 @@ final class ProjectClaudeCommand extends AbstractProjectCommand
             $section?->clear();
         }
 
-        $user = sprintf('%d:%d', $this->userContext->uid, $this->userContext->gid);
-        $process = $this->dockerManager->createInteractiveExecProcess($containerName, ['claude'], $user);
+        $process = $this->dockerManager->createInteractiveExecProcess($containerName, ['claude'], DockerComposeManager::CLAUDE_AGENT_USER);
         $process->run();
 
         return $process->getExitCode() ?? self::SUCCESS;

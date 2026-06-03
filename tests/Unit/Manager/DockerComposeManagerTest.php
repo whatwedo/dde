@@ -1860,7 +1860,7 @@ ENV);
             $this->assertSame('myproject-claude', $data['services']['dde-claude']['container_name']);
             $this->assertSame('/workspace', $data['services']['dde-claude']['working_dir']);
             $this->assertContains($this->tempDir.':/workspace', $data['services']['dde-claude']['volumes']);
-            $this->assertContains($this->tempDir.'/.claude:/root/.claude', $data['services']['dde-claude']['volumes']);
+            $this->assertContains($this->tempDir.'/.claude:/home/developer/.claude', $data['services']['dde-claude']['volumes']);
 
             unlink($overridePath);
         } finally {
@@ -1969,7 +1969,7 @@ ENV);
         );
 
         $this->assertSame(
-            'myproject-myproject-feature-claude',
+            'myproject-feature-claude',
             DockerComposeManager::buildClaudeContainerName('myproject', $worktreeInfo),
         );
     }

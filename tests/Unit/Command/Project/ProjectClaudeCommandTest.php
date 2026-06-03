@@ -13,7 +13,6 @@ use App\Manager\DockerManager;
 use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
 use App\Manager\WorktreeManager;
-use App\Model\UserContext;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
@@ -108,7 +107,7 @@ final class ProjectClaudeCommandTest extends TestCase
         $this->dockerManager
             ->expects($this->once())
             ->method('createInteractiveExecProcess')
-            ->with('myproject-claude', ['claude'], $this->matchesRegularExpression('/^\d+:\d+$/'))
+            ->with('myproject-claude', ['claude'], DockerComposeManager::CLAUDE_AGENT_USER)
             ->willReturn($process);
 
         $this->commandTester->execute([], ['interactive' => false]);
@@ -218,7 +217,6 @@ final class ProjectClaudeCommandTest extends TestCase
             $this->dockerManager,
             $this->lifecycleManager,
             $this->worktreeManager,
-            new UserContext(),
             $formatterResolver,
         );
 

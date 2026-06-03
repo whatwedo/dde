@@ -25,6 +25,8 @@ use Symfony\Component\Yaml\Yaml;
 
 readonly class DockerComposeManager
 {
+    public const string CLAUDE_AGENT_USER = 'developer';
+
     public function __construct(
         private AdapterRegistry $adapterRegistry,
         private DockerManager $dockerManager,
@@ -643,14 +645,12 @@ readonly class DockerComposeManager
                     'image' => $config->claudeAgentImage,
                     'container_name' => self::buildClaudeContainerName($config->projectName, $worktreeInfo),
                     'volumes' => [
-                        $home.'/.claude:/home/dde/.claude',
+                        $home.'/.claude:/home/'.self::CLAUDE_AGENT_USER.'/.claude',
                         $projectDir.':/workspace',
                     ],
                     'working_dir' => '/workspace',
                     'environment' => [
-                        'DDE_UID' => (string) $this->userContext->uid,
-                        'DDE_GID' => (string) $this->userContext->gid,
-                        'HOME' => '/home/dde',
+                        'HOME' => '/home/'.self::CLAUDE_AGENT_USER,
                     ],
                     'command' => ['sleep', 'infinity'],
                     'restart' => 'unless-stopped',
