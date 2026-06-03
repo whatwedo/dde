@@ -557,6 +557,59 @@ readonly class DockerManager
     }
 
     /**
+     * Returns a ready-to-run interactive `docker run --rm -it` Process without executing it.
+     * The container is automatically removed when the process exits.
+     *
+     * @param list<string>           $volumes      each element in "host:container" format
+     * @param array<string, string>  $environment
+     * @param list<string>           $cmd          command to run inside the container
+     */
+    public function createInteractiveRunProcess(
+        string $image,
+        array $volumes = [],
+        array $environment = [],
+        ?string $network = null,
+        ?string $user = null,
+        array $cmd = [],
+    ): Process {
+        $command = ['docker', 'run', '--rm', '-it'];
+
+        if ($user !== null) {
+            $command[] = '-u';
+            $command[] = $user;
+        }
+
+        foreach ($volumes as $volume) {
+            $command[] = '-v';
+            $command[] = $volume;
+        }
+
+        foreach ($environment as $key => $value) {
+            $command[] = '-e';
+            $command[] = sprintf('%s=%s', $key, $value);
+        }
+
+        if ($network !== null) {
+            $command[] = '--network';
+            $command[] = $network;
+        }
+
+        $command[] = $image;
+
+        foreach ($cmd as $part) {
+            $command[] = $part;
+        }
+
+        $process = $this->processFactory->create($command, null, null);
+
+        if (Process::isTtySupported()) {
+            $process->setTty(true);
+        }
+
+        return $process;
+    }
+
+    /**
      * Returns a ready-to-run interactive `docker exec -it` Process without executing it.
      * Callers receive the exit code via `$process->getExitCode()` after `$process->run()`.
      *

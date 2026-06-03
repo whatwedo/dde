@@ -8,10 +8,8 @@ use App\Command\Project\ProjectClaudeCommand;
 use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
-use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
 use App\Manager\ProjectConfigManager;
-use App\Manager\ProjectLifecycleManager;
 use App\Manager\WorktreeManager;
 use App\Output\FormatterResolver;
 use App\Output\JsonFormatter;
@@ -34,8 +32,6 @@ final class ProjectClaudeCommandTest extends TestCase
     private ProjectConfigManager&Stub $configManager;
 
     private DockerManager&MockObject $dockerManager;
-
-    private ProjectLifecycleManager&MockObject $lifecycleManager;
 
     private WorktreeManager&Stub $worktreeManager;
 
@@ -70,44 +66,28 @@ final class ProjectClaudeCommandTest extends TestCase
         $this->assertStringContainsString('disabled', $this->commandTester->getDisplay());
     }
 
-    public function testAlwaysEnsuresGlobalServices(): void
+    public function testRunsEphemeralContainerWithCorrectUser(): void
     {
         $this->setupProjectFixture();
 
         $this->dockerManager
-            ->method('isContainerRunning')
-            ->willReturn(true);
-
-        $this->lifecycleManager
-            ->expects($this->once())
-            ->method('ensureGlobalServices');
-
-        $process = $this->createStub(Process::class);
-        $process->method('getExitCode')->willReturn(0);
-
-        $this->dockerManager
-            ->method('createInteractiveExecProcess')
-            ->willReturn($process);
-
-        $this->commandTester->execute([], ['interactive' => false]);
-    }
-
-    public function testExecsIntoContainerWhenAlreadyRunning(): void
-    {
-        $this->setupProjectFixture();
-
-        $this->dockerManager
-            ->method('isContainerRunning')
-            ->with('myproject-claude')
-            ->willReturn(true);
+            ->method('networkExists')
+            ->willReturn(false);
 
         $process = $this->createStub(Process::class);
         $process->method('getExitCode')->willReturn(0);
 
         $this->dockerManager
             ->expects($this->once())
-            ->method('createInteractiveExecProcess')
-            ->with('myproject-claude', ['claude'], DockerComposeManager::CLAUDE_AGENT_USER)
+            ->method('createInteractiveRunProcess')
+            ->with(
+                $this->anything(),
+                $this->anything(),
+                $this->anything(),
+                null,
+                'developer',
+                ['claude'],
+            )
             ->willReturn($process);
 
         $this->commandTester->execute([], ['interactive' => false]);
@@ -115,34 +95,58 @@ final class ProjectClaudeCommandTest extends TestCase
         $this->assertSame(0, $this->commandTester->getStatusCode());
     }
 
-    public function testStartsProjectWhenContainerNotRunning(): void
+    public function testPassesProjectNetworkWhenAvailable(): void
     {
         $this->setupProjectFixture();
 
         $this->dockerManager
-            ->method('isContainerRunning')
-            ->willReturn(false);
-
-        $this->lifecycleManager
-            ->expects($this->once())
-            ->method('up')
-            ->with(
-                $this->isInstanceOf(ResolvedConfig::class),
-                $this->tempDir,
-                false,
-                $this->anything(),
-            );
+            ->method('networkExists')
+            ->willReturn(true);
 
         $process = $this->createStub(Process::class);
         $process->method('getExitCode')->willReturn(0);
 
         $this->dockerManager
-            ->method('createInteractiveExecProcess')
+            ->expects($this->once())
+            ->method('createInteractiveRunProcess')
+            ->with(
+                $this->anything(),
+                $this->anything(),
+                $this->anything(),
+                'dde-services-myproject',
+                $this->anything(),
+                $this->anything(),
+            )
             ->willReturn($process);
 
         $this->commandTester->execute([], ['interactive' => false]);
+    }
 
-        $this->assertStringContainsString('not running', $this->commandTester->getDisplay());
+    public function testPassesNullNetworkWhenProjectNotRunning(): void
+    {
+        $this->setupProjectFixture();
+
+        $this->dockerManager
+            ->method('networkExists')
+            ->willReturn(false);
+
+        $process = $this->createStub(Process::class);
+        $process->method('getExitCode')->willReturn(0);
+
+        $this->dockerManager
+            ->expects($this->once())
+            ->method('createInteractiveRunProcess')
+            ->with(
+                $this->anything(),
+                $this->anything(),
+                $this->anything(),
+                null,
+                $this->anything(),
+                $this->anything(),
+            )
+            ->willReturn($process);
+
+        $this->commandTester->execute([], ['interactive' => false]);
     }
 
     public function testPropagatesNonZeroExitCode(): void
@@ -150,37 +154,19 @@ final class ProjectClaudeCommandTest extends TestCase
         $this->setupProjectFixture();
 
         $this->dockerManager
-            ->method('isContainerRunning')
-            ->willReturn(true);
+            ->method('networkExists')
+            ->willReturn(false);
 
         $process = $this->createStub(Process::class);
         $process->method('getExitCode')->willReturn(130);
 
         $this->dockerManager
-            ->method('createInteractiveExecProcess')
+            ->method('createInteractiveRunProcess')
             ->willReturn($process);
 
         $this->commandTester->execute([], ['interactive' => false]);
 
         $this->assertSame(130, $this->commandTester->getStatusCode());
-    }
-
-    public function testErrorWhenProjectUpFails(): void
-    {
-        $this->setupProjectFixture();
-
-        $this->dockerManager
-            ->method('isContainerRunning')
-            ->willReturn(false);
-
-        $this->lifecycleManager
-            ->method('up')
-            ->willThrowException(new \RuntimeException('compose up failed'));
-
-        $this->commandTester->execute([], ['interactive' => false]);
-
-        $this->assertNotSame(0, $this->commandTester->getStatusCode());
-        $this->assertStringContainsString('compose up failed', $this->commandTester->getDisplay());
     }
 
     private function setupProjectFixture(bool $claudeAgentEnabled = true): void
@@ -207,7 +193,6 @@ final class ProjectClaudeCommandTest extends TestCase
 
         $this->configManager = $this->createStub(ProjectConfigManager::class);
         $this->dockerManager = $this->createMock(DockerManager::class);
-        $this->lifecycleManager = $this->createMock(ProjectLifecycleManager::class);
         $this->worktreeManager = $this->createStub(WorktreeManager::class);
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
@@ -215,7 +200,6 @@ final class ProjectClaudeCommandTest extends TestCase
         $this->command = new ProjectClaudeCommand(
             $this->configManager,
             $this->dockerManager,
-            $this->lifecycleManager,
             $this->worktreeManager,
             $formatterResolver,
         );

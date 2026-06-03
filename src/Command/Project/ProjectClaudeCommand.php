@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Command\Project;
 
 use App\Command\AbstractProjectCommand;
-use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
 use App\Manager\ProjectConfigManager;
 use App\Manager\ProjectLifecycleManager;
@@ -13,21 +12,20 @@ use App\Manager\WorktreeManager;
 use App\Output\FormatterResolver;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'project:claude',
-    description: 'Open Claude Code in the project\'s isolated agent container',
+    description: 'Open Claude Code in an isolated container for this project',
     aliases: ['claude'],
 )]
 final class ProjectClaudeCommand extends AbstractProjectCommand
 {
+    private const string AGENT_USER = 'developer';
+
     public function __construct(
         ProjectConfigManager $configManager,
         private readonly DockerManager $dockerManager,
-        private readonly ProjectLifecycleManager $lifecycleManager,
         private readonly WorktreeManager $worktreeManager,
         FormatterResolver $formatterResolver,
     ) {
@@ -54,31 +52,27 @@ final class ProjectClaudeCommand extends AbstractProjectCommand
             return $formatter->error('The Claude agent container is disabled. Enable it in ~/.dde/config.yml under claude_agent.enabled.');
         }
 
-        $this->lifecycleManager->ensureGlobalServices();
+        $home = $_SERVER['HOME'] ?? $_ENV['HOME'] ?? null;
 
-        $worktreeInfo = $this->worktreeManager->detect($projectDir);
-        $containerName = DockerComposeManager::buildClaudeContainerName($config->projectName, $worktreeInfo);
-
-        if (! $this->dockerManager->isContainerRunning($containerName)) {
-            $io = new SymfonyStyle($input, $output);
-            $io->writeln(sprintf('Claude agent container is not running. Starting project <info>%s</info>...', $config->projectName));
-
-            $section = $output instanceof ConsoleOutputInterface && $output->isDecorated()
-                ? $output->section()
-                : null;
-
-            try {
-                $this->lifecycleManager->up($config, $projectDir, false, output: $section);
-            } catch (\RuntimeException $runtimeException) {
-                $section?->clear();
-
-                return $formatter->error($runtimeException->getMessage());
-            }
-
-            $section?->clear();
+        if (! is_string($home) || $home === '') {
+            return $formatter->error('Could not determine home directory for ~/.claude mount.');
         }
 
-        $process = $this->dockerManager->createInteractiveExecProcess($containerName, ['claude'], DockerComposeManager::CLAUDE_AGENT_USER);
+        $worktreeInfo = $this->worktreeManager->detect($projectDir);
+        $projectNetwork = ProjectLifecycleManager::buildProjectNetworkName($config->projectName, $worktreeInfo);
+        $network = $this->dockerManager->networkExists($projectNetwork) ? $projectNetwork : null;
+
+        $process = $this->dockerManager->createInteractiveRunProcess(
+            $config->claudeAgentImage,
+            [
+                $home.'/.claude:/home/'.self::AGENT_USER.'/.claude',
+                $projectDir.':/workspace',
+            ],
+            ['HOME' => '/home/'.self::AGENT_USER],
+            $network,
+            self::AGENT_USER,
+            ['claude'],
+        );
         $process->run();
 
         return $process->getExitCode() ?? self::SUCCESS;

@@ -25,7 +25,6 @@ use Symfony\Component\Yaml\Yaml;
 
 readonly class DockerComposeManager
 {
-    public const string CLAUDE_AGENT_USER = 'developer';
 
     public function __construct(
         private AdapterRegistry $adapterRegistry,
@@ -637,28 +636,6 @@ readonly class DockerComposeManager
             $overrideServices[$serviceName] = $serviceOverride;
         }
 
-        if ($config->claudeAgentEnabled) {
-            $home = $_SERVER['HOME'] ?? $_ENV['HOME'] ?? null;
-
-            if (is_string($home) && $home !== '') {
-                $overrideServices['dde-claude'] = [
-                    'image' => $config->claudeAgentImage,
-                    'container_name' => self::buildClaudeContainerName($config->projectName, $worktreeInfo),
-                    'volumes' => [
-                        $home.'/.claude:/home/'.self::CLAUDE_AGENT_USER.'/.claude',
-                        $projectDir.':/workspace',
-                    ],
-                    'working_dir' => '/workspace',
-                    'environment' => [
-                        'HOME' => '/home/'.self::CLAUDE_AGENT_USER,
-                    ],
-                    'command' => ['sleep', 'infinity'],
-                    'restart' => 'unless-stopped',
-                    'networks' => $serviceNetworks,
-                ];
-            }
-        }
-
         $networks = [
             $projectNetwork => [
                 'external' => true,
@@ -691,17 +668,6 @@ readonly class DockerComposeManager
         $this->filesystem->chmod($tempFile, 0o600);
 
         return $tempFile;
-    }
-
-    public static function buildClaudeContainerName(string $projectName, ?WorktreeInfo $worktreeInfo = null): string
-    {
-        if ($worktreeInfo instanceof WorktreeInfo) {
-            $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
-
-            return $projectName.'-'.$suffix.'-claude';
-        }
-
-        return $projectName.'-claude';
     }
 
     /**
