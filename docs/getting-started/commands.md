@@ -49,6 +49,9 @@ Available on every command:
 | `project:exec` | `exec` | Run a command in a container | `<cmd>...` `-s\|--service=SERVICE` `--root` |
 | `project:shell` | `shell` | Open interactive shell | `-s\|--service=SERVICE` `--root` |
 | `project:logs` | `logs` | Show container logs | `-s\|--service=SERVICE` `-f\|--follow` `--no-follow` `--tail=TAIL` |
+| `project:claude` | `claude` | Open Claude Code in an isolated agent container | |
+
+See also: [Claude Code](../guides/claude-code.md) for setup and configuration.
 
 ## Database
 

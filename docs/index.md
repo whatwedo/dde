@@ -23,6 +23,7 @@ hero:
 - **Per-project services** — MariaDB, PostgreSQL, Valkey, and Mailpit with version pinning — isolated per project.
 - **Git worktree support** — Each worktree gets its own hostname and TLS certificate for parallel feature development.
 - **SSH agent forwarding** — A shared SSH agent container makes your host keys available inside all containers.
+- **Claude Code integration** — `dde project:claude` opens an isolated Claude Code container per project, sharing your host credentials and connecting to the project network automatically.
 - **Hook system** — Run custom scripts on `project:up` and `project:down` lifecycle events.
 - **Plugin system** — Extend dde with project-local or global plugins to add custom commands.
 - **Shell completion** — Bash and Zsh completions installed automatically via `dde system:install`.
