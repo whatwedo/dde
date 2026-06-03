@@ -53,6 +53,24 @@ Pushing a `v*` tag triggers the release workflow (`.github/workflows/release.yml
 3. **Builds the PHAR** using humbug/box
 4. **Combines PHAR with micro.sfx** from static-php-cli to produce standalone binaries
 5. **Uploads binaries** to a GitHub Release
+6. **Publishes the package repos** (APT, Alpine, Arch, RPM) and the Homebrew binaries to the `packages.dde.sh` S3 bucket
+7. **Invalidates the CloudFront cache** so the freshly published repo indexes are served immediately instead of stale cached copies
+
+The same publish + invalidate flow runs on every push to `v2` via the nightly workflow (`.github/workflows/nightly.yml`), targeting the `*-nightly` repo paths in the same bucket and the same CloudFront distribution.
+
+### Required secrets
+
+The publishing jobs read these repository secrets:
+
+| Secret | Purpose |
+|--------|---------|
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | IAM credentials for the `packages.dde.sh` bucket and the CloudFront invalidation |
+| `CLOUDFRONT_DISTRIBUTION_ID` | The distribution that fronts `packages.dde.sh`; used by `aws cloudfront create-invalidation --paths "/*"` |
+| `GPG_PRIVATE_KEY` / `GPG_PASSPHRASE` | Sign the APT/Arch/RPM repo metadata |
+| `ALPINE_RSA_PRIVATE_KEY` | Sign the Alpine repo index |
+| `HOMEBREW_SSH_KEY` | Push the updated formula to the Homebrew tap repo |
+
+The IAM principal behind `AWS_ACCESS_KEY_ID` needs `cloudfront:CreateInvalidation` (and `cloudfront:GetInvalidation`) on the distribution in addition to its existing `s3:*` access to the bucket. A whole-distribution `/*` invalidation counts as a single path for billing.
 
 ### Target Platforms
 
