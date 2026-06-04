@@ -16,7 +16,7 @@ final class GlobalConfigDefinition implements ConfigurationInterface
 
     public const array SSH_KEYS = [];
 
-    public const string CLAUDE_AGENT_IMAGE = 'ghcr.io/whatwedo/claude-code-container:latest';
+    public const string CLAUDE_AGENT_IMAGE = 'ghcr.io/whatwedo/claudainer:latest';
 
     /**
      * @return list<string>

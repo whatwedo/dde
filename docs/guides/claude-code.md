@@ -11,7 +11,7 @@ cd ~/projects/my-app
 dde project:claude    # or: dde claude
 ```
 
-dde pulls `ghcr.io/whatwedo/claude-code-container:latest` on first run (if not already present) and starts it with:
+dde pulls `ghcr.io/whatwedo/claudainer:latest` on first run (if not already present) and starts it with:
 
 - your project directory mounted at `/workspace` (the working directory)
 - `~/.claude/` and `~/.claude.json` mounted from your host so credentials and settings are shared
@@ -38,7 +38,7 @@ Both options live in `~/.dde/config.yml` under the `claude_agent` key:
 ```yaml
 claude_agent:
   enabled: true                                          # set to false to disable the command entirely
-  image: ghcr.io/whatwedo/claude-code-container:latest  # override to pin a version or use a fork
+  image: ghcr.io/whatwedo/claudainer:latest  # override to pin a version or use a fork
 ```
 
 ### Disabling the Agent
@@ -57,7 +57,7 @@ claude_agent:
   image: ghcr.io/myorg/my-claude:latest
 ```
 
-The image must provide a `developer` user at UID 1000 with home at `/home/developer`, Claude Code installed globally, and `/workspace` as the working directory. See [ghcr.io/whatwedo/claude-code-container](https://github.com/whatwedo/claude-code-container) for the reference Dockerfile.
+The image must provide a `developer` user at UID 1000 with home at `/home/developer`, Claude Code installed globally, and `/workspace` as the working directory. See [ghcr.io/whatwedo/claudainer](https://github.com/whatwedo/claudainer) for the reference Dockerfile.
 
 ## Worktree Support
 
