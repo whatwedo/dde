@@ -68,13 +68,6 @@ jobs:
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Publish Alpine repo (nightly)
-        run: |
-          echo "${{ secrets.ALPINE_RSA_PRIVATE_KEY }}" > /tmp/alpine.rsa
-          chmod 600 /tmp/alpine.rsa
-          ./scripts/publish-alpine.sh "${{ needs.meta.outputs.pkg_version }}" dist packages.dde.sh /tmp/alpine.rsa nightly
-          rm -f /tmp/alpine.rsa
-
       - name: Upload binaries to S3 (nightly)
         run: |
           VERSION="${{ needs.meta.outputs.pkg_version }}"
@@ -82,6 +75,36 @@ jobs:
             [ -f "$bin" ] || continue
             aws s3 cp "$bin" "s3://packages.dde.sh/homebrew-nightly/${VERSION}/$(basename "$bin")"
           done
+
+  alpine:
+    name: Publish Alpine repo (nightly)
+    needs: [build, meta]
+    runs-on: ubuntu-latest
+    # apk-tools 2.x so `apk index` emits the classic v2 APKINDEX, readable by
+    # both apk-tools 2.x and 3.x clients.
+    container: alpine:3.21
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: eu-central-1
+    steps:
+      - name: Install dependencies
+        run: apk add --no-cache bash abuild openssl aws-cli git
+
+      - uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish Alpine repo (nightly)
+        run: |
+          echo "${{ secrets.ALPINE_RSA_PRIVATE_KEY }}" > /tmp/alpine.rsa
+          chmod 600 /tmp/alpine.rsa
+          ./scripts/publish-alpine.sh "${{ needs.meta.outputs.pkg_version }}" dist packages.dde.sh /tmp/alpine.rsa nightly
+          rm -f /tmp/alpine.rsa
 
   arch:
     name: Publish Arch repo (nightly)
@@ -172,7 +195,7 @@ jobs:
 
   invalidate:
     name: Invalidate CloudFront cache (nightly)
-    needs: [packages, arch, rpm]
+    needs: [packages, alpine, arch, rpm]
     runs-on: ubuntu-latest
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
