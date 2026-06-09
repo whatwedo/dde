@@ -142,6 +142,69 @@ final class ProjectOpenCommandTest extends TestCase
         $this->assertSame('https://bugfix.test-project.test', $decoded['data']['url']);
     }
 
+    public function testDefaultBrowserFromGlobalConfigSelectsTheBrowser(): void
+    {
+        // Regression guard for #125: the `default_browser` option in
+        // ~/.dde/config.yml must reach the URL opener so `project:open`
+        // launches the configured browser instead of the platform default.
+        $this->configManager
+            ->method('findProjectDirectory')
+            ->willReturn('/tmp/test-project');
+
+        $this->configManager
+            ->method('resolveConfig')
+            ->willReturn(ResolvedConfig::merge(
+                new GlobalConfig(defaultBrowser: '/usr/bin/firefox'),
+                new ProjectConfig(name: 'test-project'),
+            ));
+
+        $this->worktreeManager
+            ->method('detect')
+            ->willReturn(null);
+
+        $this->worktreeManager
+            ->method('resolveHostname')
+            ->willReturn('test-project.test');
+
+        $lastCommand = null;
+        $processFactory = $this->createMock(\App\Util\ProcessFactory::class);
+        $processFactory->method('create')
+            ->willReturnCallback(static function (array $cmd) use (&$lastCommand): Process {
+                $lastCommand = $cmd;
+                $process = new Process(['true']);
+                $process->run();
+
+                return $process;
+            });
+
+        $dockerComposeManager = $this->createStub(\App\Manager\DockerComposeManager::class);
+        $dockerComposeManager->method('findComposeFileOrNull')->willReturn(null);
+
+        $command = new ProjectOpenCommand(
+            $this->configManager,
+            new FormatterResolver(new TextFormatter(), new JsonFormatter()),
+            $dockerComposeManager,
+            $this->worktreeManager,
+            new UrlOpenerUtil($processFactory),
+        );
+
+        $application = new Application();
+        $application->getDefinition()->addOption(new InputOption(
+            'output',
+            'o',
+            InputOption::VALUE_REQUIRED,
+            'Output format',
+            'text',
+        ));
+        $application->addCommand($command);
+
+        (new CommandTester($command))->execute([], [
+            'interactive' => true,
+        ]);
+
+        $this->assertSame(['/usr/bin/firefox', 'https://test-project.test'], $lastCommand);
+    }
+
     public function testErrorWhenNoProjectDirectoryFound(): void
     {
         $this->configManager

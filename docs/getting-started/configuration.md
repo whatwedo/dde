@@ -13,6 +13,11 @@ Located at `~/.dde/config.yml`. This file is not created automatically — creat
 # Default output format (text or json)
 output: text
 
+# Browser that `dde project:open` launches the project URL with.
+# Path or name of an executable that accepts a URL as its argument.
+# Omit it to use the platform default (open / xdg-open / start).
+default_browser: /usr/bin/firefox
+
 # Upstream DNS servers for non-.test queries
 dns:
   forward:

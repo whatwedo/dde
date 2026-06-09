@@ -62,7 +62,7 @@ final class ProjectOpenCommand extends AbstractProjectCommand
             return self::SUCCESS;
         }
 
-        $this->urlOpenerUtil->open($url);
+        $this->urlOpenerUtil->open($url, $config->defaultBrowser);
         $output->writeln(sprintf('Opening <info>%s</info>', $url));
 
         return self::SUCCESS;

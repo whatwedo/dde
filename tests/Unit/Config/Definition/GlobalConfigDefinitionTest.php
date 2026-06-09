@@ -23,6 +23,7 @@ final class GlobalConfigDefinitionTest extends TestCase
         $this->assertSame(GlobalConfigDefinition::DNS_FORWARD, $result['dns']['forward']);
         $this->assertSame(GlobalConfigDefinition::SSH_KEYS, $result['ssh']['keys']);
         $this->assertSame([], $result['services']);
+        $this->assertNull($result['default_browser']);
     }
 
     public function testFullConfig(): void
@@ -43,6 +44,7 @@ final class GlobalConfigDefinitionTest extends TestCase
                     'version' => '6',
                 ],
             ],
+            'default_browser' => '/usr/bin/firefox',
         ];
 
         $result = $this->processor->processConfiguration($this->definition, [$input]);
@@ -52,6 +54,7 @@ final class GlobalConfigDefinitionTest extends TestCase
         $this->assertSame(['~/.ssh/id_ed25519', '~/.ssh/id_rsa'], $result['ssh']['keys']);
         $this->assertSame('10.6', $result['services']['mariadb']['version']);
         $this->assertSame('6', $result['services']['valkey']['version']);
+        $this->assertSame('/usr/bin/firefox', $result['default_browser']);
     }
 
     public function testInvalidOutputThrows(): void

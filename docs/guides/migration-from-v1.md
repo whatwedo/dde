@@ -117,6 +117,7 @@ Any customisations that previously relied on the `dde` user can be implemented u
 | Custom openssl CA             | mkcert root CA                  | Installed via `system:install`           |
 | MailCrab                      | Mailpit                         | Different web UI, same SMTP interface    |
 | nginx-proxy                   | Traefik v3                      | Routing via labels instead of env vars   |
+| `DDE_BROWSER` env var         | `default_browser` config option | Browser for `project:open` now lives in `~/.dde/config.yml` |
 
 ## v2: restart commands removed
 
