@@ -96,14 +96,14 @@ final class DbExportCommand extends AbstractDatabaseCommand
 
         $database = $this->resolveDatabase($input, $config, $serviceDefinition->name);
 
+        // The streamed export no longer creates intermediate directories.
+        $this->filesystem->mkdir(dirname($filePath));
+
         try {
-            $sqlContent = $this->databaseManager->exportDump($serviceDefinition, $database);
+            $bytesWritten = $this->databaseManager->exportDumpToFile($serviceDefinition, $database, $filePath);
         } catch (\RuntimeException $runtimeException) {
             return $formatter->error(sprintf('Export failed: %s', $runtimeException->getMessage()));
         }
-
-        $this->filesystem->dumpFile($filePath, $sqlContent);
-        $bytesWritten = strlen($sqlContent);
 
         if (!$formatter->isInteractive()) {
             return $formatter->success([

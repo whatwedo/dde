@@ -206,8 +206,13 @@ final class DbExportCommandTest extends TestCase
             ->willReturn(true);
 
         $this->databaseManager
-            ->method('exportDump')
-            ->willReturn('-- SQL dump content');
+            ->method('exportDumpToFile')
+            ->willReturnCallback(static function (ServiceDefinition $service, string $database, string $filePath): int {
+                $content = '-- SQL dump content';
+                file_put_contents($filePath, $content);
+
+                return strlen($content);
+            });
 
         $outputFile = $this->tempDir.'/dump.sql';
 

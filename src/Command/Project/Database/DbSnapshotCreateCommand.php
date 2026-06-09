@@ -86,13 +86,10 @@ final class DbSnapshotCreateCommand extends AbstractDatabaseCommand
         $database = $this->resolveDatabase($input, $config, $serviceDefinition->name);
 
         try {
-            $sqlContent = $this->databaseManager->exportDump($serviceDefinition, $database);
+            $bytesWritten = $this->databaseManager->exportDumpToFile($serviceDefinition, $database, $filePath);
         } catch (\RuntimeException $runtimeException) {
             return $formatter->error(sprintf('Snapshot failed: %s', $runtimeException->getMessage()));
         }
-
-        $this->filesystem->dumpFile($filePath, $sqlContent);
-        $bytesWritten = strlen($sqlContent);
 
         if (!$formatter->isInteractive()) {
             return $formatter->success([
