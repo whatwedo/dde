@@ -35,6 +35,8 @@ final class ResolvedConfig
 
     public string $output { get => $this->globalConfig->output; }
 
+    public ?string $defaultBrowser { get => $this->globalConfig->defaultBrowser; }
+
     public string $projectName { get => $this->projectConfig->name; }
 
     /**
