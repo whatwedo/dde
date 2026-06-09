@@ -173,8 +173,13 @@ final class DbSnapshotCreateCommandTest extends TestCase
             ->willReturn(true);
 
         $this->databaseManager
-            ->method('exportDump')
-            ->willReturn('-- SQL dump content');
+            ->method('exportDumpToFile')
+            ->willReturnCallback(static function (ServiceDefinition $service, string $database, string $filePath): int {
+                $content = '-- SQL dump content';
+                file_put_contents($filePath, $content);
+
+                return strlen($content);
+            });
 
         $this->commandTester->execute([
             '--name' => 'my-snapshot',
@@ -207,7 +212,14 @@ final class DbSnapshotCreateCommandTest extends TestCase
 
         $this->databaseManager->method('resolveContainerName')->willReturn('dde-mariadb-11.8');
         $this->databaseManager->method('isContainerRunning')->willReturn(true);
-        $this->databaseManager->method('exportDump')->willReturn('-- SQL dump content');
+        $this->databaseManager
+            ->method('exportDumpToFile')
+            ->willReturnCallback(static function (ServiceDefinition $service, string $database, string $filePath): int {
+                $content = '-- SQL dump content';
+                file_put_contents($filePath, $content);
+
+                return strlen($content);
+            });
 
         $this->commandTester->execute([
             '--name' => 'json-snap',
@@ -245,7 +257,14 @@ final class DbSnapshotCreateCommandTest extends TestCase
 
         $this->databaseManager->method('resolveContainerName')->willReturn('dde-mariadb-11.8');
         $this->databaseManager->method('isContainerRunning')->willReturn(true);
-        $this->databaseManager->method('exportDump')->willReturn('-- SQL');
+        $this->databaseManager
+            ->method('exportDumpToFile')
+            ->willReturnCallback(static function (ServiceDefinition $service, string $database, string $filePath): int {
+                $content = '-- SQL';
+                file_put_contents($filePath, $content);
+
+                return strlen($content);
+            });
 
         $this->commandTester->execute([], [
             'interactive' => false,
@@ -306,7 +325,7 @@ final class DbSnapshotCreateCommandTest extends TestCase
         $this->databaseManager->method('resolveContainerName')->willReturn('dde-mariadb-11.8');
         $this->databaseManager->method('isContainerRunning')->willReturn(true);
         $this->databaseManager
-            ->method('exportDump')
+            ->method('exportDumpToFile')
             ->willThrowException(new \RuntimeException('dump error'));
 
         $this->commandTester->execute([
