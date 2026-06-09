@@ -54,14 +54,15 @@ readonly class DatabaseManager
         );
     }
 
-    public function exportDump(ServiceDefinition $serviceDefinition, string $database): string
+    public function exportDumpToFile(ServiceDefinition $serviceDefinition, string $database, string $filePath): int
     {
         $adapter = $this->adapterRegistry->getAdapter($serviceDefinition->name);
 
-        return $this->dockerManager->execCaptureWithEnv(
+        return $this->dockerManager->execCaptureToFileWithEnv(
             $this->resolveContainerName($serviceDefinition),
             $adapter->getDumpCommand($database),
             $this->buildExtraEnv($serviceDefinition->name),
+            $filePath,
         );
     }
 

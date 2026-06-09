@@ -86,17 +86,25 @@ final class DatabaseManagerTest extends TestCase
         $this->assertSame($expectedEnv, $this->databaseManager->getContainerEnv($service));
     }
 
-    public function testExportDumpCallsCorrectAdapterAndDocker(): void
+    public function testExportDumpToFileStreamsThroughDockerAndReturnsByteCount(): void
     {
         $service = new ServiceDefinition(name: 'mariadb', version: '11.8', containerName: 'dde-mariadb-11.8');
 
         $this->dockerManager
             ->expects($this->once())
-            ->method('execCaptureWithEnv')
-            ->willReturn('-- SQL dump');
+            ->method('execCaptureToFileWithEnv')
+            ->with(
+                'dde-mariadb-11.8',
+                ['mysqldump', '-u', 'root', 'testdb'],
+                [
+                    'MYSQL_PWD' => 'root',
+                ],
+                '/tmp/snapshot.sql',
+            )
+            ->willReturn(123);
 
-        $result = $this->databaseManager->exportDump($service, 'testdb');
-        $this->assertSame('-- SQL dump', $result);
+        $result = $this->databaseManager->exportDumpToFile($service, 'testdb', '/tmp/snapshot.sql');
+        $this->assertSame(123, $result);
     }
 
     public function testImportDumpCallsExecWithInput(): void
@@ -147,19 +155,19 @@ final class DatabaseManagerTest extends TestCase
         $this->assertSame(33060, $this->databaseManager->resolveHostPort($service));
     }
 
-    public function testExportDumpThrowsWhenDockerFails(): void
+    public function testExportDumpToFileThrowsWhenDockerFails(): void
     {
         $service = new ServiceDefinition(name: 'mariadb', version: '11.8', containerName: 'dde-mariadb-11.8');
 
         $this->dockerManager
             ->expects($this->once())
-            ->method('execCaptureWithEnv')
+            ->method('execCaptureToFileWithEnv')
             ->willThrowException(new \RuntimeException('Container is not running'));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Container is not running');
 
-        $this->databaseManager->exportDump($service, 'testdb');
+        $this->databaseManager->exportDumpToFile($service, 'testdb', '/tmp/snapshot.sql');
     }
 
     #[AllowMockObjectsWithoutExpectations]

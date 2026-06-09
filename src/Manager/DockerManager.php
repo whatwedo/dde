@@ -589,8 +589,9 @@ readonly class DockerManager
      * @param array<string, string> $env
      *
      * @throws \RuntimeException
+     * @throws \Throwable
      */
-    public function execCaptureWithEnv(string $containerName, array $command, array $env): string
+    public function execCaptureToFileWithEnv(string $containerName, array $command, array $env, string $filePath): int
     {
         $cmd = ['docker', 'exec'];
 
@@ -605,14 +606,51 @@ readonly class DockerManager
             $cmd[] = $part;
         }
 
+        $tempPath = $filePath.'.'.bin2hex(random_bytes(8)).'.part';
+
+        $handle = @fopen($tempPath, 'wb');
+
+        if ($handle === false) {
+            throw new \RuntimeException(sprintf('Failed to open "%s" for writing.', $tempPath));
+        }
+
+        $bytesWritten = 0;
         $process = $this->processFactory->create($cmd, null, 300);
-        $process->run();
+
+        try {
+            $process->run(static function (string $type, string $buffer) use ($handle, &$bytesWritten, $process): void {
+                if ($type !== Process::OUT) {
+                    return;
+                }
+
+                self::writeAll($handle, $buffer);
+                $bytesWritten += strlen($buffer);
+
+                // Drain the buffer so the dump never piles up in memory.
+                $process->clearOutput();
+            });
+        } catch (\Throwable $throwable) {
+            fclose($handle);
+            @unlink($tempPath);
+
+            throw $throwable;
+        }
+
+        fclose($handle);
 
         if (! $process->isSuccessful()) {
+            @unlink($tempPath);
+
             throw new \RuntimeException(sprintf('Failed to exec in container "%s": %s', $containerName, $process->getErrorOutput()));
         }
 
-        return $process->getOutput();
+        if (! rename($tempPath, $filePath)) {
+            @unlink($tempPath);
+
+            throw new \RuntimeException(sprintf('Failed to move dump into place at "%s".', $filePath));
+        }
+
+        return $bytesWritten;
     }
 
     /**
@@ -793,5 +831,29 @@ readonly class DockerManager
         }
 
         return $formatted;
+    }
+
+    /**
+     * Writes the whole buffer, looping over short writes (e.g. a full disk)
+     * so a partially written chunk can't silently truncate the dump.
+     *
+     * @param resource $handle
+     *
+     * @throws \RuntimeException
+     */
+    private static function writeAll($handle, string $buffer): void
+    {
+        $length = strlen($buffer);
+        $offset = 0;
+
+        while ($offset < $length) {
+            $written = fwrite($handle, substr($buffer, $offset));
+
+            if ($written === false || $written === 0) {
+                throw new \RuntimeException('Failed to write dump output to file.');
+            }
+
+            $offset += $written;
+        }
     }
 }

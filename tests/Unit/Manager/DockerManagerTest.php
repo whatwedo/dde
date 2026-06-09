@@ -62,14 +62,6 @@ final class DockerManagerTest extends TestCase
     }
 
     #[Group('e2e')]
-    public function testExecCaptureWithEnvThrowsForNonExistentContainer(): void
-    {
-        $this->expectException(\RuntimeException::class);
-
-        $this->manager->execCaptureWithEnv('dde-nonexistent-test-container-'.bin2hex(random_bytes(8)), ['echo', 'test'], []);
-    }
-
-    #[Group('e2e')]
     public function testExecWithInputThrowsForNonExistentContainer(): void
     {
         $this->expectException(\RuntimeException::class);
@@ -422,6 +414,114 @@ final class DockerManagerTest extends TestCase
         $manager = $this->createManagerWithShellProbeResult(false);
 
         $this->assertFalse($manager->imageHasShell('dunglas/mercure'));
+    }
+
+    // --- execCaptureToFileWithEnv ---
+
+    public function testExecCaptureToFileWithEnvStreamsOutputToFileWithoutBufferingInMemory(): void
+    {
+        $payloadSize = 5_000_000;
+        $process = new \Symfony\Component\Process\Process([
+            \PHP_BINARY,
+            '-r',
+            sprintf('echo str_repeat("A", %d);', $payloadSize),
+        ]);
+
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturn($process);
+
+        $manager = new DockerManager($processFactory);
+
+        $filePath = sys_get_temp_dir().'/dde_test_stream_'.bin2hex(random_bytes(8)).'.sql';
+
+        try {
+            $bytesWritten = $manager->execCaptureToFileWithEnv('dde-mariadb-11.8', ['mysqldump'], [], $filePath);
+
+            $this->assertSame($payloadSize, $bytesWritten);
+            $this->assertFileExists($filePath);
+            $this->assertSame($payloadSize, filesize($filePath));
+            // Buffer drained while streaming — nothing left to hold in memory.
+            $this->assertSame('', $process->getOutput());
+        } finally {
+            @unlink($filePath);
+        }
+    }
+
+    public function testExecCaptureToFileWithEnvThrowsAndLeavesNoFileWhenProcessFails(): void
+    {
+        $process = $this->createStub(\Symfony\Component\Process\Process::class);
+        $process->method('isSuccessful')->willReturn(false);
+        $process->method('getErrorOutput')->willReturn('container not found');
+
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturn($process);
+
+        $manager = new DockerManager($processFactory);
+
+        $dir = sys_get_temp_dir().'/dde_test_stream_'.bin2hex(random_bytes(8));
+        mkdir($dir, 0o755, true);
+        $filePath = $dir.'/dump.sql';
+
+        try {
+            $caught = null;
+
+            try {
+                $manager->execCaptureToFileWithEnv('dde-mariadb-11.8', ['mysqldump'], [], $filePath);
+            } catch (\RuntimeException $runtimeException) {
+                $caught = $runtimeException;
+            }
+
+            $this->assertInstanceOf(\RuntimeException::class, $caught);
+            $this->assertStringContainsString('container not found', $caught->getMessage());
+            // No partial dump and no leftover temp file.
+            $this->assertFileDoesNotExist($filePath);
+            $this->assertSame([], glob($dir.'/*') ?: []);
+        } finally {
+            (new \Symfony\Component\Filesystem\Filesystem())->remove($dir);
+        }
+    }
+
+    public function testExecCaptureToFileWithEnvDoesNotClobberExistingFileWhenProcessFails(): void
+    {
+        $process = $this->createStub(\Symfony\Component\Process\Process::class);
+        $process->method('isSuccessful')->willReturn(false);
+        $process->method('getErrorOutput')->willReturn('boom');
+
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturn($process);
+
+        $manager = new DockerManager($processFactory);
+
+        $filePath = sys_get_temp_dir().'/dde_test_stream_'.bin2hex(random_bytes(8)).'.sql';
+        file_put_contents($filePath, '-- previous valid dump');
+
+        try {
+            $this->expectException(\RuntimeException::class);
+
+            $manager->execCaptureToFileWithEnv('dde-mariadb-11.8', ['mysqldump'], [], $filePath);
+        } finally {
+            // The existing dump must survive an aborted run.
+            $this->assertSame('-- previous valid dump', file_get_contents($filePath));
+            @unlink($filePath);
+        }
+    }
+
+    public function testExecCaptureToFileWithEnvThrowsWhenTargetNotWritable(): void
+    {
+        $process = $this->createStub(\Symfony\Component\Process\Process::class);
+
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturn($process);
+
+        $manager = new DockerManager($processFactory);
+
+        // A directory that does not exist — fopen() on the temp file must fail.
+        $filePath = sys_get_temp_dir().'/dde_test_missing_'.bin2hex(random_bytes(8)).'/dump.sql';
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('for writing');
+
+        $manager->execCaptureToFileWithEnv('dde-mariadb-11.8', ['mysqldump'], [], $filePath);
     }
 
     private function createManagerWithShellProbeResult(bool $successful): DockerManager
