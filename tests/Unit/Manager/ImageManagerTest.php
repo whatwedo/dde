@@ -209,6 +209,79 @@ final class ImageManagerTest extends TestCase
         $this->assertStringContainsString('FROM nginx:latest', $capturedDockerfile);
         $this->assertStringContainsString('LABEL dde.configured="true"', $capturedDockerfile);
         $this->assertStringContainsString('LABEL dde.project="label-test"', $capturedDockerfile);
+        // Default stubbed os-release resolves to the debian branch.
+        $this->assertStringContainsString('useradd', $capturedDockerfile);
+        $this->assertStringContainsString('groupadd', $capturedDockerfile);
+    }
+
+    // Regression: v3 base images ship `USER app`; without `USER root` the build
+    // RUN runs unprivileged and silently no-ops (every command is `|| true`).
+    #[AllowMockObjectsWithoutExpectations]
+    public function testBuildDevLayerSwitchesToRootBeforeUserCreation(): void
+    {
+        $capturedDockerfile = null;
+
+        $this->dockerManager->method('buildImage')
+            ->willReturnCallback(function (string $dir) use (&$capturedDockerfile): void {
+                $capturedDockerfile = file_get_contents($dir.'/Dockerfile');
+            });
+
+        $this->manager->buildDevLayer('nginx:latest', 'root-test');
+
+        $this->assertIsString($capturedDockerfile);
+        $userPos = strpos($capturedDockerfile, 'USER root');
+        $runPos = strpos($capturedDockerfile, 'RUN ');
+        $this->assertNotFalse($userPos, 'USER root must be present');
+        $this->assertNotFalse($runPos);
+        $this->assertLessThan($runPos, $userPos, 'USER root must precede the user-creation RUN');
+    }
+
+    // Regression: Debian's Perl adduser/addgroup abort under taint mode on these
+    // images, so the debian branch must use the C-binary shadow tools.
+    #[AllowMockObjectsWithoutExpectations]
+    public function testBuildDevLayerDebianUsesTaintImmuneShadowTools(): void
+    {
+        $capturedDockerfile = null;
+
+        $this->dockerManager->method('buildImage')
+            ->willReturnCallback(function (string $dir) use (&$capturedDockerfile): void {
+                $capturedDockerfile = file_get_contents($dir.'/Dockerfile');
+            });
+
+        // Default stubbed os-release resolves to the debian branch.
+        $this->manager->buildDevLayer('nginx:latest', 'debian-test');
+
+        $uid = posix_getuid();
+        $gid = posix_getgid();
+        $this->assertIsString($capturedDockerfile);
+        $this->assertStringContainsString(sprintf('groupadd -g %d dde', $gid), $capturedDockerfile);
+        $this->assertStringContainsString(sprintf('useradd -u %d -g %d -m -d /home/dde -s /bin/sh dde', $uid, $gid), $capturedDockerfile);
+        $this->assertStringNotContainsString('adduser', $capturedDockerfile);
+        $this->assertStringNotContainsString('addgroup', $capturedDockerfile);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testBuildDevLayerAlpineSwitchesToRoot(): void
+    {
+        $capturedDockerfile = null;
+
+        $this->dockerManager->method('runEphemeral')
+            ->willReturnCallback(function (): \Symfony\Component\Process\Process {
+                $process = new \Symfony\Component\Process\Process(['printf', 'ID=alpine']);
+                $process->run();
+
+                return $process;
+            });
+
+        $this->dockerManager->method('buildImage')
+            ->willReturnCallback(function (string $dir) use (&$capturedDockerfile): void {
+                $capturedDockerfile = file_get_contents($dir.'/Dockerfile');
+            });
+
+        $this->manager->buildDevLayer('alpine:latest', 'alpine-test');
+
+        $this->assertIsString($capturedDockerfile);
+        $this->assertStringContainsString('USER root', $capturedDockerfile);
         $this->assertStringContainsString('adduser', $capturedDockerfile);
         $this->assertStringContainsString('addgroup', $capturedDockerfile);
     }
