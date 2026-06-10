@@ -152,6 +152,7 @@ readonly class ImageManager
             sprintf('FROM %s', $baseImage),
             'LABEL dde.configured="true"',
             sprintf('LABEL dde.project="%s"', $projectName),
+            'USER root',
         ];
 
         if ($distro === 'alpine') {
@@ -159,9 +160,10 @@ readonly class ImageManager
             $lines[] = sprintf('    && addgroup -g %d dde || true \\', $gid);
             $lines[] = sprintf('    && adduser -u %d -G dde -D -h /home/dde dde || true', $uid);
         } else {
-            $lines[] = 'RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/* \\';
-            $lines[] = sprintf('    && addgroup --gid %d dde || true \\', $gid);
-            $lines[] = sprintf('    && adduser --uid %d --gid %d --disabled-password --gecos "" --home /home/dde dde || true', $uid, $gid);
+            // shadow's C-binary tools, not Debian's Perl adduser/addgroup, which
+            // abort under taint mode on these images (world-writable PATH dirs).
+            $lines[] = sprintf('RUN groupadd -g %d dde 2>/dev/null || true; \\', $gid);
+            $lines[] = sprintf('    useradd -u %d -g %d -m -d /home/dde -s /bin/sh dde 2>/dev/null || true', $uid, $gid);
         }
 
         return implode("\n", $lines)."\n";
