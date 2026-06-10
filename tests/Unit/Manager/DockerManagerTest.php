@@ -416,6 +416,85 @@ final class DockerManagerTest extends TestCase
         $this->assertFalse($manager->imageHasShell('dunglas/mercure'));
     }
 
+    public function testImageHasShellReturnsFalseWhenShellProbeTimesOut(): void
+    {
+        $inspect = $this->createStub(\Symfony\Component\Process\Process::class);
+        $inspect->method('isSuccessful')->willReturn(true);
+
+        $probe = $this->createStub(\Symfony\Component\Process\Process::class);
+        $probe->method('run')->willThrowException(
+            new \Symfony\Component\Process\Exception\ProcessTimedOutException(
+                $probe,
+                \Symfony\Component\Process\Exception\ProcessTimedOutException::TYPE_GENERAL,
+            ),
+        );
+
+        $processes = [$inspect, $probe];
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturnCallback(
+            static function () use (&$processes): ?\Symfony\Component\Process\Process {
+                return array_shift($processes);
+            },
+        );
+
+        $manager = new DockerManager($processFactory);
+
+        $this->assertFalse($manager->imageHasShell('grafana/grafana:12.4'));
+    }
+
+    public function testImageHasShellPullsMissingImageBeforeProbing(): void
+    {
+        $inspect = $this->createStub(\Symfony\Component\Process\Process::class);
+        $inspect->method('isSuccessful')->willReturn(false);
+
+        $pull = $this->createStub(\Symfony\Component\Process\Process::class);
+        $pull->method('isSuccessful')->willReturn(true);
+
+        $probe = $this->createStub(\Symfony\Component\Process\Process::class);
+        $probe->method('isSuccessful')->willReturn(true);
+
+        $commands = [];
+        $processes = [$inspect, $pull, $probe];
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturnCallback(
+            static function (array $command) use (&$processes, &$commands): ?\Symfony\Component\Process\Process {
+                $commands[] = $command;
+
+                return array_shift($processes);
+            },
+        );
+
+        $manager = new DockerManager($processFactory);
+
+        $this->assertTrue($manager->imageHasShell('grafana/grafana:12.4'));
+        $this->assertSame(['docker', 'pull', 'grafana/grafana:12.4'], $commands[1]);
+    }
+
+    public function testImageHasShellReturnsFalseWithoutProbingWhenPullFails(): void
+    {
+        $inspect = $this->createStub(\Symfony\Component\Process\Process::class);
+        $inspect->method('isSuccessful')->willReturn(false);
+
+        $pull = $this->createStub(\Symfony\Component\Process\Process::class);
+        $pull->method('isSuccessful')->willReturn(false);
+
+        $commands = [];
+        $processes = [$inspect, $pull];
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturnCallback(
+            static function (array $command) use (&$processes, &$commands): ?\Symfony\Component\Process\Process {
+                $commands[] = $command;
+
+                return array_shift($processes);
+            },
+        );
+
+        $manager = new DockerManager($processFactory);
+
+        $this->assertFalse($manager->imageHasShell('ghcr.io/example/does-not-exist:latest'));
+        $this->assertCount(2, $commands);
+    }
+
     // --- execCaptureToFileWithEnv ---
 
     public function testExecCaptureToFileWithEnvStreamsOutputToFileWithoutBufferingInMemory(): void
@@ -526,11 +605,22 @@ final class DockerManagerTest extends TestCase
 
     private function createManagerWithShellProbeResult(bool $successful): DockerManager
     {
-        $process = $this->createStub(\Symfony\Component\Process\Process::class);
-        $process->method('isSuccessful')->willReturn($successful);
+        // First create() serves the `docker image inspect` existence check;
+        // reporting success there means the image is present, so the probe
+        // runs without a pull and the second process carries the probe result.
+        $inspect = $this->createStub(\Symfony\Component\Process\Process::class);
+        $inspect->method('isSuccessful')->willReturn(true);
 
+        $probe = $this->createStub(\Symfony\Component\Process\Process::class);
+        $probe->method('isSuccessful')->willReturn($successful);
+
+        $processes = [$inspect, $probe];
         $processFactory = $this->createStub(ProcessFactory::class);
-        $processFactory->method('create')->willReturn($process);
+        $processFactory->method('create')->willReturnCallback(
+            static function () use (&$processes): ?\Symfony\Component\Process\Process {
+                return array_shift($processes);
+            },
+        );
 
         return new DockerManager($processFactory);
     }
