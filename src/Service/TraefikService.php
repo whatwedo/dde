@@ -44,7 +44,7 @@ final class TraefikService extends AbstractSystemService implements ProjectNetwo
                 $this->dataDir.'/traefik' => '/etc/traefik',
                 $this->dataDir.'/certs' => '/certs:ro',
             ],
-            labels: $this->getDefaultLabels(),
+            labels: $this->getDefaultLabels() + $this->getDashboardLabels(),
             restartPolicy: 'unless-stopped',
         );
     }
@@ -89,6 +89,8 @@ final class TraefikService extends AbstractSystemService implements ProjectNetwo
               websecure:
                 address: ":443"
             providersThrottleDuration: 0s
+            api:
+              dashboard: true
             providers:
               docker:
                 exposedByDefault: false
@@ -105,6 +107,27 @@ final class TraefikService extends AbstractSystemService implements ProjectNetwo
     public function ensureDynamicConfigDir(): void
     {
         $this->filesystem->mkdir($this->dataDir.'/traefik/dynamic');
+    }
+
+    /**
+     * Routes the built-in Traefik dashboard (api@internal) to https://traefik.test
+     * so configuration errors of any project router become visible at a glance.
+     *
+     * TLS is served by the wildcard *.test default certificate; no dedicated
+     * certificate is required. The docker provider reads these labels off the
+     * Traefik container itself, hence the explicit traefik.enable=true.
+     *
+     * @return array<string, string>
+     */
+    private function getDashboardLabels(): array
+    {
+        return [
+            'traefik.enable' => 'true',
+            'traefik.http.routers.dashboard.rule' => 'Host(`traefik.test`)',
+            'traefik.http.routers.dashboard.service' => 'api@internal',
+            'traefik.http.routers.dashboard.entrypoints' => 'websecure',
+            'traefik.http.routers.dashboard.tls' => 'true',
+        ];
     }
 
     private function ensureCertsDir(): void

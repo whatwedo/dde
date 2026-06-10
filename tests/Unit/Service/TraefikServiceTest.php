@@ -51,6 +51,26 @@ final class TraefikServiceTest extends TestCase
         $this->assertSame('true', $config->labels['dde.managed']);
     }
 
+    public function testGetContainerConfigExposesDashboardRouter(): void
+    {
+        $config = $this->service->getContainerConfig();
+
+        $this->assertSame('true', $config->labels['traefik.enable']);
+        $this->assertSame(
+            'Host(`traefik.test`)',
+            $config->labels['traefik.http.routers.dashboard.rule'],
+        );
+        $this->assertSame(
+            'api@internal',
+            $config->labels['traefik.http.routers.dashboard.service'],
+        );
+        $this->assertSame(
+            'websecure',
+            $config->labels['traefik.http.routers.dashboard.entrypoints'],
+        );
+        $this->assertSame('true', $config->labels['traefik.http.routers.dashboard.tls']);
+    }
+
     public function testPortsAreBoundToLocalhost(): void
     {
         $config = $this->service->getContainerConfig();
@@ -99,6 +119,8 @@ final class TraefikServiceTest extends TestCase
         $this->assertStringContainsString('network: dde', $content);
         $this->assertStringContainsString('directory: /etc/traefik/dynamic', $content);
         $this->assertStringContainsString('watch: true', $content);
+        $this->assertStringContainsString('api:', $content);
+        $this->assertStringContainsString('dashboard: true', $content);
     }
 
     public function testEnsureDynamicConfigDirCreatesDirectory(): void
