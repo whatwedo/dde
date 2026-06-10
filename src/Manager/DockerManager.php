@@ -11,6 +11,7 @@ use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
 readonly class DockerManager
@@ -477,11 +478,43 @@ readonly class DockerManager
      */
     public function imageHasShell(string $image): bool
     {
+        // `docker run` implicitly pulls a missing image, so the probe
+        // timeout below would also cover the network pull of arbitrarily
+        // large images — on a cold cache (fresh CI runner, new machine)
+        // that bursts the 30s limit and the unhandled timeout aborts the
+        // whole command. Pull explicitly with its own generous timeout so
+        // the probe only ever measures container startup.
+        if (! $this->imageExists($image)) {
+            $pull = $this->processFactory->create(['docker', 'pull', $image], null, 600);
+
+            try {
+                $pull->run();
+            } catch (ProcessTimedOutException) {
+                return false;
+            }
+
+            if (! $pull->isSuccessful()) {
+                // Unpullable image: report "no shell" instead of throwing —
+                // `compose up` will surface the real pull error with proper
+                // context later.
+                return false;
+            }
+        }
+
         $process = $this->processFactory->create(
             ['docker', 'run', '--rm', '--entrypoint', '/bin/sh', $image, '-c', 'exit 0'],
         );
         $process->setTimeout(30);
-        $process->run();
+
+        try {
+            $process->run();
+        } catch (ProcessTimedOutException) {
+            // A container start that hangs despite the image being present
+            // is not "image has no shell", but degrading to the shell-less
+            // path keeps the command alive — failing the whole run over a
+            // diagnostics probe is worse.
+            return false;
+        }
 
         return $process->isSuccessful();
     }
