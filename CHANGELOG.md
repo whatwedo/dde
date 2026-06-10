@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Traefik's built-in dashboard is now exposed at `https://traefik.test`, surfacing misconfigured routers directly instead of only in the container logs. Existing installations pick this up after `dde system:down && dde system:up` (a plain restart is not enough — the labels and static `traefik.yml` only apply when the container is recreated).
+
 ## [2.0.0-beta.2] - 2026-06-01
 
 ### Added
