@@ -20,6 +20,7 @@ final readonly class GlobalConfig
         public array $sshKeys = GlobalConfigDefinition::SSH_KEYS,
         public array $serviceVersions = [],
         public array $warnings = [],
+        public ?string $defaultBrowser = null,
     ) {
     }
 
@@ -42,6 +43,7 @@ final readonly class GlobalConfig
             sshKeys: $processed['ssh']['keys'],
             serviceVersions: $serviceVersions,
             warnings: $warnings,
+            defaultBrowser: $processed['default_browser'],
         );
     }
 }

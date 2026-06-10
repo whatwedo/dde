@@ -88,6 +88,19 @@ final class GlobalConfigManagerTest extends TestCase
         ], $config->serviceVersions);
     }
 
+    public function testLoadParsesDefaultBrowser(): void
+    {
+        $configDir = $this->createTempDir();
+        $path = $configDir.'/config.yml';
+        file_put_contents($path, "default_browser: /usr/bin/firefox\n");
+        $this->tempFiles[] = $path;
+
+        $manager = new GlobalConfigManager(configDir: $configDir);
+        $config = $manager->load();
+
+        $this->assertSame('/usr/bin/firefox', $config->defaultBrowser);
+    }
+
     public function testLoadReturnsDefaultsOnInvalidConfig(): void
     {
         $configDir = $this->createTempDir();

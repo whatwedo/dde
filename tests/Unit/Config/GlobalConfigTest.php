@@ -18,6 +18,7 @@ final class GlobalConfigTest extends TestCase
         $this->assertSame(GlobalConfigDefinition::DNS_FORWARD, $config->dnsForward);
         $this->assertSame([], $config->sshKeys);
         $this->assertSame([], $config->serviceVersions);
+        $this->assertNull($config->defaultBrowser);
     }
 
     public function testConstructionWithCustomValues(): void
@@ -59,6 +60,7 @@ final class GlobalConfigTest extends TestCase
                     'version' => '6',
                 ],
             ],
+            'default_browser' => '/usr/bin/firefox',
         ];
 
         $config = GlobalConfig::fromProcessedConfig($processed, ['some warning']);
@@ -69,5 +71,6 @@ final class GlobalConfigTest extends TestCase
         $this->assertSame('10.6', $config->serviceVersions['mariadb']);
         $this->assertSame('6', $config->serviceVersions['valkey']);
         $this->assertSame(['some warning'], $config->warnings);
+        $this->assertSame('/usr/bin/firefox', $config->defaultBrowser);
     }
 }

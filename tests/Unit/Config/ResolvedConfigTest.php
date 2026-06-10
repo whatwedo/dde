@@ -55,6 +55,17 @@ final class ResolvedConfigTest extends TestCase
         $this->assertSame('', $resolved->projectName);
         $this->assertSame([], $resolved->services);
         $this->assertSame([], $resolved->containers);
+        $this->assertNull($resolved->defaultBrowser);
+    }
+
+    public function testDefaultBrowserDelegatesToGlobalConfig(): void
+    {
+        $resolved = ResolvedConfig::merge(
+            new GlobalConfig(defaultBrowser: '/usr/bin/firefox'),
+            new ProjectConfig(name: 'test-project'),
+        );
+
+        $this->assertSame('/usr/bin/firefox', $resolved->defaultBrowser);
     }
 
     public function testMergeGlobalOverridesDefaults(): void
