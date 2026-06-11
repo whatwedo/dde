@@ -1,7 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "baseBranches": ["v2"],
+  "baseBranchPatterns": [
+    "v2"
+  ],
   "schedule": ["at any time"],
   "timezone": "Europe/Zurich",
   "labels": ["dependencies"],
@@ -25,18 +27,22 @@
     },
     {
       "description": "Group and automerge Symfony minor/patch updates together",
-      "matchPackagePrefixes": ["symfony/"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "symfony",
       "groupSlug": "symfony",
-      "automerge": true
+      "automerge": true,
+      "matchPackageNames": [
+        "symfony/{/,}**"
+      ]
     },
     {
       "description": "Group Symfony major updates into their own PR — updated as a set, manual review (no automerge)",
-      "matchPackagePrefixes": ["symfony/"],
       "matchUpdateTypes": ["major"],
       "groupName": "symfony (major)",
-      "groupSlug": "symfony-major"
+      "groupSlug": "symfony-major",
+      "matchPackageNames": [
+        "symfony/{/,}**"
+      ]
     }
   ],
   "vulnerabilityAlerts": {
