@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Traefik's built-in dashboard is now exposed at `https://traefik.test`, surfacing misconfigured routers directly instead of only in the container logs. Existing installations pick this up after `dde system:down && dde system:up` (a plain restart is not enough — the labels and static `traefik.yml` only apply when the container is recreated).
 
+### Fixed
+
+- `dde system:install` no longer aborts the "Configuring DNS resolver" step with a cryptic `Permission denied` rename error. A resolver file left behind by dde v1 (which lacked a trailing newline) is now recognised as already configured, so upgrading needs no root. When the file genuinely has to be created, dde prints the exact `sudo` command to run instead of a raw exception.
+
 ## [2.0.0-beta.2] - 2026-06-01
 
 ### Added

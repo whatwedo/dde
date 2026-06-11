@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Manager\DockerManager;
 use App\Model\ContainerConfig;
 use App\Util\ProcessFactory;
+use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
 
 final class DnsmasqService extends AbstractSystemService
@@ -114,7 +115,8 @@ final class DnsmasqService extends AbstractSystemService
      *
      * On macOS: writes a resolver file to /etc/resolver/test.
      * On Linux: configures systemd-resolved or NetworkManager.
-     * Both require root privileges (the installer script runs with sudo).
+     * Both require root; when dde cannot write the file it explains the
+     * manual command to run instead.
      *
      * @throws \RuntimeException if the platform is not supported
      */
@@ -219,14 +221,24 @@ final class DnsmasqService extends AbstractSystemService
     {
         $resolverDir = '/etc/resolver';
         $resolverFile = $resolverDir.'/test';
-
         $content = $this->getResolverContent();
 
-        if ($this->filesystem->exists($resolverFile) && $this->filesystem->readFile($resolverFile) === $content) {
+        // A dde v1 resolver file is content-equivalent but lacks the trailing
+        // newline; treat it as already configured so upgrades need no root.
+        if ($this->filesystem->exists($resolverFile) && trim($this->filesystem->readFile($resolverFile)) === trim($content)) {
             return;
         }
 
-        $this->filesystem->mkdir($resolverDir);
-        $this->filesystem->dumpFile($resolverFile, $content);
+        try {
+            $this->filesystem->mkdir($resolverDir);
+            $this->filesystem->dumpFile($resolverFile, $content);
+        } catch (IOException $ioException) {
+            throw new \RuntimeException(sprintf(
+                "Could not write %s, which requires root. Create it manually and re-run 'dde system:install':\n  echo '%s' | sudo tee %s",
+                $resolverFile,
+                rtrim($content, "\n"),
+                $resolverFile,
+            ), $ioException->getCode(), previous: $ioException);
+        }
     }
 }
