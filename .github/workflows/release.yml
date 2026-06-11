@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     # apk-tools 2.x so `apk index` emits the classic v2 APKINDEX, readable by
     # both apk-tools 2.x and 3.x clients.
-    container: alpine:3.21
+    container: alpine:3.23
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
