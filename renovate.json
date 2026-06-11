@@ -18,7 +18,7 @@
       "automerge": true
     },
     {
-      "description": "Separate major updates — one PR per package for manual review",
+      "description": "Separate non-Symfony major updates — one PR per package for manual review",
       "matchUpdateTypes": ["major"],
       "groupName": null
     },
@@ -29,6 +29,13 @@
       "groupName": "symfony",
       "groupSlug": "symfony",
       "automerge": true
+    },
+    {
+      "description": "Group Symfony major updates into their own PR — updated as a set, manual review (no automerge)",
+      "matchPackagePrefixes": ["symfony/"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "symfony (major)",
+      "groupSlug": "symfony-major"
     }
   ],
   "vulnerabilityAlerts": {
