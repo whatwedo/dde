@@ -261,8 +261,7 @@ final class ProjectUpdateCommandTest extends TestCase
 
         $this->configManager
             ->method('resolveConfig')
-            ->with($this->tempDir)
-            ->willReturn($resolvedConfig);
+            ->willReturnMap([[$this->tempDir, $resolvedConfig]]);
     }
 
     protected function setUp(): void

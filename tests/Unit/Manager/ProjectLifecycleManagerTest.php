@@ -173,8 +173,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         ]);
 
         $this->dockerManager->method('isContainerRunning')
-            ->with('dde-mariadb-11.8')
-            ->willReturn(true);
+            ->willReturnMap([['dde-mariadb-11.8', true]]);
 
         $this->dockerManager->expects($this->never())
             ->method('run');
@@ -310,8 +309,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willReturn($composeFile);
 
         $this->dockerComposeManager->method('findUserOverrideFile')
-            ->with($projectDir, $composeFile)
-            ->willReturn($userOverride);
+            ->willReturnMap([[$projectDir, $composeFile, $userOverride]]);
 
         $this->imageManager->method('ensureDevLayers')
             ->willReturn(null);
