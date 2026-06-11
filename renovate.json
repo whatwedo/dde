@@ -2,12 +2,12 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "baseBranches": ["v2"],
-  "schedule": ["before 6am"],
+  "schedule": ["at any time"],
   "timezone": "Europe/Zurich",
   "labels": ["dependencies"],
   "minimumReleaseAge": "4 days",
-  "prConcurrentLimit": 5,
-  "prHourlyLimit": 2,
+  "prConcurrentLimit": 0,
+  "prHourlyLimit": 0,
   "platformAutomerge": true,
   "packageRules": [
     {
