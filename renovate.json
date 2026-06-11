@@ -9,6 +9,7 @@
   "prConcurrentLimit": 0,
   "prHourlyLimit": 0,
   "platformAutomerge": true,
+  "rebaseWhen": "behind-base-branch",
   "packageRules": [
     {
       "description": "Group and automerge all minor and patch updates when CI passes",
