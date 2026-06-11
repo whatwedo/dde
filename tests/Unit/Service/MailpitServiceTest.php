@@ -88,13 +88,11 @@ final class MailpitServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mailpit')
-            ->willReturn(false);
+            ->willReturnMap([['dde-mailpit', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-mailpit')
-            ->willReturn(false);
+            ->willReturnMap([['dde-mailpit', false]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -108,13 +106,11 @@ final class MailpitServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mailpit')
-            ->willReturn(false);
+            ->willReturnMap([['dde-mailpit', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-mailpit')
-            ->willReturn(true);
+            ->willReturnMap([['dde-mailpit', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -132,8 +128,7 @@ final class MailpitServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mailpit')
-            ->willReturn(true);
+            ->willReturnMap([['dde-mailpit', true]]);
 
         $this->dockerManager
             ->expects($this->never())
@@ -146,8 +141,7 @@ final class MailpitServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mailpit')
-            ->willReturn(true);
+            ->willReturnMap([['dde-mailpit', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -165,13 +159,11 @@ final class MailpitServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-mailpit')
-            ->willReturn(true);
+            ->willReturnMap([['dde-mailpit', true]]);
 
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mailpit')
-            ->willReturn(true);
+            ->willReturnMap([['dde-mailpit', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -190,8 +182,7 @@ final class MailpitServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mailpit')
-            ->willReturn(false);
+            ->willReturnMap([['dde-mailpit', false]]);
 
         $this->dockerManager
             ->expects($this->never())
@@ -223,20 +214,19 @@ final class MailpitServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mailpit')
-            ->willReturn(true);
+            ->willReturnMap([['dde-mailpit', true]]);
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
-            ->willReturn([
-                new ContainerInfo('dde-mailpit', ContainerStatus::RUNNING, 'axllent/mailpit:latest'),
+            ->willReturnMap([
+                ['dde.service', [
+                    new ContainerInfo('dde-mailpit', ContainerStatus::RUNNING, 'axllent/mailpit:latest'),
+                ]],
             ]);
 
         $this->dockerManager
             ->method('listNetworksWithPrefix')
-            ->with('dde-services-')
-            ->willReturn(['dde-services-alpha', 'dde-services-empty']);
+            ->willReturnMap([['dde-services-', ['dde-services-alpha', 'dde-services-empty']]]);
 
         $this->dockerManager
             ->method('getConnectedContainerNames')

@@ -233,13 +233,11 @@ final class SshAgentServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-ssh-agent')
-            ->willReturn(false);
+            ->willReturnMap([['dde-ssh-agent', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-ssh-agent')
-            ->willReturn(false);
+            ->willReturnMap([['dde-ssh-agent', false]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -259,8 +257,7 @@ final class SshAgentServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-ssh-agent')
-            ->willReturn(true);
+            ->willReturnMap([['dde-ssh-agent', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -278,8 +275,7 @@ final class SshAgentServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-ssh-agent')
-            ->willReturn(true);
+            ->willReturnMap([['dde-ssh-agent', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -298,13 +294,11 @@ final class SshAgentServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-ssh-agent')
-            ->willReturn(true);
+            ->willReturnMap([['dde-ssh-agent', true]]);
 
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-ssh-agent')
-            ->willReturn(true);
+            ->willReturnMap([['dde-ssh-agent', true]]);
 
         $this->dockerManager
             ->expects($this->once())

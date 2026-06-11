@@ -56,7 +56,6 @@ final class SystemStopCommandTest extends TestCase
     {
         $this->manager
             ->method('stop')
-            ->with($this->isInstanceOf(\Closure::class))
             ->willReturnCallback(function (\Closure $onProgress): array {
                 $onProgress(SystemLifecycleProgress::Stopping, 'traefik', 'dde-traefik', null);
                 $onProgress(SystemLifecycleProgress::Stopped, 'traefik', 'dde-traefik', null);
@@ -91,7 +90,6 @@ final class SystemStopCommandTest extends TestCase
     {
         $this->manager
             ->method('stop')
-            ->with($this->isNull())
             ->willReturn([
                 'globalServices' => [[
                     'name' => 'traefik',

@@ -197,13 +197,11 @@ final class DnsmasqServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-dnsmasq')
-            ->willReturn(false);
+            ->willReturnMap([['dde-dnsmasq', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-dnsmasq')
-            ->willReturn(false);
+            ->willReturnMap([['dde-dnsmasq', false]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -224,8 +222,7 @@ final class DnsmasqServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-dnsmasq')
-            ->willReturn(true);
+            ->willReturnMap([['dde-dnsmasq', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -242,8 +239,7 @@ final class DnsmasqServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-dnsmasq')
-            ->willReturn(true);
+            ->willReturnMap([['dde-dnsmasq', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -261,13 +257,11 @@ final class DnsmasqServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-dnsmasq')
-            ->willReturn(true);
+            ->willReturnMap([['dde-dnsmasq', true]]);
 
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-dnsmasq')
-            ->willReturn(true);
+            ->willReturnMap([['dde-dnsmasq', true]]);
 
         $this->dockerManager
             ->expects($this->once())

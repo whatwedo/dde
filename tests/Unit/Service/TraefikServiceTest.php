@@ -165,18 +165,15 @@ final class TraefikServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(false);
+            ->willReturnMap([['dde-traefik', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-traefik')
-            ->willReturn(false);
+            ->willReturnMap([['dde-traefik', false]]);
 
         $this->dockerManager
             ->method('networkExists')
-            ->with('dde')
-            ->willReturn(true);
+            ->willReturnMap([['dde', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -194,18 +191,15 @@ final class TraefikServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(false);
+            ->willReturnMap([['dde-traefik', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->method('networkExists')
-            ->with('dde')
-            ->willReturn(true);
+            ->willReturnMap([['dde', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -223,31 +217,28 @@ final class TraefikServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(false);
+            ->willReturnMap([['dde-traefik', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->method('networkExists')
-            ->with('dde')
-            ->willReturn(true);
+            ->willReturnMap([['dde', true]]);
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
-            ->willReturn([
-                new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
-                new ContainerInfo('dde-mariadb-11.8', ContainerStatus::RUNNING, 'mariadb:11.8'),
+            ->willReturnMap([
+                ['dde.service', [
+                    new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+                    new ContainerInfo('dde-mariadb-11.8', ContainerStatus::RUNNING, 'mariadb:11.8'),
+                ]],
             ]);
 
         $this->dockerManager
             ->method('listNetworksWithPrefix')
-            ->with('dde-services-')
-            ->willReturn(['dde-services-alpha', 'dde-services-beta', 'dde-services-empty']);
+            ->willReturnMap([['dde-services-', ['dde-services-alpha', 'dde-services-beta', 'dde-services-empty']]]);
 
         $this->dockerManager
             ->method('getConnectedContainerNames')
@@ -285,35 +276,31 @@ final class TraefikServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(false);
+            ->willReturnMap([['dde-traefik', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->method('networkExists')
-            ->with('dde')
-            ->willReturn(true);
+            ->willReturnMap([['dde', true]]);
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
-            ->willReturn([
-                new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+            ->willReturnMap([
+                ['dde.service', [
+                    new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+                ]],
             ]);
 
         $this->dockerManager
             ->method('listNetworksWithPrefix')
-            ->with('dde-services-')
-            ->willReturn(['dde-services-alpha']);
+            ->willReturnMap([['dde-services-', ['dde-services-alpha']]]);
 
         $this->dockerManager
             ->method('getConnectedContainerNames')
-            ->with('dde-services-alpha')
-            ->willReturn(['alpha-web-1', 'dde-traefik']);
+            ->willReturnMap([['dde-services-alpha', ['alpha-web-1', 'dde-traefik']]]);
 
         $this->dockerManager
             ->expects($this->never())
@@ -334,37 +321,33 @@ final class TraefikServiceTest extends TestCase
         // each other in.
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(false);
+            ->willReturnMap([['dde-traefik', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->method('networkExists')
-            ->with('dde')
-            ->willReturn(true);
+            ->willReturnMap([['dde', true]]);
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
-            ->willReturn([
-                new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
-                new ContainerInfo('dde-mailpit', ContainerStatus::RUNNING, 'axllent/mailpit:latest'),
-                new ContainerInfo('dde-mariadb-11.8', ContainerStatus::RUNNING, 'mariadb:11.8'),
+            ->willReturnMap([
+                ['dde.service', [
+                    new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+                    new ContainerInfo('dde-mailpit', ContainerStatus::RUNNING, 'axllent/mailpit:latest'),
+                    new ContainerInfo('dde-mariadb-11.8', ContainerStatus::RUNNING, 'mariadb:11.8'),
+                ]],
             ]);
 
         $this->dockerManager
             ->method('listNetworksWithPrefix')
-            ->with('dde-services-')
-            ->willReturn(['dde-services-stale']);
+            ->willReturnMap([['dde-services-', ['dde-services-stale']]]);
 
         $this->dockerManager
             ->method('getConnectedContainerNames')
-            ->with('dde-services-stale')
-            ->willReturn(['dde-mariadb-11.8', 'dde-mailpit']);
+            ->willReturnMap([['dde-services-stale', ['dde-mariadb-11.8', 'dde-mailpit']]]);
 
         $this->dockerManager
             ->expects($this->never())
@@ -382,35 +365,31 @@ final class TraefikServiceTest extends TestCase
         // empty, leaving the project unreachable after a Traefik recreate.
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(false);
+            ->willReturnMap([['dde-traefik', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->method('networkExists')
-            ->with('dde')
-            ->willReturn(true);
+            ->willReturnMap([['dde', true]]);
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
-            ->willReturn([
-                new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+            ->willReturnMap([
+                ['dde.service', [
+                    new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+                ]],
             ]);
 
         $this->dockerManager
             ->method('listNetworksWithPrefix')
-            ->with('dde-services-')
-            ->willReturn(['dde-services-dde-shop']);
+            ->willReturnMap([['dde-services-', ['dde-services-dde-shop']]]);
 
         $this->dockerManager
             ->method('getConnectedContainerNames')
-            ->with('dde-services-dde-shop')
-            ->willReturn(['dde-shop-web-1']);
+            ->willReturnMap([['dde-services-dde-shop', ['dde-shop-web-1']]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -433,28 +412,23 @@ final class TraefikServiceTest extends TestCase
         // is a no-op instead of a flood.
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(false);
+            ->willReturnMap([['dde-traefik', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->method('networkExists')
-            ->with('dde')
-            ->willReturn(true);
+            ->willReturnMap([['dde', true]]);
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
             ->willThrowException(new \RuntimeException('docker socket unreachable'));
 
         $this->dockerManager
             ->method('listNetworksWithPrefix')
-            ->with('dde-services-')
-            ->willReturn(['dde-services-stale', 'dde-services-mariadb-only']);
+            ->willReturnMap([['dde-services-', ['dde-services-stale', 'dde-services-mariadb-only']]]);
 
         // Without the regression's safe fallback, both `dde-mailpit` and
         // `dde-mariadb-11.8` would count as project containers and Traefik
@@ -482,35 +456,31 @@ final class TraefikServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(false);
+            ->willReturnMap([['dde-traefik', false]]);
 
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->method('networkExists')
-            ->with('dde')
-            ->willReturn(true);
+            ->willReturnMap([['dde', true]]);
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
-            ->willReturn([
-                new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+            ->willReturnMap([
+                ['dde.service', [
+                    new ContainerInfo('dde-traefik', ContainerStatus::RUNNING, 'traefik:v3'),
+                ]],
             ]);
 
         $this->dockerManager
             ->method('listNetworksWithPrefix')
-            ->with('dde-services-')
-            ->willReturn(['dde-services-stale']);
+            ->willReturnMap([['dde-services-', ['dde-services-stale']]]);
 
         $this->dockerManager
             ->method('getConnectedContainerNames')
-            ->with('dde-services-stale')
-            ->willReturn([]);
+            ->willReturnMap([['dde-services-stale', []]]);
 
         $this->dockerManager
             ->expects($this->never())
@@ -523,13 +493,11 @@ final class TraefikServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->method('networkExists')
-            ->with('dde')
-            ->willReturn(true);
+            ->willReturnMap([['dde', true]]);
 
         $this->dockerManager
             ->expects($this->never())
@@ -542,8 +510,7 @@ final class TraefikServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -561,13 +528,11 @@ final class TraefikServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('containerExists')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(true);
+            ->willReturnMap([['dde-traefik', true]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -586,8 +551,7 @@ final class TraefikServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-traefik')
-            ->willReturn(false);
+            ->willReturnMap([['dde-traefik', false]]);
 
         $this->dockerManager
             ->expects($this->never())

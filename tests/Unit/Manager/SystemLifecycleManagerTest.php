@@ -42,7 +42,7 @@ final class SystemLifecycleManagerTest extends TestCase
             ->method('getGlobalServices')
             ->willReturn([$serviceA, $serviceB]);
 
-        $this->dockerManager->method('networkExists')->with('dde')->willReturn(false);
+        $this->dockerManager->method('networkExists')->willReturnMap([['dde', false]]);
         $this->dockerManager->expects($this->once())->method('createNetwork')->with('dde');
 
         $serviceA->expects($this->once())->method('start');
@@ -166,8 +166,7 @@ final class SystemLifecycleManagerTest extends TestCase
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
-            ->willReturn([$versionedContainer]);
+            ->willReturnMap([['dde.service', [$versionedContainer]]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -209,8 +208,7 @@ final class SystemLifecycleManagerTest extends TestCase
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
-            ->willReturn([$versionedContainer]);
+            ->willReturnMap([['dde.service', [$versionedContainer]]]);
 
         /** @var list<array{event: SystemLifecycleProgress, name: string}> $events */
         $events = [];
@@ -275,8 +273,7 @@ final class SystemLifecycleManagerTest extends TestCase
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
-            ->willReturn([$versionedContainer]);
+            ->willReturnMap([['dde.service', [$versionedContainer]]]);
 
         $this->dockerManager
             ->expects($this->once())
@@ -315,8 +312,7 @@ final class SystemLifecycleManagerTest extends TestCase
 
         $this->dockerManager
             ->method('getContainersByLabel')
-            ->with('dde.service')
-            ->willReturn([$versionedContainer]);
+            ->willReturnMap([['dde.service', [$versionedContainer]]]);
 
         /** @var list<array{event: SystemLifecycleProgress, name: string}> $events */
         $events = [];
@@ -364,8 +360,8 @@ final class SystemLifecycleManagerTest extends TestCase
             ->method('getContainersByLabel')
             ->willReturn([]);
 
-        $this->dockerManager->method('networkExists')->with('dde')->willReturn(false);
-        $this->dockerManager->method('createNetwork')->with('dde');
+        $this->dockerManager->method('networkExists')->willReturnMap([['dde', false]]);
+        $this->dockerManager->method('createNetwork');
 
         $callOrder = [];
         $service->method('remove')->willReturnCallback(
@@ -406,7 +402,7 @@ final class SystemLifecycleManagerTest extends TestCase
     {
         $this->serviceRegistry->method('getGlobalServices')->willReturn([]);
         $this->dockerManager->method('getContainersByLabel')->willReturn([]);
-        $this->dockerManager->method('networkExists')->with('dde')->willReturn(true);
+        $this->dockerManager->method('networkExists')->willReturnMap([['dde', true]]);
 
         $this->claudeCodeManager
             ->method('isClaudeCodeInstalled')
@@ -423,7 +419,7 @@ final class SystemLifecycleManagerTest extends TestCase
     {
         $this->serviceRegistry->method('getGlobalServices')->willReturn([]);
         $this->dockerManager->method('getContainersByLabel')->willReturn([]);
-        $this->dockerManager->method('networkExists')->with('dde')->willReturn(true);
+        $this->dockerManager->method('networkExists')->willReturnMap([['dde', true]]);
 
         $this->completionManager
             ->method('installCompletion')
@@ -447,7 +443,7 @@ final class SystemLifecycleManagerTest extends TestCase
             ->willReturn([$service]);
 
         $this->dockerManager->method('getContainersByLabel')->willReturn([]);
-        $this->dockerManager->method('networkExists')->with('dde')->willReturn(true);
+        $this->dockerManager->method('networkExists')->willReturnMap([['dde', true]]);
 
         $this->claudeCodeManager->method('isClaudeCodeInstalled')->willReturn(false);
 
@@ -487,7 +483,7 @@ final class SystemLifecycleManagerTest extends TestCase
     {
         $this->serviceRegistry->method('getGlobalServices')->willReturn([]);
         $this->dockerManager->method('getContainersByLabel')->willReturn([]);
-        $this->dockerManager->method('networkExists')->with('dde')->willReturn(true);
+        $this->dockerManager->method('networkExists')->willReturnMap([['dde', true]]);
 
         $this->completionManager
             ->method('installCompletion')

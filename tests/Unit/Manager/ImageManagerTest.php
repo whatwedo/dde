@@ -22,13 +22,14 @@ final class ImageManagerTest extends TestCase
     public function testHasLabelReturnsTrueWhenLabelExists(): void
     {
         $this->dockerManager->method('inspect')
-            ->with('nginx:latest')
-            ->willReturn([
-                'Config' => [
-                    'Labels' => [
-                        'dde.configured' => 'true',
+            ->willReturnMap([
+                ['nginx:latest', [
+                    'Config' => [
+                        'Labels' => [
+                            'dde.configured' => 'true',
+                        ],
                     ],
-                ],
+                ]],
             ]);
 
         $this->assertTrue($this->manager->hasLabel('nginx:latest', 'dde.configured'));
@@ -38,11 +39,12 @@ final class ImageManagerTest extends TestCase
     public function testHasLabelReturnsFalseWhenLabelMissing(): void
     {
         $this->dockerManager->method('inspect')
-            ->with('nginx:latest')
-            ->willReturn([
-                'Config' => [
-                    'Labels' => [],
-                ],
+            ->willReturnMap([
+                ['nginx:latest', [
+                    'Config' => [
+                        'Labels' => [],
+                    ],
+                ]],
             ]);
 
         $this->assertFalse($this->manager->hasLabel('nginx:latest', 'dde.configured'));
@@ -52,9 +54,10 @@ final class ImageManagerTest extends TestCase
     public function testHasLabelReturnsFalseWhenNoLabels(): void
     {
         $this->dockerManager->method('inspect')
-            ->with('nginx:latest')
-            ->willReturn([
-                'Config' => [],
+            ->willReturnMap([
+                ['nginx:latest', [
+                    'Config' => [],
+                ]],
             ]);
 
         $this->assertFalse($this->manager->hasLabel('nginx:latest', 'dde.configured'));
@@ -64,7 +67,6 @@ final class ImageManagerTest extends TestCase
     public function testHasLabelReturnsFalseOnInspectFailure(): void
     {
         $this->dockerManager->method('inspect')
-            ->with('nonexistent:image')
             ->willThrowException(new \RuntimeException('inspect failed'));
 
         $this->assertFalse($this->manager->hasLabel('nonexistent:image', 'dde.configured'));
@@ -74,13 +76,14 @@ final class ImageManagerTest extends TestCase
     public function testGetLabelReturnsValueWhenExists(): void
     {
         $this->dockerManager->method('inspect')
-            ->with('nginx:latest')
-            ->willReturn([
-                'Config' => [
-                    'Labels' => [
-                        'dde.project' => 'my-project',
+            ->willReturnMap([
+                ['nginx:latest', [
+                    'Config' => [
+                        'Labels' => [
+                            'dde.project' => 'my-project',
+                        ],
                     ],
-                ],
+                ]],
             ]);
 
         $this->assertSame('my-project', $this->manager->getLabel('nginx:latest', 'dde.project'));
@@ -90,11 +93,12 @@ final class ImageManagerTest extends TestCase
     public function testGetLabelReturnsNullWhenMissing(): void
     {
         $this->dockerManager->method('inspect')
-            ->with('nginx:latest')
-            ->willReturn([
-                'Config' => [
-                    'Labels' => [],
-                ],
+            ->willReturnMap([
+                ['nginx:latest', [
+                    'Config' => [
+                        'Labels' => [],
+                    ],
+                ]],
             ]);
 
         $this->assertNull($this->manager->getLabel('nginx:latest', 'dde.project'));
@@ -104,7 +108,6 @@ final class ImageManagerTest extends TestCase
     public function testGetLabelReturnsNullOnInspectFailure(): void
     {
         $this->dockerManager->method('inspect')
-            ->with('nonexistent:image')
             ->willThrowException(new \RuntimeException('inspect failed'));
 
         $this->assertNull($this->manager->getLabel('nonexistent:image', 'dde.project'));
@@ -114,8 +117,9 @@ final class ImageManagerTest extends TestCase
     public function testIsLayerCachedDelegatesToDockerManager(): void
     {
         $this->dockerManager->method('imageExists')
-            ->with('dde-my-project:dev')
-            ->willReturn(true);
+            ->willReturnMap([
+                ['dde-my-project:dev', true],
+            ]);
 
         $this->assertTrue($this->manager->isLayerCached('my-project'));
     }
@@ -124,8 +128,9 @@ final class ImageManagerTest extends TestCase
     public function testIsLayerCachedReturnsFalseWhenNotCached(): void
     {
         $this->dockerManager->method('imageExists')
-            ->with('dde-my-project:dev')
-            ->willReturn(false);
+            ->willReturnMap([
+                ['dde-my-project:dev', false],
+            ]);
 
         $this->assertFalse($this->manager->isLayerCached('my-project'));
     }
@@ -289,8 +294,9 @@ final class ImageManagerTest extends TestCase
     public function testInvalidateLayerDoesNothingWhenImageDoesNotExist(): void
     {
         $this->dockerManager->method('imageExists')
-            ->with('dde-my-project:dev')
-            ->willReturn(false);
+            ->willReturnMap([
+                ['dde-my-project:dev', false],
+            ]);
 
         $this->dockerManager->expects($this->never())
             ->method('removeImage');
@@ -320,8 +326,9 @@ final class ImageManagerTest extends TestCase
         );
 
         $this->dockerManager->method('imageExists')
-            ->with('dde-cached-project:dev')
-            ->willReturn(true);
+            ->willReturnMap([
+                ['dde-cached-project:dev', true],
+            ]);
 
         $this->dockerManager->expects($this->never())
             ->method('buildImage');
@@ -352,8 +359,9 @@ final class ImageManagerTest extends TestCase
         ];
 
         $this->dockerManager->method('imageExists')
-            ->with('dde-shell-check:dev')
-            ->willReturn(false);
+            ->willReturnMap([
+                ['dde-shell-check:dev', false],
+            ]);
 
         $this->dockerManager->method('imageHasShell')
             ->willReturnMap([
@@ -396,8 +404,9 @@ final class ImageManagerTest extends TestCase
         ];
 
         $this->dockerManager->method('imageExists')
-            ->with('dde-all-shell-less:dev')
-            ->willReturn(false);
+            ->willReturnMap([
+                ['dde-all-shell-less:dev', false],
+            ]);
 
         $this->dockerManager->method('imageHasShell')
             ->willReturn(false);
@@ -429,12 +438,14 @@ final class ImageManagerTest extends TestCase
         ];
 
         $this->dockerManager->method('imageExists')
-            ->with('dde-build-first:dev')
-            ->willReturn(false);
+            ->willReturnMap([
+                ['dde-build-first:dev', false],
+            ]);
 
         $this->dockerManager->method('imageHasShell')
-            ->with('php:8.3-fpm')
-            ->willReturn(true);
+            ->willReturnMap([
+                ['php:8.3-fpm', true],
+            ]);
 
         $this->dockerManager->method('runEphemeral')
             ->willReturn(new \Symfony\Component\Process\Process(['true']));
