@@ -46,7 +46,8 @@ You can also run both commands in sequence — first `dde system:destroy`, then 
 
 ### 2. Clean up shell configuration
 
-Remove the dde v1 aliases and autocomplete from your `~/.zshrc` or `~/.bashrc`.
+Remove the dde v1 aliases and autocomplete from your `~/.zshrc` or `~/.bashrc` and restart your shell.
+If the shell was not restarted, `dde` still resolves to the old v1 commands, even after you have replaced the binary. Running `exec $SHELL -l` will do the trick as well.
 
 ### 3. Optionally remove v1 data
 
@@ -76,7 +77,7 @@ dde project:up
 
 `project:init` creates the `.dde/` directory, detects your `docker-compose.yml`, and adds Traefik labels. It also strips v1 boilerplate (the explicit `dde` external network, the SSH-Agent volume mount and `SSH_AUTH_SOCK`, legacy `DDE_UID`/`DDE_GID` build args, fixed `container_name`) — in v2, networks and the SSH-Agent socket are injected by the runtime overlay, so the committed compose file stays clean.
 
-Open `https://my-app.test` in your browser to verify.
+Open `https://my-app.test` in your browser to verify. Firefox users may need to restart the browser to trust the certificate.
 
 #### .env file migration
 
