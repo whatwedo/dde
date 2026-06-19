@@ -88,11 +88,12 @@ During `project:up`, `DockerComposeManager::generateOverride()` creates a tempor
 
 ### 1. Entrypoint and Adapters Mount
 
-The override replaces the entrypoint with the dde entrypoint and mounts adapter scripts:
+The override replaces the entrypoint with the dde entrypoint, pins the container to root, and mounts adapter scripts:
 
 ```yaml
 services:
   web:
+    user: "0:0"
     entrypoint: ['/dde/entrypoint.sh']
     command: ['/original/entrypoint.sh', 'original-cmd']
     volumes:
