@@ -234,6 +234,53 @@ final class DockerComposeManagerTest extends TestCase
         unlink($overridePath);
     }
 
+    public function testGenerateOverrideRunsShellServiceAsRoot(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        // The entrypoint creates the dde user, but its user-creation block is
+        // gated on `id -u = 0`. Base images that default to a non-root USER
+        // (docker-base-images v3 ships `USER app`) would skip it, so the
+        // override must pin the container to root.
+        $this->assertSame('0:0', $data['services']['web']['user']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideDoesNotSetUserOnShellLessService(): void
+    {
+        $this->createComposeFile([
+            'mercure' => [
+                'image' => 'dunglas/mercure',
+            ],
+        ]);
+
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(false);
+
+        $manager = $this->createManagerWithDockerManager($dockerManager);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        // Shell-less images get no entrypoint, so there is no dde user to
+        // create — forcing root would needlessly change their runtime user.
+        $this->assertArrayNotHasKey('user', $data['services']['mercure']);
+
+        unlink($overridePath);
+    }
+
     public function testGenerateOverridePreservesComposeCommandWithImageEntrypoint(): void
     {
         $this->createComposeFile([
