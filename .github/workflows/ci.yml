@@ -15,7 +15,7 @@ jobs:
       minor: ${{ steps.php.outputs.minor }}
       full: ${{ steps.php.outputs.full }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - id: php
         run: |
           FULL=$(grep '"php":' composer.json | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
@@ -27,7 +27,7 @@ jobs:
     needs: php-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -50,7 +50,7 @@ jobs:
     needs: php-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -76,7 +76,7 @@ jobs:
     needs: php-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -99,7 +99,7 @@ jobs:
     needs: php-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
