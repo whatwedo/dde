@@ -54,8 +54,10 @@ dde ships with three built-in adapters in `resources/adapters/`:
 | Adapter | Detects | Configures |
 |---|---|---|
 | apache.sh | `apache2` or `httpd` | Updates run user/group to `dde` |
-| nginx.sh | `nginx` | Updates `user` directive and directory ownership to `dde` |
-| php-fpm.sh | `php-fpm` | Updates pool user/group and listen owner/group to `dde` |
+| nginx.sh | `nginx` | Updates the `user` directive and directory ownership to `dde` |
+| php-fpm.sh | a `www.conf` pool config | Updates pool user/group and listen owner/group to `dde` |
+
+> **Resolved group, not literal `dde`.** When `DDE_GID` maps onto a group that already exists in the image (e.g. gid 20 → `dialout` on Debian, which is `staff` on the macOS host), the entrypoint reuses that group rather than creating one named `dde`. The adapters therefore resolve the dde user's real primary group via `id -gn dde` and write *that* name — hardcoding `dde` would point nginx/php-fpm at a non-existent group and break startup.
 
 ### `apache.sh`
 
@@ -66,14 +68,14 @@ Detects `apache2` or `httpd` and updates the run user/group to `dde` in:
 ### `nginx.sh`
 
 Detects `nginx` and:
-- Updates the `user` directive in `/etc/nginx/nginx.conf` to `dde`
+- Rewrites the `user` directive wherever it lives in the main context — both `/etc/nginx/nginx.conf` and any `/etc/nginx/directive.d/*.conf` include (the whatwedo base image ships it as `directive.d/05-user.conf`, not in `nginx.conf`)
 - Fixes ownership of `/var/cache/nginx`, `/var/log/nginx`, and `/var/run`
 
 ### `php-fpm.sh`
 
-Detects `php-fpm` and updates the FPM pool configuration (`www.conf`) to run as `dde`:
+Detects php-fpm by the presence of a `www.conf` pool config — not the binary name, which is unreliable (Debian ships `php-fpm8.4`, not `php-fpm`). Updates the FPM pool configuration (`www.conf`) to run as `dde`:
 - Sets `user`, `group`, `listen.owner`, and `listen.group` directives
-- Searches common FPM config paths across distributions
+- Searches common FPM config paths across distributions (`/etc/php/*/fpm/pool.d/www.conf`, `/usr/local/etc/php-fpm.d/www.conf`)
 
 ## Custom Project Adapters
 
