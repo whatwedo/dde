@@ -1,14 +1,24 @@
+# Detection keys off the pool config that configure rewrites, not the binary
+# name, which is unreliable (Debian ships it as php-fpm8.4, not php-fpm).
 detect() {
-    command -v php-fpm >/dev/null 2>&1
+    php_root="${DDE_PHP_FPM_POOL_ROOT:-/etc/php}"
+    for conf in "$php_root"/*/fpm/pool.d/www.conf /usr/local/etc/php-fpm.d/www.conf; do
+        [ -f "$conf" ] && return 0
+    done
+    return 1
 }
 
 configure() {
-    # Find and update www.conf pool configuration
-    for conf in /etc/php/*/fpm/pool.d/www.conf /usr/local/etc/php-fpm.d/www.conf /etc/php*/fpm/pool.d/www.conf; do
+    dde_user="${DDE_USER_NAME:-dde}"
+    # Resolve the actual primary group (see nginx adapter for the gid-reuse case).
+    dde_group="$(id -gn "$dde_user" 2>/dev/null || echo "$dde_user")"
+
+    php_root="${DDE_PHP_FPM_POOL_ROOT:-/etc/php}"
+    for conf in "$php_root"/*/fpm/pool.d/www.conf /usr/local/etc/php-fpm.d/www.conf; do
         [ -f "$conf" ] || continue
-        sed -i 's/^user = .*/user = dde/' "$conf"
-        sed -i 's/^group = .*/group = dde/' "$conf"
-        sed -i 's/^listen.owner = .*/listen.owner = dde/' "$conf"
-        sed -i 's/^listen.group = .*/listen.group = dde/' "$conf"
+        sed -i "s/^user = .*/user = ${dde_user}/" "$conf"
+        sed -i "s/^group = .*/group = ${dde_group}/" "$conf"
+        sed -i "s/^listen.owner = .*/listen.owner = ${dde_user}/" "$conf"
+        sed -i "s/^listen.group = .*/listen.group = ${dde_group}/" "$conf"
     done
 }
