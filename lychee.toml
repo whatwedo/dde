@@ -31,6 +31,9 @@ exclude = [
     '^https?://[^/]+\.test(:\d+|/|$)',
     # Example/placeholder hostnames
     '^https?://(www\.)?example\.(com|org|net)',
+    # gnu.org consistently times out the checker although the host is alive
+    # (the AGPL licence link in the README). See issue #212.
+    '^https?://(www\.)?gnu\.org/',
     # Anchor-only links — there is no separate file to fetch
     '^#',
 ]
