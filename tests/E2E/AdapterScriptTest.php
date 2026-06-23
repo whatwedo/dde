@@ -85,4 +85,59 @@ final class AdapterScriptTest extends TestCase
         $this->assertStringContainsString('listen.group = dialout', $fpm);
         $this->assertStringNotContainsString('= app', $fpm);
     }
+
+    /**
+     * Regression: the whatwedo symfony base image (Alpine) ships its pool config
+     * as /etc/php84/php-fpm.d/www.conf, which matched neither the Debian glob
+     * for fpm/pool.d nor the Docker-official path. detect() returned 1,
+     * configure() was skipped, php-fpm stayed `user = nginx` while the nginx
+     * adapter had already moved nginx onto the dde user — the socket ownership
+     * mismatch produced HTTP 502 (connect() to php-fpm.sock: Permission denied).
+     */
+    public function testPhpFpmAdapterRewritesWhatwedoBaseImagePoolLayout(): void
+    {
+        $adaptersDir = \dirname(__DIR__, 2).'/resources/adapters';
+
+        $script = <<<'SH'
+            set -e
+            echo "dde:x:501:20:dde:/home/dde:/bin/sh" >> /etc/passwd
+
+            # Alpine PHP layout: versioned config dir, pool config directly under
+            # php-fpm.d (no fpm/pool.d nesting). Mirror the whatwedo www.conf which
+            # ships user/group AND uncommented listen.owner/listen.group as nginx.
+            mkdir -p /fix/etc/php84/php-fpm.d
+            printf '[www]\nuser = nginx\ngroup = nginx\nlisten = /var/run/php-fpm.sock\nlisten.owner = nginx\nlisten.group = nginx\n' > /fix/etc/php84/php-fpm.d/www.conf
+
+            export DDE_PHP_FPM_POOL_ROOT=/fix/etc/php
+            . /adapters/php-fpm.sh
+            if detect; then
+                configure
+            fi
+
+            echo "===FPM==="
+            cat /fix/etc/php84/php-fpm.d/www.conf
+            SH;
+
+        $process = new Process([
+            'docker', 'run', '--rm',
+            '-v', $adaptersDir.':/adapters:ro',
+            'debian:stable-slim',
+            'sh', '-c', $script,
+        ]);
+        $process->setTimeout(120);
+        $process->run();
+
+        $this->assertTrue(
+            $process->isSuccessful(),
+            sprintf("adapter run failed:\nSTDOUT: %s\nSTDERR: %s", $process->getOutput(), $process->getErrorOutput()),
+        );
+
+        $fpm = explode('===FPM===', $process->getOutput(), 2)[1];
+
+        $this->assertStringContainsString('user = dde', $fpm);
+        $this->assertStringContainsString('group = dialout', $fpm);
+        $this->assertStringContainsString('listen.owner = dde', $fpm);
+        $this->assertStringContainsString('listen.group = dialout', $fpm);
+        $this->assertStringNotContainsString('= nginx', $fpm);
+    }
 }

@@ -75,7 +75,7 @@ Detects `nginx` and:
 
 Detects php-fpm by the presence of a `www.conf` pool config — not the binary name, which is unreliable (Debian ships `php-fpm8.4`, not `php-fpm`). Updates the FPM pool configuration (`www.conf`) to run as `dde`:
 - Sets `user`, `group`, `listen.owner`, and `listen.group` directives
-- Searches common FPM config paths across distributions (`/etc/php/*/fpm/pool.d/www.conf`, `/usr/local/etc/php-fpm.d/www.conf`)
+- Searches common FPM config paths across distributions: Debian (`/etc/php/*/fpm/pool.d/www.conf`), Alpine / the whatwedo base image (`/etc/php*/php-fpm.d/www.conf`, e.g. `/etc/php84/php-fpm.d/www.conf`), and the Docker-official image (`/usr/local/etc/php-fpm.d/www.conf`)
 
 ## Custom Project Adapters
 
