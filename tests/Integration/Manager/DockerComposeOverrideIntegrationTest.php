@@ -211,6 +211,85 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
         self::assertStringContainsString('Host(`feature-x.myproject.test`)', $joined);
     }
 
+    public function testGenerateOverrideMountsMainGitDirInWorktree(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        // The worktree's main repository with a real .git directory.
+        $mainDir = $this->tempDir.'/main_'.bin2hex(random_bytes(4));
+        $this->filesystem->mkdir($mainDir.'/.git');
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: $mainDir,
+            worktreeDirectory: $projectDir,
+            branch: 'feature/x',
+            suffix: 'feature-x',
+        );
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir, $worktreeInfo);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+        $volumes = $parsed['services']['web']['volumes'];
+
+        // Bind-mounted at the identical host path so the worktree's gitdir
+        // pointer and commondir resolve inside the container.
+        self::assertContains($mainDir.'/.git:'.$mainDir.'/.git', $volumes);
+    }
+
+    public function testGenerateOverrideOmitsGitMountWhenMainGitMissing(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        // mainDirectory without a .git directory — nothing to mount.
+        $mainDir = $this->tempDir.'/main_'.bin2hex(random_bytes(4));
+        $this->filesystem->mkdir($mainDir);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: $mainDir,
+            worktreeDirectory: $projectDir,
+            branch: 'feature/x',
+            suffix: 'feature-x',
+        );
+
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir, $worktreeInfo);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        foreach ($parsed['services']['web']['volumes'] as $volume) {
+            self::assertStringNotContainsString($mainDir.'/.git', (string) $volume);
+        }
+    }
+
+    public function testGenerateOverrideOmitsGitMountForMainCheckout(): void
+    {
+        $projectDir = $this->createProjectDir(<<<'YAML'
+            services:
+              web:
+                image: nginx:latest
+            YAML);
+
+        // No WorktreeInfo => main checkout: the .git already lives inside the
+        // mounted project directory, so no extra mount must be added.
+        $config = $this->makeResolvedConfig('myproject');
+        $overridePath = $this->manager->generateOverride($config, $projectDir);
+
+        $parsed = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        foreach ($parsed['services']['web']['volumes'] as $volume) {
+            self::assertStringNotContainsString('/.git:', (string) $volume);
+        }
+    }
+
     public function testGenerateOverrideWritesToTempFile(): void
     {
         $projectDir = $this->createProjectDir(<<<'YAML'
