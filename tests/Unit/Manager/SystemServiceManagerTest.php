@@ -204,8 +204,9 @@ final class SystemServiceManagerTest extends TestCase
         // port allocation must be dynamic regardless of what other containers are running.
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mariadb-10.6')
-            ->willReturn(false);
+            ->willReturnMap([
+                ['dde-mariadb-10.6', false],
+            ]);
 
         $capturedConfig = null;
         $this->dockerManager
@@ -231,8 +232,9 @@ final class SystemServiceManagerTest extends TestCase
         // always receive the standard port (3306) even when another version is running.
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mariadb-11.8')
-            ->willReturn(false);
+            ->willReturnMap([
+                ['dde-mariadb-11.8', false],
+            ]);
 
         $capturedConfig = null;
         $this->dockerManager

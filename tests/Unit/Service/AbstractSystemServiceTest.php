@@ -227,8 +227,7 @@ final class AbstractSystemServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-test')
-            ->willReturn(true);
+            ->willReturnMap([['dde-test', true]]);
 
         $this->assertSame(ServiceStatus::RUNNING, $this->service->status());
     }
@@ -237,8 +236,7 @@ final class AbstractSystemServiceTest extends TestCase
     {
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-test')
-            ->willReturn(false);
+            ->willReturnMap([['dde-test', false]]);
 
         $this->assertSame(ServiceStatus::STOPPED, $this->service->status());
     }

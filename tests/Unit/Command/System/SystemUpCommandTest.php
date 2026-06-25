@@ -54,7 +54,6 @@ final class SystemUpCommandTest extends TestCase
     {
         $this->manager
             ->method('up')
-            ->with($this->isNull())
             ->willReturn([
                 'globalServices' => [[
                     'name' => 'traefik',

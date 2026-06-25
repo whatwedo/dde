@@ -63,8 +63,7 @@ final class DatabaseManagerTest extends TestCase
 
         $this->dockerManager
             ->method('isContainerRunning')
-            ->with('dde-mariadb-11.8')
-            ->willReturn(false);
+            ->willReturnMap([['dde-mariadb-11.8', false]]);
 
         $this->assertFalse($this->databaseManager->isContainerRunning($service));
     }
@@ -129,8 +128,7 @@ final class DatabaseManagerTest extends TestCase
 
         $this->dockerManager
             ->method('getContainerPorts')
-            ->with('dde-mariadb-11.8')
-            ->willReturn([]);
+            ->willReturnMap([['dde-mariadb-11.8', []]]);
 
         $this->assertSame(3306, $this->databaseManager->resolveHostPort($service));
     }
@@ -142,12 +140,16 @@ final class DatabaseManagerTest extends TestCase
 
         $this->dockerManager
             ->method('getContainerPorts')
-            ->with('dde-mariadb-11.8')
-            ->willReturn([
-                '3306/tcp' => [
+            ->willReturnMap([
+                [
+                    'dde-mariadb-11.8',
                     [
-                        'HostIp' => '0.0.0.0',
-                        'HostPort' => '33060',
+                        '3306/tcp' => [
+                            [
+                                'HostIp' => '0.0.0.0',
+                                'HostPort' => '33060',
+                            ],
+                        ],
                     ],
                 ],
             ]);
@@ -177,11 +179,15 @@ final class DatabaseManagerTest extends TestCase
 
         $this->dockerManager
             ->method('getContainerPorts')
-            ->with('dde-mariadb-11.8')
-            ->willReturn([
-                '3306/tcp' => [
+            ->willReturnMap([
+                [
+                    'dde-mariadb-11.8',
                     [
-                        'HostIp' => '0.0.0.0',
+                        '3306/tcp' => [
+                            [
+                                'HostIp' => '0.0.0.0',
+                            ],
+                        ],
                     ],
                 ],
             ]);

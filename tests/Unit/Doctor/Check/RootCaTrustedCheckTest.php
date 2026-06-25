@@ -35,7 +35,9 @@ final class RootCaTrustedCheckTest extends TestCase
         $factory->method('create')->willReturn($caRootProcess);
 
         $filesystem = $this->createStub(Filesystem::class);
-        $filesystem->method('exists')->with('/home/user/.local/share/mkcert/rootCA.pem')->willReturn(true);
+        $filesystem->method('exists')->willReturnCallback(
+            static fn (string $path): bool => $path === '/home/user/.local/share/mkcert/rootCA.pem',
+        );
 
         $check = new RootCaTrustedCheck($factory, $filesystem);
         $result = $check->run();

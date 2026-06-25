@@ -577,6 +577,7 @@ readonly class DockerComposeManager
             $volumes[] = 'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro';
 
             $serviceOverride = [
+                'user' => '0:0',
                 'entrypoint' => ['/dde/entrypoint.sh'],
                 'volumes' => $volumes,
                 'environment' => $environment,

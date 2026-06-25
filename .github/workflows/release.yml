@@ -29,7 +29,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -60,7 +60,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: eu-central-1
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     # apk-tools 2.x so `apk index` emits the classic v2 APKINDEX, readable by
     # both apk-tools 2.x and 3.x clients.
-    container: alpine:3.23
+    container: alpine:3.24
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -99,7 +99,7 @@ jobs:
       - name: Install dependencies
         run: apk add --no-cache bash abuild openssl aws-cli git
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -127,7 +127,7 @@ jobs:
       - name: Install dependencies
         run: pacman -Sy --noconfirm --noprogressbar git aws-cli gnupg
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -156,7 +156,7 @@ jobs:
       - name: Install dependencies
         run: dnf install -y git awscli2 gnupg2 rpm-build rpm-sign createrepo_c
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -177,7 +177,7 @@ jobs:
     needs: [packages]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Configure SSH key
         run: |
