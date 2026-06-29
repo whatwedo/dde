@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import { unified } from '@astrojs/markdown-remark';
 import starlight from '@astrojs/starlight';
 import { remarkRewriteMdLinks } from './src/plugins/remark-rewrite-md-links.mjs';
 
@@ -8,7 +9,9 @@ export default defineConfig({
 	markdown: {
 		// Rewrite relative .md links (which work when browsing on GitHub)
 		// to clean Starlight URLs at build time. See the plugin for details.
-		remarkPlugins: [remarkRewriteMdLinks],
+		processor: unified({
+			remarkPlugins: [remarkRewriteMdLinks],
+		}),
 	},
 	integrations: [
 		starlight({
