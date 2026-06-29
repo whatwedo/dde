@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Command\System;
 
 use App\Command\AbstractSystemCommand;
+use App\Config\SshAgentMode;
+use App\Manager\GlobalConfigManager;
 use App\Manager\SystemLifecycleManager;
 use App\Model\SystemLifecycleProgress;
 use App\Output\FormatterResolver;
@@ -22,12 +24,26 @@ use Symfony\Component\Process\Process;
 )]
 final class SystemUpCommand extends AbstractSystemCommand
 {
+    /**
+     * @var \Closure(): bool
+     */
+    private readonly \Closure $ttySupportProbe;
+
+    /**
+     * @param (\Closure(): bool)|null $ttySupportProbe test seam over the static
+     *        {@see Process::isTtySupported()} check, so a test can exercise the
+     *        key-add gate without a real TTY
+     */
     public function __construct(
         private readonly SystemLifecycleManager $manager,
         private readonly SshAgentService $sshAgentService,
+        private readonly GlobalConfigManager $globalConfigManager,
         FormatterResolver $formatterResolver,
+        ?\Closure $ttySupportProbe = null,
     ) {
         parent::__construct($formatterResolver);
+
+        $this->ttySupportProbe = $ttySupportProbe ?? static fn (): bool => Process::isTtySupported();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -52,7 +68,9 @@ final class SystemUpCommand extends AbstractSystemCommand
             : null,
         );
 
-        if ($input->isInteractive() && Process::isTtySupported() && $this->sshAgentService->isRunning() && $this->sshAgentService->getLoadedKeyCount() === 0) {
+        // Host mode runs no managed agent, so there is nothing to load keys into.
+        if ($this->globalConfigManager->load()->sshAgentMode === SshAgentMode::Managed
+            && $input->isInteractive() && ($this->ttySupportProbe)() && $this->sshAgentService->isRunning() && $this->sshAgentService->getLoadedKeyCount() === 0) {
             $keys = $this->sshAgentService->getConfiguredKeys();
 
             if ($keys !== []) {

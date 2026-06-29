@@ -8,6 +8,7 @@ use App\Config\Definition\GlobalConfigDefinition;
 use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
+use App\Config\SshAgentMode;
 use App\Model\ServiceDefinition;
 use PHPUnit\Framework\TestCase;
 
@@ -56,6 +57,27 @@ final class ResolvedConfigTest extends TestCase
         $this->assertSame([], $resolved->services);
         $this->assertSame([], $resolved->containers);
         $this->assertNull($resolved->defaultBrowser);
+        $this->assertSame(SshAgentMode::Managed, $resolved->sshAgentMode);
+        $this->assertNull($resolved->sshAgentSource);
+    }
+
+    public function testSshAgentModeReflectsGlobalConfig(): void
+    {
+        $resolved = ResolvedConfig::merge(
+            new GlobalConfig(sshAgentMode: SshAgentMode::Host, sshAgentSource: 'env'),
+            new ProjectConfig(name: 'test-project'),
+        );
+
+        $this->assertSame(SshAgentMode::Host, $resolved->sshAgentMode);
+        $this->assertSame('env', $resolved->sshAgentSource);
+    }
+
+    public function testSshAgentModeDefaultsToManaged(): void
+    {
+        $resolved = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig());
+
+        $this->assertSame(SshAgentMode::Managed, $resolved->sshAgentMode);
+        $this->assertNull($resolved->sshAgentSource);
     }
 
     public function testDefaultBrowserDelegatesToGlobalConfig(): void

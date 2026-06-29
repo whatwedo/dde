@@ -69,6 +69,7 @@ System services encapsulate the infrastructure containers managed by `system:up`
 - `MailpitService` -- mail testing service
 - `ServiceRegistry` -- service type definitions, version defaults, port mappings, global service collection
 - `ImageBuilder` -- Docker image building for system services
+- `HostSshAgentResolver` -- resolves the host SSH agent socket for `host` agent mode (macOS: always the Docker Desktop / OrbStack bridge; Linux: `SSH_AUTH_SOCK` or an explicit socket path, leading `~` expanded); single source of truth shared by `DockerComposeManager` and `SshAgentCheck`
 
 ### Configuration (`App\Config\`)
 
@@ -91,6 +92,7 @@ System services encapsulate the infrastructure containers managed by `system:up`
 - `ServiceStartStatus` / `ServiceStatus` -- start outcome and running/stopped status of a service container
 - `SystemLifecycleProgress` -- progress events emitted by `SystemLifecycleManager`, rendered live by the `system:*` commands
 - `UserContext` -- host UID/GID for user mapping inside containers
+- `HostSshAgentResolution` -- result of `HostSshAgentResolver` (available flag, mount source, reason)
 
 ### Parsers (`App\Parser\`)
 

@@ -6,6 +6,7 @@ namespace Tests\Unit\Config;
 
 use App\Config\Definition\GlobalConfigDefinition;
 use App\Config\GlobalConfig;
+use App\Config\SshAgentMode;
 use PHPUnit\Framework\TestCase;
 
 final class GlobalConfigTest extends TestCase
@@ -19,6 +20,8 @@ final class GlobalConfigTest extends TestCase
         $this->assertNull($config->sshKeys);
         $this->assertSame([], $config->serviceVersions);
         $this->assertNull($config->defaultBrowser);
+        $this->assertSame(SshAgentMode::Managed, $config->sshAgentMode);
+        $this->assertNull($config->sshAgentSource);
     }
 
     public function testConstructionWithCustomValues(): void
@@ -51,6 +54,10 @@ final class GlobalConfigTest extends TestCase
             ],
             'ssh' => [
                 'keys' => ['~/.ssh/id_rsa'],
+                'agent' => [
+                    'mode' => 'host',
+                    'source' => '/run/user/1000/keyring/ssh',
+                ],
             ],
             'services' => [
                 'mariadb' => [
@@ -72,6 +79,32 @@ final class GlobalConfigTest extends TestCase
         $this->assertSame('6', $config->serviceVersions['valkey']);
         $this->assertSame(['some warning'], $config->warnings);
         $this->assertSame('/usr/bin/firefox', $config->defaultBrowser);
+        $this->assertSame(SshAgentMode::Host, $config->sshAgentMode);
+        $this->assertSame('/run/user/1000/keyring/ssh', $config->sshAgentSource);
+    }
+
+    public function testFromProcessedConfigDefaultsToManagedMode(): void
+    {
+        $processed = [
+            'output' => 'text',
+            'dns' => [
+                'forward' => ['1.1.1.1'],
+            ],
+            'ssh' => [
+                'keys' => [],
+                'agent' => [
+                    'mode' => 'managed',
+                    'source' => null,
+                ],
+            ],
+            'services' => [],
+            'default_browser' => null,
+        ];
+
+        $config = GlobalConfig::fromProcessedConfig($processed);
+
+        $this->assertSame(SshAgentMode::Managed, $config->sshAgentMode);
+        $this->assertNull($config->sshAgentSource);
     }
 
     public function testFromProcessedConfigWithoutExplicitSshKeysYieldsNull(): void
@@ -83,6 +116,10 @@ final class GlobalConfigTest extends TestCase
             ],
             'ssh' => [
                 'keys' => GlobalConfigDefinition::SSH_KEYS,
+                'agent' => [
+                    'mode' => 'managed',
+                    'source' => null,
+                ],
             ],
             'services' => [],
             'default_browser' => null,

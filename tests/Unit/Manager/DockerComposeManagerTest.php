@@ -8,12 +8,14 @@ use App\Adapter\AdapterRegistry;
 use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
+use App\Config\SshAgentMode;
 use App\Config\WorktreeInfo;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
 use App\Manager\MkcertManager;
 use App\Model\ServiceDefinition;
 use App\Model\UserContext;
+use App\Service\HostSshAgentResolver;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Tag\TaggedValue;
 use Symfony\Component\Yaml\Yaml;
@@ -23,6 +25,11 @@ final class DockerComposeManagerTest extends TestCase
     private DockerComposeManager $manager;
 
     private string $tempDir;
+
+    /**
+     * @var list<resource>
+     */
+    private array $sockets = [];
 
     public function testExecReturnsProcessWithCorrectCommand(): void
     {
@@ -216,6 +223,189 @@ final class DockerComposeManagerTest extends TestCase
         }
 
         unlink($overridePath);
+    }
+
+    public function testGenerateOverrideManagedModeEmitsNamedVolumeMountAndSshAuthSock(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $this->assertContains('dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro', $data['services']['web']['volumes']);
+        $this->assertSame('/tmp/ssh-agent/socket', $data['services']['web']['environment']['SSH_AUTH_SOCK']);
+        $this->assertTrue($data['volumes']['dde_ssh-agent_socket-dir']['external']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideHostModeAvailableEmitsBindMountAndSshAuthSockWithoutExternalVolume(): void
+    {
+        // Host mode: bind-mount the resolved socket, no managed named volume.
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $hostSocket = $this->createUnixSocket($this->tempDir.'/host-agent.sock');
+
+        $manager = $this->createManagerWithResolver(
+            new HostSshAgentResolver(osFamily: 'Linux', authSock: $hostSocket),
+        );
+
+        $config = ResolvedConfig::merge(
+            new GlobalConfig(sshAgentMode: SshAgentMode::Host),
+            new ProjectConfig(name: 'test-project'),
+        );
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        // Long-syntax bind mount so a ":" in the path can't corrupt the split.
+        $this->assertContains(
+            [
+                'type' => 'bind',
+                'source' => $hostSocket,
+                'target' => '/tmp/ssh-agent/socket',
+            ],
+            $data['services']['web']['volumes'],
+        );
+        $this->assertNotContains('dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro', $data['services']['web']['volumes']);
+        $this->assertSame('/tmp/ssh-agent/socket', $data['services']['web']['environment']['SSH_AUTH_SOCK']);
+        $this->assertArrayNotHasKey('dde_ssh-agent_socket-dir', $data['volumes'] ?? []);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideHostModeMacOsEmitsHostServicesBindMount(): void
+    {
+        // macOS always resolves to the Docker Desktop bridge socket.
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $manager = $this->createManagerWithResolver(
+            new HostSshAgentResolver(osFamily: 'Darwin'),
+        );
+
+        $config = ResolvedConfig::merge(
+            new GlobalConfig(sshAgentMode: SshAgentMode::Host),
+            new ProjectConfig(name: 'test-project'),
+        );
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $this->assertContains(
+            [
+                'type' => 'bind',
+                'source' => '/run/host-services/ssh-auth.sock',
+                'target' => '/tmp/ssh-agent/socket',
+            ],
+            $data['services']['web']['volumes'],
+        );
+        $this->assertSame('/tmp/ssh-agent/socket', $data['services']['web']['environment']['SSH_AUTH_SOCK']);
+        $this->assertArrayNotHasKey('dde_ssh-agent_socket-dir', $data['volumes'] ?? []);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideHostModeUnavailableEmitsNeitherSshEnvNorMount(): void
+    {
+        // Unresolvable host agent: no SSH env and no mount at all.
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $manager = $this->createManagerWithResolver(
+            new HostSshAgentResolver(osFamily: 'Linux', authSock: ''),
+        );
+
+        $config = ResolvedConfig::merge(
+            new GlobalConfig(sshAgentMode: SshAgentMode::Host),
+            new ProjectConfig(name: 'test-project'),
+        );
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        // No SSH_AUTH_SOCK env at all.
+        $this->assertArrayNotHasKey('SSH_AUTH_SOCK', $data['services']['web']['environment']);
+
+        // No SSH mount of any kind (neither named volume nor bind-mount).
+        foreach ($data['services']['web']['volumes'] as $volume) {
+            $this->assertStringNotContainsString('/tmp/ssh-agent', $volume);
+        }
+
+        // No external named-volume block.
+        $this->assertArrayNotHasKey('dde_ssh-agent_socket-dir', $data['volumes'] ?? []);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideKeepsConstantContainerSocketPathAcrossAllModes(): void
+    {
+        // The in-container socket path stays /tmp/ssh-agent/socket across modes
+        // so a container can't tell which is active (absent only when unresolved).
+        $hostSocket = $this->createUnixSocket($this->tempDir.'/host-agent.sock');
+
+        $cases = [
+            'managed' => [$this->manager, new GlobalConfig()],
+            'host-available' => [
+                $this->createManagerWithResolver(new HostSshAgentResolver(osFamily: 'Linux', authSock: $hostSocket)),
+                new GlobalConfig(sshAgentMode: SshAgentMode::Host),
+            ],
+            'host-macos' => [
+                $this->createManagerWithResolver(new HostSshAgentResolver(osFamily: 'Darwin')),
+                new GlobalConfig(sshAgentMode: SshAgentMode::Host),
+            ],
+        ];
+
+        foreach ($cases as $label => [$manager, $global]) {
+            $this->createComposeFile([
+                'web' => [
+                    'image' => 'nginx:latest',
+                ],
+            ]);
+
+            $config = ResolvedConfig::merge($global, new ProjectConfig(name: 'test-project'));
+
+            $overridePath = $manager->generateOverride($config, $this->tempDir);
+            $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+            $this->assertSame(
+                '/tmp/ssh-agent/socket',
+                $data['services']['web']['environment']['SSH_AUTH_SOCK'],
+                sprintf('Container socket env must be constant for case "%s"', $label),
+            );
+
+            // Some SSH mount must always target the fixed /tmp/ssh-agent
+            // container location, regardless of the host-side source.
+            $hasContainerSocketMount = false;
+            foreach ($data['services']['web']['volumes'] as $volume) {
+                // Short-form mounts are "source:target[:mode]" strings; the host
+                // bind mount is long-syntax (a {type,source,target} array).
+                $target = is_array($volume) ? ($volume['target'] ?? '') : $volume;
+                if (str_contains($target, '/tmp/ssh-agent')) {
+                    $hasContainerSocketMount = true;
+                }
+            }
+
+            $this->assertTrue($hasContainerSocketMount, sprintf('Some SSH mount must target /tmp/ssh-agent for case "%s"', $label));
+
+            unlink($overridePath);
+        }
     }
 
     public function testGenerateOverrideAddsEnvironmentToAllServices(): void
@@ -1935,6 +2125,47 @@ ENV);
         return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager, $mkcertManager);
     }
 
+    /**
+     * Builds a manager with a shell-capable image and a specific host-agent
+     * resolver wired in. The resolver is `final` (unmockable), so host-mode
+     * tests construct a real instance with an injected OS family / SSH_AUTH_SOCK
+     * to drive the platform matrix without depending on the test host's OS.
+     */
+    private function createManagerWithResolver(HostSshAgentResolver $resolver): DockerComposeManager
+    {
+        $resourcesDir = dirname(__DIR__, 3).'/resources';
+        $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
+
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(true);
+        $dockerManager->method('inspectImage')->willReturn('null');
+
+        $worktreeManager = $this->createStub(\App\Manager\WorktreeManager::class);
+        $mkcertManager = $this->createStub(MkcertManager::class);
+
+        return new DockerComposeManager(
+            $adapterRegistry,
+            $dockerManager,
+            new UserContext(),
+            $worktreeManager,
+            $mkcertManager,
+            hostSshAgentResolver: $resolver,
+        );
+    }
+
+    private function createUnixSocket(string $path): string
+    {
+        $server = stream_socket_server('unix://'.$path, $errno, $errstr);
+        if ($server === false) {
+            self::markTestSkipped(sprintf('Could not create unix socket: %s (%d)', $errstr, $errno));
+        }
+
+        // Keep the resource alive for the duration of the test.
+        $this->sockets[] = $server;
+
+        return $path;
+    }
+
     protected function setUp(): void
     {
         $this->tempDir = sys_get_temp_dir().'/dde-test-'.bin2hex(random_bytes(8));
@@ -1947,6 +2178,10 @@ ENV);
 
     protected function tearDown(): void
     {
+        foreach ($this->sockets as $socket) {
+            fclose($socket);
+        }
+
         $files = glob($this->tempDir.'/*');
 
         if ($files !== false) {

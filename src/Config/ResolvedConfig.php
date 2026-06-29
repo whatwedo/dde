@@ -18,6 +18,10 @@ final class ResolvedConfig
      */
     public ?array $sshKeys { get => $this->globalConfig->sshKeys; }
 
+    public SshAgentMode $sshAgentMode { get => $this->globalConfig->sshAgentMode; }
+
+    public ?string $sshAgentSource { get => $this->globalConfig->sshAgentSource; }
+
     /**
      * @var array<ServiceDefinition>
      */

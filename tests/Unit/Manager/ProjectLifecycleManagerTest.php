@@ -7,6 +7,7 @@ namespace Tests\Unit\Manager;
 use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
+use App\Config\SshAgentMode;
 use App\Database\DatabaseAdapterRegistry;
 use App\Database\MariaDbAdapter;
 use App\Database\PostgresAdapter;
@@ -20,12 +21,14 @@ use App\Manager\WorktreeManager;
 use App\Model\ContainerConfig;
 use App\Model\ServiceDefinition;
 use App\Service\AbstractSystemService;
+use App\Service\HostSshAgentResolver;
 use App\Service\ProjectNetworkAwareInterface;
 use App\Service\ServiceRegistry;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Filesystem\Filesystem;
 
 #[AllowMockObjectsWithoutExpectations]
@@ -44,6 +47,15 @@ final class ProjectLifecycleManagerTest extends TestCase
     private Filesystem&Stub $systemFilesystem;
 
     private ProjectNetworkAwareSystemServiceTestDouble&Stub $traefikStub;
+
+    private HostSshAgentResolver $hostSshAgentResolver;
+
+    private string $presentSocketPath;
+
+    /**
+     * @var resource|false
+     */
+    private $presentSocket;
 
     private ProjectLifecycleManager $manager;
 
@@ -126,6 +138,80 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willReturn('/tmp/override.yml');
 
         $manager->up($config, $projectDir, false);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpWarnsAndContinuesWhenHostAgentIsUnresolvedInHostMode(): void
+    {
+        // R4.1/R4.3: on a Linux host in `host` mode with no host agent, the
+        // bring-up must surface a specific warning naming the missing
+        // prerequisite *before* the later git/SSH failure surface, and still
+        // bring the project up rather than aborting.
+        $resolver = new HostSshAgentResolver(
+            osFamily: 'Linux',
+            authSock: '',
+        );
+
+        $config = $this->createHostModeConfig();
+        $projectDir = '/tmp/test-project';
+        $output = $this->arrangeHostModeUp($projectDir);
+
+        $manager = $this->makeManager(hostSshAgentResolver: $resolver);
+
+        // The bring-up proceeds to compose up — i.e. it is NOT aborted (R4.2).
+        $this->dockerComposeManager->expects($this->once())->method('up');
+
+        $result = $manager->up($config, $projectDir, false, $output);
+
+        // Returned (not written to the transient, decoration-gated progress
+        // section) so the command can surface it on non-decorated output too.
+        $warning = $result['sshForwardingWarning'];
+        self::assertNotNull($warning);
+        self::assertStringContainsStringIgnoringCase('SSH', $warning);
+        self::assertStringContainsStringIgnoringCase('forwarding', $warning);
+        // The specific missing prerequisite from the resolution reason.
+        self::assertStringContainsString('SSH_AUTH_SOCK', $warning);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpDoesNotWarnWhenHostAgentIsAvailableInHostMode(): void
+    {
+        // Resolver reports an available socket → no warning fires.
+        $resolver = new HostSshAgentResolver(
+            osFamily: 'Linux',
+            authSock: $this->presentSocketPath,
+        );
+
+        $config = $this->createHostModeConfig();
+        $projectDir = '/tmp/test-project';
+        $output = $this->arrangeHostModeUp($projectDir);
+
+        $manager = $this->makeManager(hostSshAgentResolver: $resolver);
+
+        $result = $manager->up($config, $projectDir, false, $output);
+
+        self::assertNull($result['sshForwardingWarning']);
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testUpDoesNotWarnInManagedMode(): void
+    {
+        // Managed mode never consults the host resolver, so even a resolver that
+        // would report unavailable must not produce a warning on the up path.
+        $resolver = new HostSshAgentResolver(
+            osFamily: 'Linux',
+            authSock: '',
+        );
+
+        $config = $this->createConfig();
+        $projectDir = '/tmp/test-project';
+        $output = $this->arrangeHostModeUp($projectDir);
+
+        $manager = $this->makeManager(hostSshAgentResolver: $resolver);
+
+        $result = $manager->up($config, $projectDir, false, $output);
+
+        self::assertNull($result['sshForwardingWarning']);
     }
 
     public function testDownCallsComposeDown(): void
@@ -1331,6 +1417,30 @@ final class ProjectLifecycleManagerTest extends TestCase
         );
     }
 
+    private function createHostModeConfig(): ResolvedConfig
+    {
+        return new ResolvedConfig(
+            globalConfig: new GlobalConfig(sshAgentMode: SshAgentMode::Host),
+            projectConfig: new ProjectConfig(name: 'test-project'),
+        );
+    }
+
+    /**
+     * Wires the collaborators every host-mode warn test shares: a compose file,
+     * a no-op dev layer, and a stubbed override so `up()` runs end-to-end without
+     * Docker. Returns the captured output buffer so the test can assert on the
+     * emitted (or absent) warning.
+     */
+    private function arrangeHostModeUp(string $projectDir): BufferedOutput
+    {
+        $this->dockerComposeManager->method('findComposeFile')
+            ->willReturn($projectDir.'/docker-compose.yml');
+        $this->imageManager->method('ensureDevLayers')->willReturn(null);
+        $this->dockerComposeManager->method('generateOverride')->willReturn('/tmp/override.yml');
+
+        return new BufferedOutput();
+    }
+
     /**
      * Builds a ProjectLifecycleManager with optional overrides for the
      * collaborators that tests most commonly customise. Defaults come from
@@ -1342,6 +1452,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         ?iterable $globalServices = null,
         ?WorktreeManager $worktreeManager = null,
         ?MkcertManager $mkcertManager = null,
+        ?HostSshAgentResolver $hostSshAgentResolver = null,
     ): ProjectLifecycleManager {
         $globalServices ??= [$this->traefikStub];
         $serviceRegistry = new ServiceRegistry(
@@ -1363,6 +1474,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager ?? $this->createStub(WorktreeManager::class),
+            $hostSshAgentResolver ?? $this->hostSshAgentResolver,
             $this->filesystem,
         );
     }
@@ -1414,6 +1526,22 @@ final class ProjectLifecycleManagerTest extends TestCase
 
         $this->certificateManager = $this->createStub(MkcertManager::class);
 
+        // A real unix socket stands in for a present agent socket: the resolver
+        // verifies the path is an actual socket, not merely that it exists.
+        $this->presentSocketPath = sys_get_temp_dir().'/dde-ssh-present-'.bin2hex(random_bytes(6)).'.sock';
+        $this->presentSocket = stream_socket_server('unix://'.$this->presentSocketPath, $errno, $errstr);
+        if ($this->presentSocket === false) {
+            self::markTestSkipped(sprintf('Could not create unix socket: %s (%d)', $errstr, $errno));
+        }
+
+        // The default resolver mimics a Linux host with a present agent socket
+        // so the managed-mode tests never trip the host-mode warn path. Host-mode
+        // tests build their own resolver with controlled OS / SSH_AUTH_SOCK seams.
+        $this->hostSshAgentResolver = new HostSshAgentResolver(
+            osFamily: 'Linux',
+            authSock: $this->presentSocketPath,
+        );
+
         // networkExists returns false by default (PHPUnit mock default for bool return),
         // so removeNetwork is never called unless a test explicitly stubs networkExists to true.
 
@@ -1426,8 +1554,20 @@ final class ProjectLifecycleManagerTest extends TestCase
             $serviceRegistry,
             $this->dockerManager,
             $worktreeManager,
+            $this->hostSshAgentResolver,
             $this->filesystem,
         );
+    }
+
+    protected function tearDown(): void
+    {
+        if (is_resource($this->presentSocket)) {
+            fclose($this->presentSocket);
+        }
+
+        if (file_exists($this->presentSocketPath)) {
+            unlink($this->presentSocketPath);
+        }
     }
 }
 

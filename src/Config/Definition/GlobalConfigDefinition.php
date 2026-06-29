@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Config\Definition;
 
+use App\Config\SshAgentMode;
 use App\Output\OutputFormat;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -16,12 +17,24 @@ final class GlobalConfigDefinition implements ConfigurationInterface
 
     public const array SSH_KEYS = [];
 
+    public const string SSH_AGENT_MODE = SshAgentMode::Managed->value;
+
+    public const ?string SSH_AGENT_SOURCE = null;
+
     /**
      * @return list<string>
      */
     public static function supportedOutputs(): array
     {
         return array_column(OutputFormat::cases(), 'value');
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function supportedSshAgentModes(): array
+    {
+        return array_column(SshAgentMode::cases(), 'value');
     }
 
     public function getConfigTreeBuilder(): TreeBuilder
@@ -54,6 +67,20 @@ final class GlobalConfigDefinition implements ConfigurationInterface
                         ->arrayNode('keys')
                             ->scalarPrototype()->end()
                             ->defaultValue(self::SSH_KEYS)
+                        ->end()
+                        ->arrayNode('agent')
+                            ->addDefaultsIfNotSet()
+                            ->info('SSH agent mode: "managed" runs dde\'s own agent container; "host" forwards the developer\'s host agent. Global-only setting.')
+                            ->children()
+                                ->enumNode('mode')
+                                    ->values(self::supportedSshAgentModes())
+                                    ->defaultValue(self::SSH_AGENT_MODE)
+                                ->end()
+                                ->scalarNode('source')
+                                    ->defaultValue(self::SSH_AGENT_SOURCE)
+                                    ->info('Host agent source in "host" mode: null/env (use the host SSH_AUTH_SOCK) or an explicit socket path.')
+                                ->end()
+                            ->end()
                         ->end()
                     ->end()
                 ->end()

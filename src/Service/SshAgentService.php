@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\SshAgentMode;
 use App\Manager\DockerManager;
 use App\Manager\GlobalConfigManager;
 use App\Model\ContainerConfig;
@@ -67,13 +68,26 @@ final class SshAgentService extends AbstractSystemService
 
     public function start(): void
     {
-        $this->build();
+        // Host mode runs no managed container. The lifecycle starts every global
+        // service unconditionally, so the skip lives here rather than at each
+        // call site.
+        if ($this->isHostMode()) {
+            return;
+        }
+
+        // start() already gated on host mode; call buildImage() directly so
+        // build() doesn't reload the global config to re-check the mode.
+        $this->buildImage();
 
         parent::start();
     }
 
     public function build(bool $pull = false): void
     {
+        if ($this->isHostMode()) {
+            return;
+        }
+
         $this->buildImage($pull);
     }
 
@@ -203,5 +217,10 @@ final class SshAgentService extends AbstractSystemService
         }
 
         return $keys;
+    }
+
+    private function isHostMode(): bool
+    {
+        return $this->globalConfigManager->load()->sshAgentMode === SshAgentMode::Host;
     }
 }
