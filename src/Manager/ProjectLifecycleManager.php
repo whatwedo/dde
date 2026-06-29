@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Manager;
 
 use App\Config\ResolvedConfig;
+use App\Config\SshAgentMode;
 use App\Config\WorktreeInfo;
+use App\Service\HostSshAgentResolver;
 use App\Service\ProjectNetworkAwareInterface;
 use App\Service\ServiceRegistry;
 use App\Util\IdentifierSanitizer;
@@ -22,12 +24,13 @@ readonly class ProjectLifecycleManager
         private ServiceRegistry $serviceRegistry,
         private DockerManager $dockerManager,
         private WorktreeManager $worktreeManager,
+        private HostSshAgentResolver $hostSshAgentResolver,
         private Filesystem $filesystem = new Filesystem(),
     ) {
     }
 
     /**
-     * @return array{serviceResults: list<array{name: string, version: string, status: string}>, devLayerResult: array{serviceName: string, imageTag: string}|null, domains: list<string>}
+     * @return array{serviceResults: list<array{name: string, version: string, status: string}>, devLayerResult: array{serviceName: string, imageTag: string}|null, domains: list<string>, sshForwardingWarning: string|null}
      */
     public function up(ResolvedConfig $config, string $projectDir, bool $build, ?OutputInterface $output = null): array
     {
@@ -116,6 +119,13 @@ readonly class ProjectLifecycleManager
             $this->dockerComposeManager->pull($projectDir);
         }
 
+        // 7b. In host mode, compute the "forwarding disabled" warning up-front so
+        //     the command can surface it durably (bring-up never aborts). Returned
+        //     rather than written here: the up() output is a transient progress
+        //     section that is cleared afterwards and absent on non-decorated runs
+        //     (CI, pipes, JSON), so writing it here would silently drop it.
+        $sshForwardingWarning = $this->hostAgentWarning($config);
+
         // 8. Generate the dde overlay from the merged service view discovered
         //    in step 4 so override-only services and override-modified fields
         //    (image, entrypoint, command, labels) get the same treatment as
@@ -152,6 +162,7 @@ readonly class ProjectLifecycleManager
             'serviceResults' => $serviceResults,
             'devLayerResult' => $devLayerResult,
             'domains' => $domains,
+            'sshForwardingWarning' => $sshForwardingWarning,
         ];
     }
 
@@ -250,6 +261,34 @@ readonly class ProjectLifecycleManager
         foreach ($this->serviceRegistry->getGlobalServices() as $service) {
             $service->start();
         }
+    }
+
+    /**
+     * In host mode, the warning to surface when the host agent can't be resolved
+     * (null when there is nothing to warn about). Returned as a string so the
+     * caller can write it to durable output: the up() output is a transient
+     * progress section, cleared afterwards and absent on non-decorated runs, so
+     * emitting the warning there would silently drop it. Resolves independently
+     * of DockerComposeManager — the resolver is pure and cheap.
+     */
+    private function hostAgentWarning(ResolvedConfig $config): ?string
+    {
+        if ($config->sshAgentMode !== SshAgentMode::Host) {
+            return null;
+        }
+
+        $resolution = $this->hostSshAgentResolver->resolve($config->sshAgentSource);
+
+        if ($resolution->available) {
+            return null;
+        }
+
+        return sprintf(
+            'SSH agent forwarding is disabled: the host SSH agent could not be resolved. %s '
+            .'Containers will start without SSH forwarding, so SSH operations inside them '
+            .'(e.g. a private `git clone`) will fail.',
+            $resolution->reason ?? 'No host agent source could be resolved.',
+        );
     }
 
     /**

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Command\System;
 
 use App\Command\AbstractSystemCommand;
+use App\Config\SshAgentMode;
 use App\Manager\ClaudeCodeManager;
 use App\Manager\CompletionManager;
+use App\Manager\GlobalConfigManager;
 use App\Manager\MkcertManager;
 use App\Output\FormatterResolver;
 use App\Output\OutputFormatterInterface;
@@ -33,6 +35,7 @@ final class SystemInstallCommand extends AbstractSystemCommand
         private readonly SshAgentService $sshAgentService,
         private readonly CompletionManager $completionManager,
         private readonly ClaudeCodeManager $claudeCodeManager,
+        private readonly GlobalConfigManager $globalConfigManager,
         private readonly string $configDir,
         FormatterResolver $formatterResolver,
     ) {
@@ -87,10 +90,13 @@ final class SystemInstallCommand extends AbstractSystemCommand
             $this->traefikService->start();
         }, $hasErrors);
 
-        // Step 6: Start SSH-Agent
-        $results[] = $this->runStep($io, $formatter, 'ssh-agent', 'Starting SSH agent', function (): void {
-            $this->sshAgentService->start();
-        }, $hasErrors);
+        // Step 6: Start SSH-Agent — only in managed mode. In host mode dde forwards
+        // the developer's host agent and runs no managed dde-ssh-agent container.
+        if ($this->globalConfigManager->load()->sshAgentMode === SshAgentMode::Managed) {
+            $results[] = $this->runStep($io, $formatter, 'ssh-agent', 'Starting SSH agent', function (): void {
+                $this->sshAgentService->start();
+            }, $hasErrors);
+        }
 
         // Step 7: Shell completion
         $application = $this->getApplication();

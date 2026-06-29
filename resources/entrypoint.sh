@@ -98,6 +98,18 @@ if command -v id >/dev/null 2>&1 && [ "$(id -u)" = "0" ]; then
     fi
 fi
 
+# 2b. In host mode the bind-mounted agent socket must be usable by the
+# unprivileged dde user: on Docker Desktop / OrbStack it lands as root:root (the
+# socket lives in the VM), so chown it while still root. On a Linux host the bind
+# mount shares the inode with the real host socket, so this chown also retargets
+# its ownership — a no-op under the dde invariant DDE_UID = posix_getuid() (the
+# user already owns their own agent socket). In managed mode /tmp/ssh-agent is
+# mounted read-only, so the chown fails and is swallowed by "|| true"; harmless,
+# because the managed agent already owns the socket.
+if [ "$(id -u 2>/dev/null)" = "0" ] && [ -S /tmp/ssh-agent/socket ]; then
+    chown "$DDE_UID:$DDE_GID" /tmp/ssh-agent/socket 2>/dev/null || true
+fi
+
 # 3. Run built-in service adapters
 DDE_ADAPTERS_DIR="${DDE_ADAPTERS_DIR:-/dde/adapters}"
 if [ -d "$DDE_ADAPTERS_DIR" ]; then

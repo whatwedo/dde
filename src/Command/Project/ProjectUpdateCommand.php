@@ -138,7 +138,12 @@ final class ProjectUpdateCommand extends AbstractProjectCommand
                 'status' => 'updated',
                 'services' => $result['serviceResults'],
                 'domains' => $result['domains'],
+                'sshForwardingWarning' => $result['sshForwardingWarning'],
             ]);
+        }
+
+        if ($result['sshForwardingWarning'] !== null) {
+            $io->warning($result['sshForwardingWarning']);
         }
 
         $io->newLine();

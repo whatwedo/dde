@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Service;
 
 use App\Config\GlobalConfig;
+use App\Config\SshAgentMode;
 use App\Manager\DockerManager;
 use App\Manager\GlobalConfigManager;
 use App\Model\ContainerConfig;
@@ -282,6 +283,34 @@ final class SshAgentServiceTest extends TestCase
         $service->start();
     }
 
+    public function testStartIsNoOpInHostMode(): void
+    {
+        // In host mode dde forwards the host agent and runs no managed
+        // container, so start() must neither build the image nor run anything —
+        // otherwise the dde-ssh-agent container is started behind the user's back
+        // (the lifecycle calls start() unconditionally on every global service).
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('buildImage');
+
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('run');
+
+        $service = $this->createService(mode: SshAgentMode::Host);
+        $service->start();
+    }
+
+    public function testBuildIsNoOpInHostMode(): void
+    {
+        $this->dockerManager
+            ->expects($this->never())
+            ->method('buildImage');
+
+        $service = $this->createService(mode: SshAgentMode::Host);
+        $service->build(true);
+    }
+
     public function testStopOnlyCallsDockerManagerStopWhenRunning(): void
     {
         $this->dockerManager
@@ -340,9 +369,9 @@ final class SshAgentServiceTest extends TestCase
     /**
      * @param array<string>|null $sshKeys
      */
-    private function createService(?array $sshKeys = null, string $userHomeDir = '/tmp'): SshAgentService
+    private function createService(?array $sshKeys = null, string $userHomeDir = '/tmp', SshAgentMode $mode = SshAgentMode::Managed): SshAgentService
     {
-        $this->globalConfigManager->method('load')->willReturn(new GlobalConfig(sshKeys: $sshKeys));
+        $this->globalConfigManager->method('load')->willReturn(new GlobalConfig(sshKeys: $sshKeys, sshAgentMode: $mode));
 
         return new SshAgentService(
             dockerManager: $this->dockerManager,

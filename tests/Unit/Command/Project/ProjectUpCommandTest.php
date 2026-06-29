@@ -62,6 +62,7 @@ final class ProjectUpCommandTest extends TestCase
                 ],
                 'devLayerResult' => null,
                 'domains' => [],
+                'sshForwardingWarning' => null,
             ]);
 
         $this->commandTester->execute([], [
@@ -90,6 +91,7 @@ final class ProjectUpCommandTest extends TestCase
                 ],
                 'devLayerResult' => null,
                 'domains' => [],
+                'sshForwardingWarning' => null,
             ]);
 
         $this->commandTester->execute([
@@ -120,6 +122,7 @@ final class ProjectUpCommandTest extends TestCase
                 'serviceResults' => [],
                 'devLayerResult' => null,
                 'domains' => ['app.test', 'api.app.test'],
+                'sshForwardingWarning' => null,
             ]);
 
         $this->commandTester->execute([]);
@@ -141,6 +144,7 @@ final class ProjectUpCommandTest extends TestCase
                 'serviceResults' => [],
                 'devLayerResult' => null,
                 'domains' => [],
+                'sshForwardingWarning' => null,
             ]);
 
         $this->commandTester->execute([]);
@@ -159,6 +163,7 @@ final class ProjectUpCommandTest extends TestCase
                 'serviceResults' => [],
                 'devLayerResult' => null,
                 'domains' => ['app.test'],
+                'sshForwardingWarning' => null,
             ]);
 
         $this->commandTester->execute([
@@ -170,6 +175,56 @@ final class ProjectUpCommandTest extends TestCase
         $decoded = json_decode($this->commandTester->getDisplay(), true);
         $this->assertIsArray($decoded);
         $this->assertSame(['app.test'], $decoded['data']['domains']);
+    }
+
+    public function testSuccessfulUpSurfacesSshForwardingWarningInTextOutput(): void
+    {
+        // A host-mode forwarding warning from up() must reach the user on the
+        // interactive text path; guards against silently dropping it again.
+        $this->setupProjectFixture();
+
+        $this->lifecycleManager
+            ->method('up')
+            ->willReturn([
+                'serviceResults' => [],
+                'devLayerResult' => null,
+                'domains' => [],
+                'sshForwardingWarning' => 'SSH agent forwarding is disabled: nothing resolved.',
+            ]);
+
+        $this->commandTester->execute([]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $this->assertStringContainsString('SSH agent forwarding is disabled', $this->commandTester->getDisplay());
+    }
+
+    public function testSuccessfulUpSurfacesSshForwardingWarningInJsonOutput(): void
+    {
+        // The non-decorated JSON payload is a machine contract; the warning must
+        // stay in it so pipelines/CI see disabled forwarding.
+        $this->setupProjectFixture();
+
+        $this->lifecycleManager
+            ->method('up')
+            ->willReturn([
+                'serviceResults' => [],
+                'devLayerResult' => null,
+                'domains' => [],
+                'sshForwardingWarning' => 'SSH agent forwarding is disabled: nothing resolved.',
+            ]);
+
+        $this->commandTester->execute([
+            '--output' => 'json',
+        ], [
+            'interactive' => false,
+        ]);
+
+        $decoded = json_decode($this->commandTester->getDisplay(), true);
+        $this->assertIsArray($decoded);
+        $this->assertSame(
+            'SSH agent forwarding is disabled: nothing resolved.',
+            $decoded['data']['sshForwardingWarning'],
+        );
     }
 
     public function testUpWithBuildFlag(): void
@@ -188,6 +243,7 @@ final class ProjectUpCommandTest extends TestCase
                 'serviceResults' => [],
                 'devLayerResult' => null,
                 'domains' => [],
+                'sshForwardingWarning' => null,
             ]);
 
         $this->commandTester->execute([

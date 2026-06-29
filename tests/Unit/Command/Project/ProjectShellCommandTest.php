@@ -297,7 +297,13 @@ final class ProjectShellCommandTest extends TestCase
                 $this->tempDir,
                 false,
                 $this->anything(),
-            );
+            )
+            ->willReturn([
+                'serviceResults' => [],
+                'devLayerResult' => null,
+                'domains' => [],
+                'sshForwardingWarning' => null,
+            ]);
 
         $process = $this->createStub(Process::class);
         $process->method('getExitCode')->willReturn(0);
@@ -312,6 +318,37 @@ final class ProjectShellCommandTest extends TestCase
 
         $this->assertSame(0, $this->commandTester->getStatusCode());
         $this->assertStringContainsString('not running', $this->commandTester->getDisplay());
+    }
+
+    public function testShellSurfacesSshForwardingWarningWhenUnresolved(): void
+    {
+        // project:shell brings the project up too, so a host-mode forwarding
+        // warning must reach the user here just like on project:up.
+        $this->setupProjectFixture();
+        $this->shellDetector->method('detect')->willReturn('bash');
+
+        $this->dockerComposeManager
+            ->method('ps')
+            ->willReturn([]);
+
+        $this->lifecycleManager
+            ->method('up')
+            ->willReturn([
+                'serviceResults' => [],
+                'devLayerResult' => null,
+                'domains' => [],
+                'sshForwardingWarning' => 'SSH agent forwarding is disabled: nothing resolved.',
+            ]);
+
+        $process = $this->createStub(Process::class);
+        $process->method('getExitCode')->willReturn(0);
+        $this->dockerComposeManager->method('exec')->willReturn($process);
+
+        $this->commandTester->execute([], [
+            'interactive' => false,
+        ]);
+
+        $this->assertStringContainsString('SSH agent forwarding is disabled', $this->commandTester->getDisplay());
     }
 
     public function testShellSkipsStartWhenContainerAlreadyRunning(): void

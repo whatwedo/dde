@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- New `host` SSH-agent mode forwards your existing host SSH agent (`ssh-agent`, a password manager, or a hardware token) into project containers instead. See [the SSH agent guide](docs/guides/ssh-agent.md). (#113)
 - The mkcert root CA is now trusted inside project containers, enabling HTTPS calls between local `.test` services. (#216)
 - Reproducible builds — two builds from the same commit now produce a byte-identical PHAR and binary. (#213)
 

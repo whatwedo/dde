@@ -6,9 +6,11 @@ namespace App\Manager;
 
 use App\Adapter\AdapterRegistry;
 use App\Config\ResolvedConfig;
+use App\Config\SshAgentMode;
 use App\Config\WorktreeInfo;
 use App\Model\ServiceDefinition;
 use App\Model\UserContext;
+use App\Service\HostSshAgentResolver;
 use App\Util\ComposeEnvEntryParser;
 use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
@@ -32,6 +34,7 @@ readonly class DockerComposeManager
         private MkcertManager $mkcertManager,
         private Filesystem $filesystem = new Filesystem(),
         private ProcessFactory $processFactory = new ProcessFactory(),
+        private HostSshAgentResolver $hostSshAgentResolver = new HostSshAgentResolver(),
     ) {
     }
 
@@ -433,6 +436,33 @@ readonly class DockerComposeManager
         $entrypointPath = $this->adapterRegistry->getEntrypointPath();
         $adaptersDir = $this->adapterRegistry->getBuiltinAdaptersDir();
 
+        // SSH_AUTH_SOCK always points at /tmp/ssh-agent/socket regardless of
+        // mode, so a container cannot tell which is active; only the host side
+        // of the mount differs. Managed mode mounts the dde-owned named volume;
+        // host mode bind-mounts the resolved host socket (and omits the named
+        // volume); an unresolved host agent leaves no SSH env or mount at all.
+        $sshMount = null;
+        $emitManagedSshVolume = false;
+
+        if ($config->sshAgentMode === SshAgentMode::Managed) {
+            $sshMount = 'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro';
+            $emitManagedSshVolume = true;
+        } else {
+            $resolution = $this->hostSshAgentResolver->resolve($config->sshAgentSource);
+
+            if ($resolution->available && $resolution->mountSource !== null) {
+                // Long-syntax so a socket path with a ":" can't corrupt the
+                // short-form source:target split. Read-write, not :ro: on Docker
+                // Desktop the socket mounts as root:root, so the entrypoint has
+                // to chown it to the dde user, which :ro would forbid.
+                $sshMount = [
+                    'type' => 'bind',
+                    'source' => $resolution->mountSource,
+                    'target' => '/tmp/ssh-agent/socket',
+                ];
+            }
+        }
+
         // Project containers always join their per-project network — never the
         // shared `dde` network. Parallel checkouts (main + worktree) would
         // otherwise register identical service aliases on `dde` and Docker DNS
@@ -520,8 +550,12 @@ readonly class DockerComposeManager
             $environment = [
                 'DDE_UID' => (string) $this->userContext->uid,
                 'DDE_GID' => (string) $this->userContext->gid,
-                'SSH_AUTH_SOCK' => '/tmp/ssh-agent/socket',
             ];
+
+            // Only advertise the socket when a mount actually backs it.
+            if ($sshMount !== null) {
+                $environment['SSH_AUTH_SOCK'] = '/tmp/ssh-agent/socket';
+            }
 
             if ($worktreeInfo instanceof WorktreeInfo) {
                 $envFileValues = $this->readEnvFileValues($serviceConfig['env_file'] ?? null, $projectDir);
@@ -577,7 +611,9 @@ readonly class DockerComposeManager
                 $volumes[] = $projectAdaptersDir.':/dde/adapters-project:ro';
             }
 
-            $volumes[] = 'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro';
+            if ($sshMount !== null) {
+                $volumes[] = $sshMount;
+            }
 
             if ($caRootCertPath !== null) {
                 $volumes[] = $caRootCertPath.':/dde/mkcert-rootCA.crt:ro';
@@ -666,13 +702,18 @@ readonly class DockerComposeManager
 
         $override = [
             'networks' => $networks,
-            'volumes' => [
+            'services' => $overrideServices,
+        ];
+
+        // Host mode bind-mounts a host path, so the dde-owned named volume would
+        // be dead config — only declare it in managed mode.
+        if ($emitManagedSshVolume) {
+            $override['volumes'] = [
                 'dde_ssh-agent_socket-dir' => [
                     'external' => true,
                 ],
-            ],
-            'services' => $overrideServices,
-        ];
+            ];
+        }
 
         $yaml = Yaml::dump($override, 4, 4);
 

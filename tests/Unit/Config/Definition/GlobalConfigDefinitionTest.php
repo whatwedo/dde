@@ -22,6 +22,8 @@ final class GlobalConfigDefinitionTest extends TestCase
         $this->assertSame(GlobalConfigDefinition::OUTPUT, $result['output']);
         $this->assertSame(GlobalConfigDefinition::DNS_FORWARD, $result['dns']['forward']);
         $this->assertSame(GlobalConfigDefinition::SSH_KEYS, $result['ssh']['keys']);
+        $this->assertSame(GlobalConfigDefinition::SSH_AGENT_MODE, $result['ssh']['agent']['mode']);
+        $this->assertNull($result['ssh']['agent']['source']);
         $this->assertSame([], $result['services']);
         $this->assertNull($result['default_browser']);
     }
@@ -35,6 +37,10 @@ final class GlobalConfigDefinitionTest extends TestCase
             ],
             'ssh' => [
                 'keys' => ['~/.ssh/id_ed25519', '~/.ssh/id_rsa'],
+                'agent' => [
+                    'mode' => 'host',
+                    'source' => '/run/user/1000/keyring/ssh',
+                ],
             ],
             'services' => [
                 'mariadb' => [
@@ -52,6 +58,8 @@ final class GlobalConfigDefinitionTest extends TestCase
         $this->assertSame('json', $result['output']);
         $this->assertSame(['1.1.1.1', '8.8.8.8'], $result['dns']['forward']);
         $this->assertSame(['~/.ssh/id_ed25519', '~/.ssh/id_rsa'], $result['ssh']['keys']);
+        $this->assertSame('host', $result['ssh']['agent']['mode']);
+        $this->assertSame('/run/user/1000/keyring/ssh', $result['ssh']['agent']['source']);
         $this->assertSame('10.6', $result['services']['mariadb']['version']);
         $this->assertSame('6', $result['services']['valkey']['version']);
         $this->assertSame('/usr/bin/firefox', $result['default_browser']);
@@ -64,6 +72,22 @@ final class GlobalConfigDefinitionTest extends TestCase
         $this->processor->processConfiguration($this->definition, [
             [
                 'output' => 'xml',
+            ],
+        ]);
+    }
+
+    public function testInvalidAgentModeThrowsNamingValueAndAllowedSet(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageMatches('/"invalid".*"managed".*"host"|"managed".*"host".*"invalid"/s');
+
+        $this->processor->processConfiguration($this->definition, [
+            [
+                'ssh' => [
+                    'agent' => [
+                        'mode' => 'invalid',
+                    ],
+                ],
             ],
         ]);
     }

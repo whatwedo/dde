@@ -101,7 +101,12 @@ final class ProjectUpCommand extends AbstractProjectCommand
                 'status' => ServiceStartStatus::STARTED->value,
                 'services' => $result['serviceResults'],
                 'domains' => $result['domains'],
+                'sshForwardingWarning' => $result['sshForwardingWarning'],
             ]);
+        }
+
+        if ($result['sshForwardingWarning'] !== null) {
+            $io->warning($result['sshForwardingWarning']);
         }
 
         $io->newLine();

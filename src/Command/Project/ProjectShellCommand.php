@@ -85,7 +85,7 @@ final class ProjectShellCommand extends AbstractProjectCommand
                 : null;
 
             try {
-                $this->lifecycleManager->up($config, $projectDir, false, output: $section);
+                $result = $this->lifecycleManager->up($config, $projectDir, false, output: $section);
             } catch (\RuntimeException $runtimeException) {
                 $section?->clear();
 
@@ -93,6 +93,10 @@ final class ProjectShellCommand extends AbstractProjectCommand
             }
 
             $section?->clear();
+
+            if ($result['sshForwardingWarning'] !== null) {
+                $io->warning($result['sshForwardingWarning']);
+            }
         }
 
         $isRoot = (bool) $input->getOption('root');
