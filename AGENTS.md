@@ -40,7 +40,7 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
 - Plugins: `App\Plugin\` — `PluginLoader`, `PluginDefinition`, `PluginProxyCommand`, `PluginCommandLoader`
 - Output: `App\Output\` — `OutputFormatterInterface` with `TextFormatter`/`JsonFormatter`, `FormatterResolver`
 - EventListener: `App\EventListener\` — `OutputFormatListener` (validates `--output` option)
-- Util: `App\Util\` — `ComposeEnvEntryParser` (compose `environment:` entry normalisation), `DockerComposeModifier`, `DiffUtil`, `IdentifierSanitizer` (slug sanitisation for hostname + DB identifiers), `NdJsonParser`, `ProcessFactory`, `ShellDetectorUtil`, `TempFileUtil`, `UrlOpenerUtil`
+- Util: `App\Util\` — `ComposeEnvEntryParser` (compose `environment:` entry normalisation), `DockerComposeModifier`, `DiffUtil`, `IdentifierSanitizer` (slug sanitisation for hostname + DB identifiers), `NdJsonParser`, `PrivilegeEscalator` (optimistic-then-sudo wrapper for `/etc/**` writes during system:install), `ProcessFactory`, `ShellDetectorUtil`, `TempFileUtil`, `UrlOpenerUtil`
 - Exception: `App\Exception\` — `HookFailedException`
 
 ## Build

@@ -3,6 +3,19 @@
 
 declare(strict_types=1);
 
+// Pre-kernel root-guard: reject `sudo dde …` invocations before any $_SERVER/$_ENV state
+// is mutated (see PHAR-detection block below). Real-root sessions without SUDO_USER (e.g.
+// containers, provisioning) pass through. See requirements R3.1, R3.2, R3.3 and design
+// "Root-Guard in bin/console".
+if (
+    function_exists('posix_geteuid')
+    && posix_geteuid() === 0
+    && getenv('SUDO_USER') !== false
+) {
+    fwrite(STDERR, "dde must not be run with sudo. It escalates internally where required.\n");
+    exit(1);
+}
+
 use App\Application;
 use App\Kernel;
 

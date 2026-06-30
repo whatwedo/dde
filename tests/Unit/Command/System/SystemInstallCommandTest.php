@@ -18,6 +18,8 @@ use App\Service\DnsmasqService;
 use App\Service\ImageBuilder;
 use App\Service\SshAgentService;
 use App\Service\TraefikService;
+use App\Util\PrivilegeEscalator;
+use App\Util\ProcessFactory;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
@@ -222,6 +224,7 @@ final class SystemInstallCommandTest extends TestCase
             dockerManager: $this->dockerManager,
             filesystem: $filesystem,
             imageBuilder: $imageBuilder,
+            escalator: new PrivilegeEscalator($filesystem, new ProcessFactory()),
             projectDir: $this->tempDir,
             dataDir: $this->tempDir,
         );

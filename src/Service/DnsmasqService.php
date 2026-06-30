@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Manager\DockerManager;
 use App\Model\ContainerConfig;
+use App\Util\PrivilegeEscalator;
 use App\Util\ProcessFactory;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -15,6 +16,7 @@ final class DnsmasqService extends AbstractSystemService
         DockerManager $dockerManager,
         private readonly Filesystem $filesystem,
         private readonly ImageBuilder $imageBuilder,
+        private readonly PrivilegeEscalator $escalator,
         private readonly string $projectDir,
         private readonly string $dataDir,
         private readonly ProcessFactory $processFactory = new ProcessFactory(),
@@ -114,7 +116,12 @@ final class DnsmasqService extends AbstractSystemService
      *
      * On macOS: writes a resolver file to /etc/resolver/test.
      * On Linux: configures systemd-resolved or NetworkManager.
-     * Both require root privileges (the installer script runs with sudo).
+     *
+     * The Linux /etc/** writes are routed through {@see PrivilegeEscalator}
+     * (optimistic-then-sudo): the operation is attempted as the current user
+     * first; on a permission failure, it is retried once via sudo with TTY
+     * forwarding. dde must NOT be invoked under sudo — bin/console rejects that
+     * case up-front; see {@see PrivilegeEscalator} and the bin/console root-guard.
      *
      * @throws \RuntimeException if the platform is not supported
      */
@@ -183,15 +190,9 @@ final class DnsmasqService extends AbstractSystemService
             return;
         }
 
-        $this->filesystem->mkdir($configDir);
-        $this->filesystem->dumpFile($configFile, $content);
-
-        $process = $this->processFactory->create(['systemctl', 'restart', 'systemd-resolved']);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException(sprintf('Failed to restart systemd-resolved: %s', $process->getErrorOutput()));
-        }
+        $this->escalator->ensureDir($configDir);
+        $this->escalator->writeFile($configFile, $content);
+        $this->escalator->run(['systemctl', 'restart', 'systemd-resolved']);
     }
 
     private function configureDnsNetworkManager(): void
@@ -204,15 +205,9 @@ final class DnsmasqService extends AbstractSystemService
             return;
         }
 
-        $this->filesystem->mkdir($configDir);
-        $this->filesystem->dumpFile($configFile, $content);
-
-        $process = $this->processFactory->create(['systemctl', 'restart', 'NetworkManager']);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException(sprintf('Failed to restart NetworkManager: %s', $process->getErrorOutput()));
-        }
+        $this->escalator->ensureDir($configDir);
+        $this->escalator->writeFile($configFile, $content);
+        $this->escalator->run(['systemctl', 'restart', 'NetworkManager']);
     }
 
     private function configureDnsMacOs(): void
