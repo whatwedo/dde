@@ -50,6 +50,40 @@ the post-install hook. On Homebrew it shows up as a caveats message.
 default certificate — those are one-off setup steps, not per-version
 refresh steps. Package manager upgrades run `system:update` automatically.
 
+## Privilege handling
+
+`dde system:install` is invoked **without** `sudo`. That is the contract,
+and `sudo dde …` is rejected up-front: the entrypoint exits with code 1 and
+the message `dde must not be run with sudo. It escalates internally where
+required.` Running dde under `sudo` would leave files in `$DDE_DATA_DIR`
+(default `~/.dde/data`) owned by `root:root`, so every subsequent
+unprivileged invocation — `dde project:up`, `dde system:update`, anything —
+would fail to write into the same directory. A prior incident produced
+exactly that breakage; the guard exists so it cannot recur.
+
+For the few host-level Linux paths that genuinely require root
+(`/etc/systemd/resolved.conf.d/`, `/etc/NetworkManager/dnsmasq.d/`), dde
+escalates internally. Each write is attempted first as the current user; only
+on a permission error does dde retry the same operation through `sudo`. Files
+under `$DDE_CONFIG_DIR` and `$DDE_DATA_DIR` are never escalated — they stay
+owned by the invoking user. On macOS the `/etc/resolver/test` write is not
+escalated; when it needs root, dde prints the exact `sudo tee` command to run
+manually.
+
+Behaviour by environment:
+
+- **Interactive shell, no passwordless sudo.** dde forwards the `sudo`
+  password prompt to your TTY when an `/etc/**` write needs elevation. You
+  type your password once and the install continues.
+- **CI runner with passwordless sudo, no TTY.** dde escalates silently and
+  finishes without user interaction.
+- **No TTY and no passwordless sudo.** dde fails loudly with a non-zero
+  exit code; stderr names the operation that needed root.
+
+For the implementation contract (the `PrivilegeEscalator` API, the
+`bin/console` root-guard predicate, and the failure modes), see
+[system:install internals](../internals/system-install.md).
+
 ## Quick reference
 
 | Situation                                    | Command            |

@@ -74,6 +74,13 @@ dde system:update                  # Rebuild global service images and refresh i
 dde system:doctor --output=json   # Run health checks
 ```
 
+### No `sudo` contract
+
+Run `dde system:install` (and every other dde command) **without** `sudo`. dde escalates internally for the few
+`/etc/**` writes it needs and prompts the user for the password only when required. Running dde under `sudo` is
+rejected up-front. See [system-lifecycle guide](../../../docs/guides/system-lifecycle.md) "Privilege handling" or
+[system-install internals](../../../docs/internals/system-install.md) for details.
+
 ### When to suggest `system:update`
 
 When the user has installed a new dde release (for example via `brew upgrade
