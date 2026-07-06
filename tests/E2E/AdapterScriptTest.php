@@ -140,4 +140,45 @@ final class AdapterScriptTest extends TestCase
         $this->assertStringContainsString('listen.group = dialout', $fpm);
         $this->assertStringNotContainsString('= nginx', $fpm);
     }
+
+    /**
+     * Regression: the official wordpress image (Debian) ships GNU shadow's
+     * useradd/groupadd AND Debian's Perl adduser/addgroup side by side. The
+     * entrypoint used to gate user creation on `command -v adduser` and then
+     * feed it BusyBox flags (`-u -G -D`), which Debian's adduser rejects with an
+     * "Option is ambiguous" usage dump, leaving the dde user uncreated (only a
+     * raw /etc/passwd append rescued it). Real symptom: WordPress-based project
+     * containers spewed the adduser/addgroup usage text into their container log
+     * on every start. The fix prefers shadow's useradd/groupadd (stable flags on
+     * every distro) and only falls back to the correct BusyBox / Debian dialects.
+     */
+    #[Group('e2e')]
+    public function testEntrypointCreatesDdeUserOnDebianWithoutAdduserUsageDump(): void
+    {
+        $entrypoint = \dirname(__DIR__, 2).'/resources/entrypoint.sh';
+
+        $process = new Process([
+            'docker', 'run', '--rm', '-u', '0',
+            '-e', 'DDE_UID=1000', '-e', 'DDE_GID=1000',
+            '-v', $entrypoint.':/dde-entrypoint.sh:ro',
+            'wordpress:latest',
+            'sh', '-c', '/dde-entrypoint.sh true; echo "===ID==="; id dde',
+        ]);
+        $process->setTimeout(120);
+        $process->run();
+
+        $this->assertTrue(
+            $process->isSuccessful(),
+            sprintf("entrypoint run failed:\nSTDOUT: %s\nSTDERR: %s", $process->getOutput(), $process->getErrorOutput()),
+        );
+
+        $id = explode('===ID===', $process->getOutput(), 2)[1];
+        $this->assertStringContainsString('uid=1000(dde)', $id);
+        $this->assertStringContainsString('gid=1000(dde)', $id);
+
+        // The adduser/addgroup usage dump is the exact regression signature.
+        $combined = $process->getOutput().$process->getErrorOutput();
+        $this->assertStringNotContainsString('Option is ambiguous', $combined);
+        $this->assertStringNotContainsString('adduser [--uid', $combined);
+    }
 }
