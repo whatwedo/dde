@@ -11,12 +11,16 @@ The dde entrypoint (`resources/entrypoint.sh`) is a POSIX shell script that runs
 
 The entrypoint creates a `dde` user and group matching the host UID/GID (passed via `DDE_UID` and `DDE_GID` environment variables, defaulting to 1000).
 
-User creation follows a cascading fallback strategy:
+Because the entrypoint runs on **arbitrary** base images, it first detects which user/group tooling the image ships, then fires exactly one command for that dialect:
 
-1. **adduser/useradd** -- tries the system's standard user creation commands
-2. **Manual /etc/passwd** -- if both fail, appends directly to `/etc/passwd` and creates the home directory
+1. **shadow** (`useradd`/`groupadd`) -- preferred when present (Debian, and Alpine once shadow is installed); flags are identical on every distro.
+2. **busybox** (`adduser -u -G -D` / `addgroup -g`) -- base Alpine.
+3. **debian** (`adduser --uid --ingroup --disabled-password` / `addgroup --gid`) -- Debian's Perl `adduser` when `useradd` is absent.
+4. **Manual /etc/passwd** -- genuine last resort when no usable tool exists or the tool fails.
 
-Group creation similarly falls back from `addgroup` to existing GID reuse.
+The dialect is resolved **once** into a `DIALECT` variable. `adduser`/`addgroup` is the same command name for two incompatible programs (BusyBox's C binary vs Debian's Perl script), and both exit `0` on `--help`, so the only reliable discriminator is `adduser --help 2>&1 | grep -qi busybox`. Feeding BusyBox short flags to Debian's `adduser` makes it abort with an "Option is ambiguous" usage dump and leaves the user uncreated -- the regression that flooded a WordPress container's log and forced the raw `/etc/passwd` fallback on every start.
+
+Group creation is skipped when `DDE_GID` is already taken; the user then joins that existing group (resolved via `getent group "$DDE_GID"`) instead of colliding on the GID. On failure each branch emits a single `dde-entrypoint: warning: ...` line to stderr -- loud enough to diagnose, never fatal, so images that ran fine before dde injected the entrypoint keep starting.
 
 ### 2. UID/GID Remapping
 
