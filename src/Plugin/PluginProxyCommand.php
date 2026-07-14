@@ -64,7 +64,9 @@ final class PluginProxyCommand extends Command
         /** @var list<string> $command */
         $command = array_merge([$this->plugin->scriptPath], is_array($args) ? array_values($args) : []);
 
-        $process = $this->processFactory->create($command, null, 300);
+        // No timeout: plugins may run arbitrarily long (deploys, imports,
+        // shells). The developer watches the output and aborts with Ctrl-C.
+        $process = $this->processFactory->create($command, null, null);
 
         if (Process::isTtySupported() && $output instanceof ConsoleOutputInterface) {
             $process->setTty(true);
