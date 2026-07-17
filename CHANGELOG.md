@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Traefik's built-in dashboard is now exposed at `https://traefik.test`, surfacing misconfigured routers directly instead of only in the container logs. Existing installations pick this up after `dde system:down && dde system:up` (a plain restart is not enough — the labels and static `traefik.yml` only apply when the container is recreated).
 
+### Fixed
+
+- `sudo dde …` is now rejected up-front (exit 1) so `~/.dde` can no longer end up with root-owned files that break every subsequent unprivileged run. Real-root sessions without `SUDO_USER` (containers, CI) are unaffected. (#142)
+
 ## [2.0.0-beta.2] - 2026-06-01
 
 ### Added
