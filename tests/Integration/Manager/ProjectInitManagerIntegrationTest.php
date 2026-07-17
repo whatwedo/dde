@@ -72,7 +72,7 @@ final class ProjectInitManagerIntegrationTest extends TestCase
 
         $gitignorePath = $this->tempDir.'/.dde/.gitignore';
         self::assertFileExists($gitignorePath);
-        self::assertSame("data/\n!data/.gitkeep\nsnapshots/\n!snapshots/.gitkeep\n", file_get_contents($gitignorePath));
+        self::assertSame("data/*\n!data/.gitkeep\nsnapshots/*\n!snapshots/.gitkeep\n", file_get_contents($gitignorePath));
     }
 
     public function testDryRunDoesNotCreateAnything(): void

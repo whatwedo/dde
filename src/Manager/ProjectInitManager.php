@@ -102,7 +102,7 @@ final readonly class ProjectInitManager
             $skipped[] = $gitignoreRelative;
         } else {
             if (! $isDryRun) {
-                $this->filesystem->dumpFile($gitignorePath, "data/\n!data/.gitkeep\nsnapshots/\n!snapshots/.gitkeep\n");
+                $this->filesystem->dumpFile($gitignorePath, "data/*\n!data/.gitkeep\nsnapshots/*\n!snapshots/.gitkeep\n");
             }
 
             $created[] = $gitignoreRelative;
