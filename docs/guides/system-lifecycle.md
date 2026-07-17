@@ -50,6 +50,37 @@ the post-install hook. On Homebrew it shows up as a caveats message.
 default certificate — those are one-off setup steps, not per-version
 refresh steps. Package manager upgrades run `system:update` automatically.
 
+## Privilege handling
+
+Run `dde system:install` — like every dde command — **without** `sudo`.
+`sudo dde …` is rejected up-front (exit 1): it would leave files under
+`~/.dde` owned by `root:root`, breaking every subsequent unprivileged
+invocation. Real-root sessions without `SUDO_USER` (containers, CI
+provisioning) are not affected by the guard.
+
+For the few host-level paths that genuinely require root —
+`/etc/resolver/test` on macOS, `/etc/systemd/resolved.conf.d/` and
+`/etc/NetworkManager/dnsmasq.d/` on Linux — dde escalates internally.
+Each write is attempted as the current user first; only when that fails
+does dde announce the operation and retry it once through `sudo`. Files
+under `~/.dde` are never escalated and always stay owned by you.
+
+Behaviour by environment:
+
+- **Interactive shell:** dde announces what needs root, then the regular
+  `sudo` password prompt appears on your TTY. Answer it once; the install
+  continues.
+- **CI runner with passwordless sudo, no TTY:** no password prompt appears;
+  the escalation is still announced on STDERR.
+- **No TTY and no passwordless sudo:** the step fails with a non-zero exit
+  code; the error names the operation that needed root.
+
+Upgrading from dde v1 needs no root at all: a v1 resolver file is
+recognised as already configured even though v1 wrote it without a
+trailing newline.
+
+Implementation contract: [system:install internals](../internals/system-install.md).
+
 ## Quick reference
 
 | Situation                                    | Command            |
