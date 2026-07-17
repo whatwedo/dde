@@ -156,3 +156,11 @@ commands are now explicitly symmetric:
   that are bound to the dde binary (shell completion, Claude skill).
   Package managers run this automatically after an `apt` / `dnf` / `pacman` /
   `apk` upgrade; Homebrew surfaces it in its caveats.
+
+## DNS resolver leftovers
+
+The `/etc/resolver/test` file (macOS) written by dde v1 is recognised as already
+configured by v2 — including v1's missing trailing newline — so `dde
+system:install` after an upgrade needs no root and no manual cleanup. Never run
+`dde` with `sudo`; it escalates internally where required (see
+[Privilege handling](system-lifecycle.md#privilege-handling)).
