@@ -86,8 +86,11 @@ Built-in `project:*` commands always take precedence. A plugin whose `@command` 
 
 Plugins run on the **host machine** via `PluginProxyCommand`. The plugin script is executed directly as a process with:
 
-- A 300-second timeout
-- TTY support when the terminal supports it (interactive commands work)
+- No timeout -- plugins may run arbitrarily long (deploys, imports, shells).
+  You watch the output and press Ctrl-C to abort if it looks stuck.
+- TTY support when the terminal supports it -- the plugin keeps the real
+  terminal, so colours and interactive prompts (`docker exec -it`, `read`, ...)
+  work as usual.
 - Arguments appended to the script invocation
 - Exit code forwarded to the caller
 

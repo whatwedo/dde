@@ -64,7 +64,7 @@ final class ProjectInitCommandTest extends TestCase
 
         $gitignorePath = $this->tempDir.'/.dde/.gitignore';
         $this->assertFileExists($gitignorePath);
-        $this->assertSame("data/\n!data/.gitkeep\nsnapshots/\n!snapshots/.gitkeep\n", file_get_contents($gitignorePath));
+        $this->assertSame("data/*\n!data/.gitkeep\nsnapshots/*\n!snapshots/.gitkeep\n", file_get_contents($gitignorePath));
     }
 
     public function testExecuteCreatesConfigYaml(): void

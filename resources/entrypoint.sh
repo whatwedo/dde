@@ -12,26 +12,55 @@ DDE_GID="${DDE_GID:-1000}"
 # Skip entirely when not running as root or when essential tools are missing (minimal images)
 if command -v id >/dev/null 2>&1 && [ "$(id -u)" = "0" ]; then
     if ! id dde >/dev/null 2>&1; then
-        # Create group: try dedicated group first, fall back to reusing existing GID
-        if command -v getent >/dev/null 2>&1 && ! getent group dde >/dev/null 2>&1; then
-            addgroup -g "$DDE_GID" dde 2>/dev/null || addgroup dde 2>/dev/null || true
+        # Detect the user/group tool dialect ONCE, then fire exactly one command
+        # whose exit code is a real success/failure signal. `adduser`/`addgroup`
+        # is the same command name but two different programs: BusyBox (Alpine,
+        # short flags -u -G -D) and Debian's Perl adduser (long flags --uid
+        # --ingroup --disabled-password) — only --help tells them apart, both exit
+        # 0. shadow's useradd/groupadd take identical flags on every distro, so
+        # prefer them; they are absent only on base Alpine. The old code fed
+        # BusyBox flags to whatever `adduser` resolved to, so on Debian it dumped
+        # the adduser usage text into the container log and left the user uncreated.
+        if command -v useradd >/dev/null 2>&1; then
+            DIALECT="shadow"
+        elif command -v adduser >/dev/null 2>&1 && adduser --help 2>&1 | grep -qi busybox; then
+            DIALECT="busybox"
+        elif command -v adduser >/dev/null 2>&1; then
+            DIALECT="debian"
+        else
+            DIALECT="none"
         fi
 
-        # Determine group name for user creation
+        # Create group: dedicated group at DDE_GID, unless that GID is already taken
+        # (then the user reuses the existing group below).
+        if command -v getent >/dev/null 2>&1 \
+            && ! getent group dde >/dev/null 2>&1 \
+            && ! getent group "$DDE_GID" >/dev/null 2>&1; then
+            case "$DIALECT" in
+                shadow)  groupadd -g "$DDE_GID" dde ;;
+                busybox) addgroup -g "$DDE_GID" dde ;;
+                debian)  addgroup --gid "$DDE_GID" dde ;;
+            esac || echo "dde-entrypoint: warning: could not create group dde (gid $DDE_GID)" >&2
+        fi
+
+        # Resolve the group name to hand to user creation: 'dde' if it exists,
+        # otherwise whatever already owns DDE_GID, else nogroup.
         DDE_GROUP="dde"
         if command -v getent >/dev/null 2>&1 && ! getent group dde >/dev/null 2>&1; then
             DDE_GROUP=$(getent group "$DDE_GID" 2>/dev/null | cut -d: -f1)
             DDE_GROUP="${DDE_GROUP:-nogroup}"
         fi
 
-        # Create user
-        if command -v adduser >/dev/null 2>&1; then
-            adduser -u "$DDE_UID" -G "$DDE_GROUP" -D -h /home/dde -s /bin/sh dde 2>/dev/null || true
-        elif command -v useradd >/dev/null 2>&1; then
-            useradd -u "$DDE_UID" -g "$DDE_GROUP" -m -d /home/dde -s /bin/sh dde 2>/dev/null || true
-        fi
+        # Create user: exactly one command for the detected dialect.
+        case "$DIALECT" in
+            shadow)  useradd -u "$DDE_UID" -g "$DDE_GROUP" -m -d /home/dde -s /bin/sh dde ;;
+            busybox) adduser -u "$DDE_UID" -G "$DDE_GROUP" -D -h /home/dde -s /bin/sh dde ;;
+            debian)  adduser --uid "$DDE_UID" --ingroup "$DDE_GROUP" --disabled-password \
+                         --home /home/dde --shell /bin/sh --gecos "" dde ;;
+        esac || echo "dde-entrypoint: warning: user creation via $DIALECT failed" >&2
 
-        # Fallback: if user still doesn't exist, create manually
+        # Last resort: no usable tool (DIALECT=none) or the tool genuinely failed.
+        # A real fallback now, not a routine sibling of a broken command.
         if ! id dde >/dev/null 2>&1 && [ -w /etc/passwd ]; then
             echo "dde:x:${DDE_UID}:${DDE_GID}:dde:/home/dde:/bin/sh" >> /etc/passwd
             mkdir -p /home/dde 2>/dev/null || true

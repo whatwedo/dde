@@ -576,6 +576,22 @@ readonly class DockerComposeManager
 
             $volumes[] = 'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro';
 
+            // In a worktree the checked-out `.git` is a file pointing at
+            // `<mainDirectory>/.git/worktrees/<name>` — an absolute host path
+            // that lives outside the mounted worktree directory. Without it the
+            // in-container git fails with "not a git repository". Bind-mount the
+            // main repository's `.git` at the identical host path so the gitdir
+            // pointer and `commondir` resolve and git works inside the container.
+            // Read-write so git can refresh the worktree index; trust is granted
+            // by the built-in `git` adapter (safe.directory).
+            if ($worktreeInfo instanceof WorktreeInfo) {
+                $mainGitDir = $worktreeInfo->mainDirectory.'/.git';
+
+                if ($this->filesystem->exists($mainGitDir)) {
+                    $volumes[] = $mainGitDir.':'.$mainGitDir;
+                }
+            }
+
             $serviceOverride = [
                 'user' => '0:0',
                 'entrypoint' => ['/dde/entrypoint.sh'],
