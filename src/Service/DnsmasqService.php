@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Manager\DockerManager;
 use App\Model\ContainerConfig;
+use App\Util\PrivilegeEscalator;
 use App\Util\ProcessFactory;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -18,6 +19,7 @@ final class DnsmasqService extends AbstractSystemService
         private readonly string $projectDir,
         private readonly string $dataDir,
         private readonly ProcessFactory $processFactory = new ProcessFactory(),
+        private readonly PrivilegeEscalator $privilegeEscalator = new PrivilegeEscalator(),
     ) {
         parent::__construct($dockerManager);
     }
@@ -114,7 +116,9 @@ final class DnsmasqService extends AbstractSystemService
      *
      * On macOS: writes a resolver file to /etc/resolver/test.
      * On Linux: configures systemd-resolved or NetworkManager.
-     * Both require root privileges (the installer script runs with sudo).
+     * Host-level writes below /etc are routed through {@see PrivilegeEscalator}:
+     * attempted as the current user first, retried once via sudo on failure.
+     * dde itself must not run under sudo — bin/console rejects that up-front.
      *
      * @throws \RuntimeException if the platform is not supported
      */
@@ -179,19 +183,13 @@ final class DnsmasqService extends AbstractSystemService
         $configFile = $configDir.'/dde-test.conf';
         $content = "[Resolve]\nDNS=127.0.0.1\nDomains=~test\n";
 
-        if ($this->filesystem->exists($configFile) && $this->filesystem->readFile($configFile) === $content) {
+        if ($this->isDnsConfigured($configFile, $content)) {
             return;
         }
 
-        $this->filesystem->mkdir($configDir);
-        $this->filesystem->dumpFile($configFile, $content);
-
-        $process = $this->processFactory->create(['systemctl', 'restart', 'systemd-resolved']);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException(sprintf('Failed to restart systemd-resolved: %s', $process->getErrorOutput()));
-        }
+        $this->privilegeEscalator->ensureDir($configDir);
+        $this->privilegeEscalator->writeFile($configFile, $content);
+        $this->privilegeEscalator->run(['systemctl', 'restart', 'systemd-resolved']);
     }
 
     private function configureDnsNetworkManager(): void
@@ -200,33 +198,39 @@ final class DnsmasqService extends AbstractSystemService
         $configFile = $configDir.'/dde-test.conf';
         $content = "server=/test/127.0.0.1\n";
 
-        if ($this->filesystem->exists($configFile) && $this->filesystem->readFile($configFile) === $content) {
+        if ($this->isDnsConfigured($configFile, $content)) {
             return;
         }
 
-        $this->filesystem->mkdir($configDir);
-        $this->filesystem->dumpFile($configFile, $content);
-
-        $process = $this->processFactory->create(['systemctl', 'restart', 'NetworkManager']);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException(sprintf('Failed to restart NetworkManager: %s', $process->getErrorOutput()));
-        }
+        $this->privilegeEscalator->ensureDir($configDir);
+        $this->privilegeEscalator->writeFile($configFile, $content);
+        $this->privilegeEscalator->run(['systemctl', 'restart', 'NetworkManager']);
     }
 
     private function configureDnsMacOs(): void
     {
         $resolverDir = '/etc/resolver';
         $resolverFile = $resolverDir.'/test';
-
         $content = $this->getResolverContent();
 
-        if ($this->filesystem->exists($resolverFile) && $this->filesystem->readFile($resolverFile) === $content) {
+        if ($this->isDnsConfigured($resolverFile, $content)) {
             return;
         }
 
-        $this->filesystem->mkdir($resolverDir);
-        $this->filesystem->dumpFile($resolverFile, $content);
+        $this->privilegeEscalator->ensureDir($resolverDir);
+        $this->privilegeEscalator->writeFile($resolverFile, $content);
+    }
+
+    /**
+     * Idempotency check for all three DNS config paths. The comparison is
+     * trim-tolerant because dde v1 wrote content-equivalent files without a
+     * trailing newline; recognising them means upgrades never need root.
+     */
+    private function isDnsConfigured(string $file, string $content): bool
+    {
+        // rtrim (not trim): only a missing trailing newline is tolerated (dde v1
+        // wrote /etc/resolver/test without one); leading whitespace means the
+        // file differs and must be rewritten.
+        return $this->filesystem->exists($file) && rtrim($this->filesystem->readFile($file), "\r\n") === rtrim($content, "\r\n");
     }
 }

@@ -8,6 +8,7 @@ use App\Manager\DockerManager;
 use App\Model\ContainerConfig;
 use App\Service\DnsmasqService;
 use App\Service\ImageBuilder;
+use App\Util\PrivilegeEscalator;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -285,6 +286,147 @@ final class DnsmasqServiceTest extends TestCase
             ->willReturn(true);
 
         $this->assertTrue($this->service->isRunning());
+    }
+
+    public function testConfigureDnsSystemdResolvedRoutesThroughEscalator(): void
+    {
+        $filesystem = $this->createMock(Filesystem::class);
+        $filesystem->expects($this->once())->method('exists')->with('/etc/systemd/resolved.conf.d/dde-test.conf')->willReturn(false);
+
+        $escalator = $this->createMock(PrivilegeEscalator::class);
+        $escalator->expects($this->once())->method('ensureDir')->with('/etc/systemd/resolved.conf.d');
+        $escalator->expects($this->once())->method('writeFile')
+            ->with('/etc/systemd/resolved.conf.d/dde-test.conf', "[Resolve]\nDNS=127.0.0.1\nDomains=~test\n");
+        $escalator->expects($this->once())->method('run')->with(['systemctl', 'restart', 'systemd-resolved']);
+
+        $service = $this->createServiceWithEscalator($filesystem, $escalator);
+        $this->invokePrivateMethod($service, 'configureDnsSystemdResolved');
+    }
+
+    public function testConfigureDnsNetworkManagerRoutesThroughEscalator(): void
+    {
+        $filesystem = $this->createMock(Filesystem::class);
+        $filesystem->expects($this->once())->method('exists')->with('/etc/NetworkManager/dnsmasq.d/dde-test.conf')->willReturn(false);
+
+        $escalator = $this->createMock(PrivilegeEscalator::class);
+        $escalator->expects($this->once())->method('ensureDir')->with('/etc/NetworkManager/dnsmasq.d');
+        $escalator->expects($this->once())->method('writeFile')
+            ->with('/etc/NetworkManager/dnsmasq.d/dde-test.conf', "server=/test/127.0.0.1\n");
+        $escalator->expects($this->once())->method('run')->with(['systemctl', 'restart', 'NetworkManager']);
+
+        $service = $this->createServiceWithEscalator($filesystem, $escalator);
+        $this->invokePrivateMethod($service, 'configureDnsNetworkManager');
+    }
+
+    public function testConfigureDnsMacOsRoutesThroughEscalator(): void
+    {
+        $filesystem = $this->createMock(Filesystem::class);
+        $filesystem->expects($this->once())->method('exists')->with('/etc/resolver/test')->willReturn(false);
+
+        $escalator = $this->createMock(PrivilegeEscalator::class);
+        $escalator->expects($this->once())->method('ensureDir')->with('/etc/resolver');
+        $escalator->expects($this->once())->method('writeFile')->with('/etc/resolver/test', "nameserver 127.0.0.1\n");
+        $escalator->expects($this->never())->method('run');
+
+        $service = $this->createServiceWithEscalator($filesystem, $escalator);
+        $this->invokePrivateMethod($service, 'configureDnsMacOs');
+    }
+
+    public function testConfigureDnsMacOsRecognisesV1ResolverFileWithoutTrailingNewline(): void
+    {
+        // Regression: dde v1 wrote /etc/resolver/test without a trailing newline. The
+        // exact-match check never short-circuited, so v2 tried to rewrite a root-owned
+        // file it did not need to touch (205).
+        $filesystem = $this->createMock(Filesystem::class);
+        $filesystem->expects($this->once())->method('exists')->with('/etc/resolver/test')->willReturn(true);
+        $filesystem->expects($this->once())->method('readFile')->with('/etc/resolver/test')->willReturn('nameserver 127.0.0.1');
+
+        $escalator = $this->createMock(PrivilegeEscalator::class);
+        $escalator->expects($this->never())->method($this->anything());
+
+        $service = $this->createServiceWithEscalator($filesystem, $escalator);
+        $this->invokePrivateMethod($service, 'configureDnsMacOs');
+    }
+
+    public function testConfigureDnsMacOsRewritesResolverFileWithLeadingWhitespace(): void
+    {
+        // Only a missing trailing newline is tolerated; leading whitespace means
+        // the file differs and must be rewritten.
+        $filesystem = $this->createMock(Filesystem::class);
+        $filesystem->expects($this->once())->method('exists')->with('/etc/resolver/test')->willReturn(true);
+        $filesystem->expects($this->once())->method('readFile')->with('/etc/resolver/test')->willReturn("\n nameserver 127.0.0.1\n");
+
+        $escalator = $this->createMock(PrivilegeEscalator::class);
+        $escalator->expects($this->once())->method('ensureDir')->with('/etc/resolver');
+        $escalator->expects($this->once())->method('writeFile')->with('/etc/resolver/test', "nameserver 127.0.0.1\n");
+
+        $service = $this->createServiceWithEscalator($filesystem, $escalator);
+        $this->invokePrivateMethod($service, 'configureDnsMacOs');
+    }
+
+    public function testConfigureDnsSystemdResolvedSkipsWhenAlreadyConfigured(): void
+    {
+        $filesystem = $this->createMock(Filesystem::class);
+        $filesystem->method('exists')->willReturn(true);
+        $filesystem->method('readFile')->willReturn("[Resolve]\nDNS=127.0.0.1\nDomains=~test\n");
+
+        $escalator = $this->createMock(PrivilegeEscalator::class);
+        $escalator->expects($this->never())->method($this->anything());
+
+        $service = $this->createServiceWithEscalator($filesystem, $escalator);
+        $this->invokePrivateMethod($service, 'configureDnsSystemdResolved');
+    }
+
+    public function testConfigureDnsSystemdResolvedRewritesWhenContentDiffers(): void
+    {
+        $filesystem = $this->createMock(Filesystem::class);
+        $filesystem->method('exists')->willReturn(true);
+        $filesystem->method('readFile')->willReturn("[Resolve]\nDNS=8.8.8.8\n");
+
+        $escalator = $this->createMock(PrivilegeEscalator::class);
+        $escalator->expects($this->once())->method('writeFile');
+
+        $service = $this->createServiceWithEscalator($filesystem, $escalator);
+        $this->invokePrivateMethod($service, 'configureDnsSystemdResolved');
+    }
+
+    public function testEnsureConfigNeverEscalates(): void
+    {
+        // $DDE_DATA_DIR files must stay owned by the invoking user: routing them
+        // through sudo would reproduce the root-owned-data-dir incident (142).
+        $escalator = $this->createMock(PrivilegeEscalator::class);
+        $escalator->expects($this->never())->method($this->anything());
+
+        $service = new DnsmasqService(
+            dockerManager: $this->dockerManager,
+            filesystem: $this->filesystem,
+            imageBuilder: new ImageBuilder($this->dockerManager, $this->filesystem),
+            projectDir: $this->projectDir,
+            dataDir: $this->tempDir,
+            privilegeEscalator: $escalator,
+        );
+        $service->ensureConfig();
+
+        $this->assertFileExists($this->tempDir.'/dnsmasq/dnsmasq.conf');
+    }
+
+    private function createServiceWithEscalator(
+        Filesystem&MockObject $filesystem,
+        PrivilegeEscalator&MockObject $escalator,
+    ): DnsmasqService {
+        return new DnsmasqService(
+            dockerManager: $this->dockerManager,
+            filesystem: $filesystem,
+            imageBuilder: new ImageBuilder($this->dockerManager, $filesystem),
+            projectDir: $this->projectDir,
+            dataDir: $this->tempDir,
+            privilegeEscalator: $escalator,
+        );
+    }
+
+    private function invokePrivateMethod(DnsmasqService $service, string $method): void
+    {
+        new \ReflectionMethod($service, $method)->invoke($service);
     }
 
     protected function setUp(): void
