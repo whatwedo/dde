@@ -8,6 +8,8 @@ use App\Model\ContainerConfig;
 
 final class MailpitService extends AbstractSystemService implements ProjectNetworkAwareInterface
 {
+    public const string HOSTNAME = 'mail.test';
+
     /**
      * @var list<string>
      */
@@ -57,8 +59,8 @@ final class MailpitService extends AbstractSystemService implements ProjectNetwo
             labels: [
                 ...$this->getDefaultLabels(),
                 'traefik.enable' => 'true',
-                'traefik.http.routers.mailpit.rule' => 'Host(`mail.test`)',
-                'traefik.http.routers.mailpit-tls.rule' => 'Host(`mail.test`)',
+                'traefik.http.routers.mailpit.rule' => sprintf('Host(`%s`)', self::HOSTNAME),
+                'traefik.http.routers.mailpit-tls.rule' => sprintf('Host(`%s`)', self::HOSTNAME),
                 'traefik.http.routers.mailpit-tls.tls' => 'true',
                 'traefik.http.services.mailpit.loadbalancer.server.port' => '8025',
             ],

@@ -7,6 +7,7 @@ namespace Tests\Unit\Manager;
 use App\Manager\ClaudeCodeManager;
 use App\Manager\CompletionManager;
 use App\Manager\DockerManager;
+use App\Manager\MkcertManager;
 use App\Manager\SystemLifecycleManager;
 use App\Model\ContainerInfo;
 use App\Model\ContainerStatus;
@@ -28,6 +29,8 @@ final class SystemLifecycleManagerTest extends TestCase
     private CompletionManager&MockObject $completionManager;
 
     private ClaudeCodeManager&MockObject $claudeCodeManager;
+
+    private MkcertManager&MockObject $mkcertManager;
 
     private SystemLifecycleManager $manager;
 
@@ -60,6 +63,16 @@ final class SystemLifecycleManagerTest extends TestCase
             ]],
             $result['globalServices']
         );
+    }
+
+    public function testUpEnsuresSystemCertificate(): void
+    {
+        $this->serviceRegistry->method('getGlobalServices')->willReturn([]);
+        $this->dockerManager->method('networkExists')->willReturn(true);
+
+        $this->mkcertManager->expects($this->once())->method('ensureSystemCertificate');
+
+        $this->manager->up();
     }
 
     public function testUpReportsAlreadyRunningServices(): void
@@ -518,12 +531,14 @@ final class SystemLifecycleManagerTest extends TestCase
         $this->dockerManager = $this->createMock(DockerManager::class);
         $this->completionManager = $this->createMock(CompletionManager::class);
         $this->claudeCodeManager = $this->createMock(ClaudeCodeManager::class);
+        $this->mkcertManager = $this->createMock(MkcertManager::class);
 
         $this->manager = new SystemLifecycleManager(
             $this->serviceRegistry,
             $this->dockerManager,
             $this->completionManager,
             $this->claudeCodeManager,
+            $this->mkcertManager,
             '/tmp/dde-config',
         );
     }

@@ -17,6 +17,7 @@ readonly class SystemLifecycleManager
         private DockerManager $dockerManager,
         private CompletionManager $completionManager,
         private ClaudeCodeManager $claudeCodeManager,
+        private MkcertManager $mkcertManager,
         private string $configDir,
     ) {
     }
@@ -29,6 +30,7 @@ readonly class SystemLifecycleManager
     public function up(?\Closure $onProgress = null): array
     {
         $this->ensureDdeNetwork();
+        $this->mkcertManager->ensureSystemCertificate();
 
         $globalServices = [];
 
