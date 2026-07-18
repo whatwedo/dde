@@ -107,6 +107,7 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
 
 Required touch-points per feature:
 
+- **Every user-visible change** (`feat`, `fix`, `perf`) → entry in `CHANGELOG.md`, in the same branch. No exceptions — a missing changelog entry is the most common review finding.
 - **User-facing behaviour** (new command, new flag, new automatic behaviour) → `docs/guides/<topic>.md`. Add a cross-reference from related guides.
 - **Architecture / internals change** (new manager, new util, reshuffled responsibilities) → update this `AGENTS.md` (architecture list) plus a note in `docs/internals/<topic>.md` when the internal contract is non-obvious.
 - **v1 → v2 migration impact** (changes that affect how a legacy project is upgraded) → extend `docs/guides/migration-from-v1.md`.
@@ -123,7 +124,7 @@ Docs that live with the feature:
 Conventional Commits: `feat(project):`, `fix(config):`, `test(manager):`, `docs(commands):`, `chore(ci):`
 
 - **Subject:** lowercase, imperative, meta-info in type+scope — the subject alone must stand on its own (not relying on type/scope to complete the sentence).
-- **Body:** explain the *why*, not the *what*. Include constraints, prior incidents, the alternative paths considered. Can be long.
+- **Body:** explain the *why*, not the *what* — 1–2 sentences (effect + motivation). Never a multi-paragraph essay, never a file-by-file walkthrough; the diff already carries the *what*.
 - **`feat`** is reserved for changes that are visible to end-users of dde (new command, new flag, new automatic behaviour they experience). Internal utilities, new framework classes, refactor-enablers, internal APIs → `chore` or `refactor`. Be strict: if a user would not notice it, it is not a feature.
 - **`refactor`** when the surface stays the same but the implementation moves (renaming, extraction, delegation).
 - **`chore`** for everything that doesn't belong elsewhere: new internal classes without behaviour change, tooling tweaks, formatting that isn't pure `style`.
