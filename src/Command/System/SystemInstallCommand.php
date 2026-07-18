@@ -60,9 +60,11 @@ final class SystemInstallCommand extends AbstractSystemCommand
             $this->mkcertManager->install();
         }, $hasErrors);
 
-        // Step 2: Generate default wildcard certificate for *.test
-        $results[] = $this->runStep($io, $formatter, 'default-cert', 'Generating default TLS certificate', function (): void {
+        // Step 2: Generate default wildcard certificate for *.test plus the
+        // dedicated certificate for system hostnames (mail.test, traefik.test)
+        $results[] = $this->runStep($io, $formatter, 'default-cert', 'Generating TLS certificates', function (): void {
             $this->mkcertManager->ensureDefaultCertificate();
+            $this->mkcertManager->ensureSystemCertificate();
         }, $hasErrors);
 
         // Step 3: Ensure Docker network

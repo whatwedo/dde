@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Manager;
 
+use App\Service\MailpitService;
+use App\Service\TraefikService;
 use App\Util\ProcessFactory;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -11,6 +13,8 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 
 readonly class MkcertManager
 {
+    public const string SYSTEM_CERT_NAME = '_system';
+
     public function __construct(
         private Filesystem $filesystem,
         private string $dataDir,
@@ -36,6 +40,20 @@ readonly class MkcertManager
 
         $this->ensureCertificate($certName, $domains);
         $this->updateTraefikDynamicConfig();
+    }
+
+    /**
+     * Ensures the dedicated certificate for the system hostnames (Mailpit UI,
+     * Traefik dashboard). These cannot rely on the *.test default certificate:
+     * browsers treat a wildcard directly on a TLD as covering a public suffix
+     * and reject it, so single-label hosts need explicit SANs.
+     */
+    public function ensureSystemCertificate(): void
+    {
+        $this->ensureForDomains(self::SYSTEM_CERT_NAME, [
+            MailpitService::HOSTNAME,
+            TraefikService::DASHBOARD_HOSTNAME,
+        ]);
     }
 
     /**
