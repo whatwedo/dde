@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Manager;
 
 use App\Manager\MkcertManager;
+use App\Util\ProcessFactory;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Process\Process;
 
 final class MkcertManagerTest extends TestCase
 {
@@ -178,6 +180,61 @@ final class MkcertManagerTest extends TestCase
         $this->service->updateTraefikDynamicConfig();
 
         $this->assertDirectoryExists($this->tempDir.'/traefik/dynamic');
+    }
+
+    public function testEnsureSystemCertificateGeneratesCertForSystemHostnames(): void
+    {
+        $commands = [];
+        $service = $this->createManagerWithMkcert(true, $commands);
+
+        $service->ensureSystemCertificate();
+
+        $mkcertCommand = end($commands);
+        $this->assertIsArray($mkcertCommand);
+        $this->assertSame('mkcert', $mkcertCommand[0]);
+        $this->assertContains('mail.test', $mkcertCommand);
+        $this->assertContains('traefik.test', $mkcertCommand);
+        $this->assertContains($this->tempDir.'/certs/_system.pem', $mkcertCommand);
+        $this->assertContains($this->tempDir.'/certs/_system-key.pem', $mkcertCommand);
+
+        $registry = $service->loadRegistry();
+        $this->assertSame(['mail.test', 'traefik.test'], $registry['_system']['domains']);
+    }
+
+    public function testEnsureSystemCertificateIsNoOpWhenMkcertMissing(): void
+    {
+        $commands = [];
+        $service = $this->createManagerWithMkcert(false, $commands);
+
+        $service->ensureSystemCertificate();
+
+        $this->assertSame([['which', 'mkcert']], $commands);
+        $this->assertSame([], $service->loadRegistry());
+    }
+
+    /**
+     * @param list<list<string>> $commands collects every command handed to the process factory
+     */
+    private function createManagerWithMkcert(bool $mkcertInstalled, array &$commands): MkcertManager
+    {
+        $process = $this->createStub(Process::class);
+        $process->method('isSuccessful')->willReturn($mkcertInstalled);
+
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturnCallback(
+            function (array $command) use (&$commands, $process): Process {
+                $commands[] = $command;
+
+                return $process;
+            },
+        );
+
+        return new MkcertManager(
+            filesystem: $this->filesystem,
+            dataDir: $this->tempDir,
+            clock: $this->clock,
+            processFactory: $processFactory,
+        );
     }
 
     protected function setUp(): void

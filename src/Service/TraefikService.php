@@ -10,6 +10,8 @@ use Symfony\Component\Filesystem\Filesystem;
 
 final class TraefikService extends AbstractSystemService implements ProjectNetworkAwareInterface
 {
+    public const string DASHBOARD_HOSTNAME = 'traefik.test';
+
     public function __construct(
         DockerManager $dockerManager,
         private readonly Filesystem $filesystem,
@@ -113,9 +115,12 @@ final class TraefikService extends AbstractSystemService implements ProjectNetwo
      * Routes the built-in Traefik dashboard (api@internal) to https://traefik.test
      * so configuration errors of any project router become visible at a glance.
      *
-     * TLS is served by the wildcard *.test default certificate; no dedicated
-     * certificate is required. The docker provider reads these labels off the
-     * Traefik container itself, hence the explicit traefik.enable=true.
+     * TLS is served by the dedicated system certificate (`_system`), which
+     * covers the single-label system hosts — browsers reject the wildcard
+     * *.test default certificate for them because a wildcard directly on a
+     * TLD counts as covering a public suffix. The docker provider reads these
+     * labels off the Traefik container itself, hence the explicit
+     * traefik.enable=true.
      *
      * @return array<string, string>
      */
@@ -123,7 +128,7 @@ final class TraefikService extends AbstractSystemService implements ProjectNetwo
     {
         return [
             'traefik.enable' => 'true',
-            'traefik.http.routers.dashboard.rule' => 'Host(`traefik.test`)',
+            'traefik.http.routers.dashboard.rule' => sprintf('Host(`%s`)', self::DASHBOARD_HOSTNAME),
             'traefik.http.routers.dashboard.service' => 'api@internal',
             'traefik.http.routers.dashboard.entrypoints' => 'websecure',
             'traefik.http.routers.dashboard.tls' => 'true',

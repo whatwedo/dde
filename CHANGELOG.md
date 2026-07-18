@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- `https://mail.test` and `https://traefik.test` no longer trigger a browser certificate warning: they get a dedicated certificate, ensured on every `dde system:up`. (#234)
 - `sudo dde …` is now rejected up-front (exit 1) so `~/.dde` can no longer end up with root-owned files that break every subsequent unprivileged run. Real-root sessions without `SUDO_USER` (containers, CI) are unaffected. (#142)
 - `dde system:install` no longer requires a `sudo` prefix: the host-level DNS writes (`/etc/resolver/test` on macOS, `/etc/systemd/resolved.conf.d/` and `/etc/NetworkManager/dnsmasq.d/` on Linux) escalate internally — attempted as the current user first, retried once via `sudo` with a clear announcement. Files under `~/.dde` always stay owned by the invoking user. (#142, #205)
 - A `/etc/resolver/test` left behind by dde v1 (missing trailing newline) is now recognised as already configured, so upgrading needs no root at all. (#205)
