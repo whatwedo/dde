@@ -8,7 +8,9 @@ use App\Plugin\PluginCommandLoader;
 use Symfony\Bundle\FrameworkBundle\Console\Application as BaseApplication;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputDefinition;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
 use Symfony\Component\HttpKernel\KernelInterface;
 
@@ -79,6 +81,40 @@ final class Application extends BaseApplication
         return $value;
     }
 
+    public function doRun(InputInterface $input, OutputInterface $output): int
+    {
+        $projectDirectory = self::resolveProjectDirectory($input);
+
+        if ($projectDirectory !== null && ! chdir($projectDirectory)) {
+            throw new \RuntimeException(sprintf('Could not change into project directory "%s".', $projectDirectory));
+        }
+
+        return parent::doRun($input, $output);
+    }
+
+    /**
+     * Reads --project-dir / -C from the raw tokens: it must take effect before
+     * plugin discovery during command registration, i.e. before input binding.
+     *
+     * @throws \RuntimeException when the given path is not a directory
+     */
+    public static function resolveProjectDirectory(InputInterface $input): ?string
+    {
+        $value = $input->getParameterOption(['--project-dir', '-C'], null, true);
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $resolved = realpath($value);
+
+        if ($resolved === false || ! is_dir($resolved)) {
+            throw new \RuntimeException(sprintf('Project directory "%s" is not a directory.', $value));
+        }
+
+        return $resolved;
+    }
+
     protected function getDefaultInputDefinition(): InputDefinition
     {
         $definition = parent::getDefaultInputDefinition();
@@ -89,6 +125,13 @@ final class Application extends BaseApplication
             InputOption::VALUE_REQUIRED,
             'Output format: text or json',
             'text',
+        ));
+
+        $definition->addOption(new InputOption(
+            'project-dir',
+            'C',
+            InputOption::VALUE_REQUIRED,
+            'Run as if dde was started in the given directory',
         ));
 
         return $definition;
