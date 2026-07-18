@@ -2,19 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [2.0.0-rc.1] - 2026-07-18
 
 ### Added
 
-- New global `--project-dir` / `-C` option: run any dde command from outside the project root, mirroring `git -C`. (#214)
-- Traefik's built-in dashboard is now exposed at `https://traefik.test`, surfacing misconfigured routers directly instead of only in the container logs. Existing installations pick this up after `dde system:down && dde system:up` (a plain restart is not enough — the labels and static `traefik.yml` only apply when the container is recreated).
+- Global `--project-dir` / `-C` option to run any command from outside the project root. (#214)
+- Traefik dashboard at `https://traefik.test` (recreate the container via `dde system:down && dde system:up` to pick it up).
+- `project:up` opens the project URL in the browser set via the new `default_browser` option. (#125)
+- `git` now works inside worktree containers.
+
+### Changed
+
+- Plugins no longer time out after 300 seconds.
 
 ### Fixed
 
-- `https://mail.test` and `https://traefik.test` no longer trigger a browser certificate warning: they get a dedicated certificate, ensured on every `dde system:up`. (#234)
-- `sudo dde …` is now rejected up-front (exit 1) so `~/.dde` can no longer end up with root-owned files that break every subsequent unprivileged run. Real-root sessions without `SUDO_USER` (containers, CI) are unaffected. (#142)
-- `dde system:install` no longer requires a `sudo` prefix: the host-level DNS writes (`/etc/resolver/test` on macOS, `/etc/systemd/resolved.conf.d/` and `/etc/NetworkManager/dnsmasq.d/` on Linux) escalate internally — attempted as the current user first, retried once via `sudo` with a clear announcement. Files under `~/.dde` always stay owned by the invoking user. (#142, #205)
-- A `/etc/resolver/test` left behind by dde v1 (missing trailing newline) is now recognised as already configured, so upgrading needs no root at all. (#205)
+- `mail.test` / `traefik.test` now use a trusted certificate — no more browser warning. (#234)
+- `sudo dde …` is rejected up-front to keep `~/.dde` free of root-owned files. (#142)
+- `dde system:install` no longer needs a `sudo` prefix; the DNS writes escalate internally. (#142, #205)
+- A `/etc/resolver/test` left behind by dde v1 is recognised as already configured. (#205)
+- Project containers and their `nginx`/`php-fpm` reliably run as the `dde` user on every base image.
+- `project:up` no longer times out when a large image is still being pulled.
+- `project:db:export` / `project:db:snapshot:create` stream dumps to disk instead of buffering in memory.
+- Alpine packages publish to the correct region with a valid `APKINDEX`.
+- Generated `.dde/.gitignore` ignores `data/*` / `snapshots/*` so `.gitkeep` stays tracked.
 
 ## [2.0.0-beta.2] - 2026-06-01
 
