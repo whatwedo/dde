@@ -35,6 +35,11 @@ MICRO_SFX_FILE="php-${PHP_VERSION}-micro-${PLATFORM}-${ARCH}.tar.gz"
 MICRO_SFX_URL="https://dl.static-php.dev/static-php-cli/common/${MICRO_SFX_FILE}"
 MICRO_SFX_CACHED="${CACHE_DIR}/micro-${PHP_VERSION}-${PLATFORM}-${ARCH}.sfx"
 
+# SOURCE_DATE_EPOCH: use the committer date of HEAD for reproducible builds.
+# An externally set value (e.g. from CI) takes precedence.
+export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$PROJECT_DIR" log -1 --format=%ct)}"
+echo "==> SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}"
+
 # Step 1: Build PHAR
 echo "==> Building PHAR..."
 cd "$PROJECT_DIR"

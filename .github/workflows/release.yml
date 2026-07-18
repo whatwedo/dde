@@ -62,6 +62,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Set SOURCE_DATE_EPOCH
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
@@ -107,6 +110,9 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Set SOURCE_DATE_EPOCH
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
       - name: Publish Alpine repo
         run: |
           echo "${{ secrets.ALPINE_RSA_PRIVATE_KEY }}" > /tmp/alpine.rsa
@@ -138,6 +144,9 @@ jobs:
       - name: Import GPG key
         run: echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
 
+      - name: Set SOURCE_DATE_EPOCH
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
       - name: Publish Arch repo
         run: ./scripts/publish-arch.sh "${{ github.ref_name }}" dist packages.dde.sh stable
         env:
@@ -166,6 +175,9 @@ jobs:
 
       - name: Import GPG key
         run: echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+
+      - name: Set SOURCE_DATE_EPOCH
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
       - name: Publish RPM repo
         run: ./scripts/publish-rpm.sh "${{ github.ref_name }}" dist packages.dde.sh stable

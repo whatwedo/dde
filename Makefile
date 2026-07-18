@@ -51,7 +51,7 @@ build:          ## Build PHAR binary
 	rm -rf var/cache/*
 	APP_ENV=prod php bin/console cache:warmup --quiet
 	curl -fsSL https://github.com/box-project/box/releases/download/4.7.0/box.phar -o /tmp/box.phar
-	php /tmp/box.phar compile
+	SOURCE_DATE_EPOCH=$${SOURCE_DATE_EPOCH:-$$(git log -1 --format=%ct)} php /tmp/box.phar compile
 	rm -rf var/cache/*
 	composer install
 

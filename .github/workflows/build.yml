@@ -108,6 +108,9 @@ jobs:
           php box.phar --version || { echo "Error: box.phar is corrupt"; exit 1; }
           chmod +x box.phar
 
+      - name: Set SOURCE_DATE_EPOCH
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
       - name: Build PHAR
         run: php box.phar compile
 
