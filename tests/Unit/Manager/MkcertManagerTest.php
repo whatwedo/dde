@@ -201,6 +201,81 @@ final class MkcertManagerTest extends TestCase
         $this->assertSame(['mail.test', 'traefik.test'], $registry['_system']['domains']);
     }
 
+    public function testGetCaRootCertPathReturnsPathWhenCertExists(): void
+    {
+        $caRootDir = $this->tempDir.'/caroot';
+        $this->filesystem->mkdir($caRootDir);
+        $this->filesystem->dumpFile($caRootDir.'/rootCA.pem', 'fake-ca-cert');
+
+        $whichProcess = $this->createStub(Process::class);
+        $whichProcess->method('isSuccessful')->willReturn(true);
+
+        $caRootProcess = $this->createStub(Process::class);
+        $caRootProcess->method('isSuccessful')->willReturn(true);
+        $caRootProcess->method('getOutput')->willReturn($caRootDir."\n");
+
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturnCallback(
+            static function (array $command) use ($whichProcess, $caRootProcess): Process {
+                if ($command === ['which', 'mkcert']) {
+                    return $whichProcess;
+                }
+
+                return $caRootProcess;
+            },
+        );
+
+        $manager = new MkcertManager(
+            filesystem: $this->filesystem,
+            dataDir: $this->tempDir,
+            clock: $this->clock,
+            processFactory: $processFactory,
+        );
+
+        $this->assertSame($caRootDir.'/rootCA.pem', $manager->getCaRootCertPath());
+    }
+
+    public function testGetCaRootCertPathReturnsNullWhenMkcertNotInstalled(): void
+    {
+        $commands = [];
+        $service = $this->createManagerWithMkcert(false, $commands);
+
+        $this->assertNull($service->getCaRootCertPath());
+    }
+
+    public function testGetCaRootCertPathReturnsNullWhenCertFileMissing(): void
+    {
+        $caRootDir = $this->tempDir.'/caroot-empty';
+        $this->filesystem->mkdir($caRootDir);
+
+        $whichProcess = $this->createStub(Process::class);
+        $whichProcess->method('isSuccessful')->willReturn(true);
+
+        $caRootProcess = $this->createStub(Process::class);
+        $caRootProcess->method('isSuccessful')->willReturn(true);
+        $caRootProcess->method('getOutput')->willReturn($caRootDir."\n");
+
+        $processFactory = $this->createStub(ProcessFactory::class);
+        $processFactory->method('create')->willReturnCallback(
+            static function (array $command) use ($whichProcess, $caRootProcess): Process {
+                if ($command === ['which', 'mkcert']) {
+                    return $whichProcess;
+                }
+
+                return $caRootProcess;
+            },
+        );
+
+        $manager = new MkcertManager(
+            filesystem: $this->filesystem,
+            dataDir: $this->tempDir,
+            clock: $this->clock,
+            processFactory: $processFactory,
+        );
+
+        $this->assertNull($manager->getCaRootCertPath());
+    }
+
     public function testEnsureSystemCertificateIsNoOpWhenMkcertMissing(): void
     {
         $commands = [];

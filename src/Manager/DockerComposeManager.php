@@ -29,6 +29,7 @@ readonly class DockerComposeManager
         private DockerManager $dockerManager,
         private UserContext $userContext,
         private WorktreeManager $worktreeManager,
+        private MkcertManager $mkcertManager,
         private Filesystem $filesystem = new Filesystem(),
         private ProcessFactory $processFactory = new ProcessFactory(),
     ) {
@@ -575,6 +576,12 @@ readonly class DockerComposeManager
             }
 
             $volumes[] = 'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro';
+
+            $caRootCertPath = $this->mkcertManager->getCaRootCertPath();
+
+            if ($caRootCertPath !== null) {
+                $volumes[] = $caRootCertPath.':/dde/mkcert-rootCA.crt:ro';
+            }
 
             // In a worktree the checked-out `.git` is a file pointing at
             // `<mainDirectory>/.git/worktrees/<name>` — an absolute host path

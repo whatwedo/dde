@@ -21,7 +21,7 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
   - `DatabaseManager` — DB shell, export, import, snapshot, port resolution
   - `SystemServiceManager` — versionable service lifecycle (start, stop, port allocation)
   - `ServiceConfigManager` — service container config generation
-  - `MkcertManager` — mkcert CLI wrapper, cert generation, Traefik dynamic TLS config
+  - `MkcertManager` — mkcert CLI wrapper, cert generation, Traefik dynamic TLS config, CA root path resolution for container trust
   - `CompletionManager` — shell completion generation and installation
   - `CleanupManager` — container and volume cleanup
   - `ProjectInfoManager` — project info display
@@ -32,7 +32,7 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
   - Definition: `App\Config\Definition\` — `GlobalConfigDefinition`, `ProjectConfigDefinition` (Symfony TreeBuilder schemas)
 - Model: `App\Model\` — `ContainerConfig`, `ContainerInfo`, `ContainerStatus`, `ServiceDefinition`, `ServiceStartStatus`, `ServiceStatus`, `UserContext`, `EnvMigrationProposal` (DTO for project:init env-file migrations; lives in `App\Manager`)
 - Parser: `App\Parser\` — `DockerComposeParser` (YAML), `DockerfileParser` (Dockerfile syntax)
-- Adapter: `App\Adapter\` — `AdapterRegistry` (nginx, php-fpm, apache shell scripts in `resources/adapters/`)
+- Adapter: `App\Adapter\` — `AdapterRegistry` (ca-trust, nginx, php-fpm, apache shell scripts in `resources/adapters/`)
 - Database: `App\Database\` — `DatabaseAdapterInterface`, `MariaDbAdapter`, `PostgresAdapter`, `DatabaseAdapterRegistry`
 - Doctor: `App\Doctor\` — `CheckInterface`, `CheckResult`, `CheckStatus`, 11 check classes under `App\Doctor\Check\`
 - Event: `App\Event\` — `ProjectUpPreEvent`, `ProjectUpPostEvent`, `ProjectDownPreEvent`, `ProjectDownPostEvent`

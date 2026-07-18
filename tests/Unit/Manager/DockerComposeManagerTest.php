@@ -11,6 +11,7 @@ use App\Config\ResolvedConfig;
 use App\Config\WorktreeInfo;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
+use App\Manager\MkcertManager;
 use App\Model\ServiceDefinition;
 use App\Model\UserContext;
 use PHPUnit\Framework\TestCase;
@@ -165,6 +166,54 @@ final class DockerComposeManagerTest extends TestCase
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
 
         $this->assertTrue($data['volumes']['dde_ssh-agent_socket-dir']['external']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideMountsMkcertCaWhenAvailable(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $mkcertManager = $this->createStub(MkcertManager::class);
+        $mkcertManager->method('getCaRootCertPath')->willReturn('/home/user/.local/share/mkcert/rootCA.pem');
+
+        $dockerManager = $this->createStub(DockerManager::class);
+        $dockerManager->method('imageHasShell')->willReturn(true);
+        $manager = $this->createManagerWithDockerManager($dockerManager, $mkcertManager);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $volumes = $data['services']['web']['volumes'];
+        $this->assertContains('/home/user/.local/share/mkcert/rootCA.pem:/dde/mkcert-rootCA.crt:ro', $volumes);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideOmitsMkcertCaWhenUnavailable(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+
+        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $volumes = $data['services']['web']['volumes'];
+
+        foreach ($volumes as $volume) {
+            $this->assertStringNotContainsString('mkcert-rootCA', $volume);
+        }
 
         unlink($overridePath);
     }
@@ -1813,7 +1862,9 @@ ENV);
             },
         );
 
-        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
+        $mkcertManager = $this->createStub(MkcertManager::class);
+
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager, $mkcertManager);
     }
 
     private function createManagerWithRealWorktreeManager(): DockerComposeManager
@@ -1833,7 +1884,9 @@ ENV);
             ]),
         );
 
-        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
+        $mkcertManager = $this->createStub(MkcertManager::class);
+
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager, $mkcertManager);
     }
 
     private function createManagerWithRealWorktreeManagerForShellLess(): DockerComposeManager
@@ -1852,7 +1905,9 @@ ENV);
             ]),
         );
 
-        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
+        $mkcertManager = $this->createStub(MkcertManager::class);
+
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager, $mkcertManager);
     }
 
     /**
@@ -1867,12 +1922,14 @@ ENV);
         file_put_contents($this->tempDir.'/docker-compose.yml', Yaml::dump($composeData, 4, 2));
     }
 
-    private function createManagerWithDockerManager(DockerManager $dockerManager): DockerComposeManager
+    private function createManagerWithDockerManager(DockerManager $dockerManager, ?MkcertManager $mkcertManager = null): DockerComposeManager
     {
         $resourcesDir = dirname(__DIR__, 3).'/resources';
         $adapterRegistry = new AdapterRegistry($resourcesDir, $this->tempDir.'/data');
         $worktreeManager = $this->createStub(\App\Manager\WorktreeManager::class);
-        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager);
+        $mkcertManager ??= $this->createStub(MkcertManager::class);
+
+        return new DockerComposeManager($adapterRegistry, $dockerManager, new UserContext(), $worktreeManager, $mkcertManager);
     }
 
     protected function setUp(): void

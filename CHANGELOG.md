@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- The mkcert root CA is now trusted inside project containers, enabling HTTPS calls between local `.test` services. (#216)
 - Global `--project-dir` / `-C` option to run any command from outside the project root. (#214)
 - Traefik dashboard at `https://traefik.test` (recreate the container via `dde system:down && dde system:up` to pick it up).
 - `project:up` opens the project URL in the browser set via the new `default_browser` option. (#125)
