@@ -23,6 +23,15 @@ Database services are shared — a single MariaDB instance serves all projects, 
 
 Stopping one project does not affect others. Use `dde system:down` to stop all services.
 
+## Running dde from Outside the Project Root
+
+dde normally detects the project by walking up from the current working directory until it finds `.dde/config.yml`. The global `--project-dir` / `-C` option overrides this — dde behaves as if it had been started in the given directory, mirroring `git -C`:
+
+```bash
+dde -C /path/to/project project:up
+dde --project-dir=/path/to/project project:exec composer install
+```
+
 ## JSON Output
 
 All commands support `--output=json` for scripting:

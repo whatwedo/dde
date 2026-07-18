@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- New global `--project-dir` / `-C` option: run any dde command from outside the project root, mirroring `git -C`. (#214)
 - Traefik's built-in dashboard is now exposed at `https://traefik.test`, surfacing misconfigured routers directly instead of only in the container logs. Existing installations pick this up after `dde system:down && dde system:up` (a plain restart is not enough — the labels and static `traefik.yml` only apply when the container is recreated).
 
 ### Fixed

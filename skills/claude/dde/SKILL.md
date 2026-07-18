@@ -21,6 +21,14 @@ dde project:describe --output=json
 
 This returns the project URL, running containers, configured services, and database connection details. Use this output to inform all subsequent actions.
 
+## Targeting a project from another directory
+
+All commands accept a global `--project-dir` / `-C` option (like `git -C`). Prefer it over `cd` when your working directory is not inside the project:
+
+```bash
+dde -C /path/to/project project:exec composer install
+```
+
 ## Running commands in the container
 
 **This is the most important rule.** Never run project-dependent commands directly on the host. Always use:
