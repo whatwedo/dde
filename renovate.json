@@ -43,8 +43,32 @@
       "matchPackageNames": [
         "symfony/{/,}**"
       ]
+    },
+    {
+      "description": "Track the PHP runtime against static-php-cli micro.sfx availability (macos-aarch64 is the observed laggard); CI verifies all four platforms before automerge",
+      "matchDatasources": ["custom.staticPhp"],
+      "extractVersion": "php-(?<version>\\d+\\.\\d+\\.\\d+)-micro-macos-aarch64\\.tar\\.gz$",
+      "groupName": "php runtime",
+      "groupSlug": "php-runtime",
+      "automerge": true
     }
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^composer\\.json$/"],
+      "matchStrings": ["\"php\":\\s*\"\\^(?<currentValue>\\d+\\.\\d+\\.\\d+)\""],
+      "depNameTemplate": "static-php-micro",
+      "datasourceTemplate": "custom.staticPhp",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "customDatasources": {
+    "staticPhp": {
+      "defaultRegistryUrlTemplate": "https://dl.static-php.dev/static-php-cli/common/",
+      "format": "html"
+    }
+  },
   "vulnerabilityAlerts": {
     "enabled": true,
     "schedule": ["at any time"],

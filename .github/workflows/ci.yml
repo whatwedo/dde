@@ -22,6 +22,28 @@ jobs:
           echo "full=$FULL" >> "$GITHUB_OUTPUT"
           echo "minor=$(echo "$FULL" | cut -d. -f1,2)" >> "$GITHUB_OUTPUT"
 
+  micro-availability:
+    name: micro.sfx availability
+    needs: php-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify micro.sfx exists for every target platform
+        env:
+          PHP_VERSION: ${{ needs.php-version.outputs.full }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for target in macos-x86_64 macos-aarch64 linux-x86_64 linux-aarch64; do
+            url="https://dl.static-php.dev/static-php-cli/common/php-${PHP_VERSION}-micro-${target}.tar.gz"
+            if curl -fsSIo /dev/null "$url"; then
+              echo "ok: ${target}"
+            else
+              echo "::error::missing micro.sfx for ${target}: ${url}"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+
   lint:
     name: ECS
     needs: php-version
