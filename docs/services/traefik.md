@@ -8,7 +8,7 @@ Traefik v3 serves as the reverse proxy for all dde projects, routing HTTP and HT
 ## What It Does
 
 - Routes traffic to project containers based on their configured hostname (e.g. `myapp.test`)
-- Provides both HTTP (port 80) and HTTPS (port 443) access
+- Provides HTTPS (port 443) access for every project, redirecting plain HTTP (port 80) requests to it by default
 - Automatically picks up new projects and TLS certificates without restart
 - Traefik labels are set automatically by `project:init` and `project:up`
 
@@ -24,11 +24,13 @@ See [Core Concepts → Networking](../getting-started/concepts.md#networking) fo
 
 TLS certificates are generated automatically by mkcert when you run `project:up`. HTTPS works out of the box for all `.test` domains.
 
+Traefik's `web` entry point (port 80) exists only to redirect to `websecure` (port 443, `https`) by default — it is not a parallel access path, every request to a project or the dashboard ends up on HTTPS.
+
 ## Dashboard
 
 Traefik's built-in dashboard is exposed at [https://traefik.test](https://traefik.test). It lists every active router, service and middleware and flags misconfigured entries (for example a project whose Traefik labels do not parse), so configuration errors become visible at a glance instead of only surfacing in the container logs.
 
-The dashboard is served by Traefik's internal `api@internal` service over the `websecure` entrypoint and reuses the wildcard `*.test` certificate, so no dedicated certificate is required. Like every dde service it binds to `127.0.0.1` only and is not reachable from outside the host.
+The dashboard is served by Traefik's internal `api@internal` service over the `websecure` entrypoint and uses the dedicated `_system` certificate.
 
 ## Routing Configuration
 

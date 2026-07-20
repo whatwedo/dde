@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Plain HTTP requests are now redirected to HTTPS by default (Traefik's `web` entry point forwards to `websecure`; recreate the container via `dde system:down && dde system:up` to pick it up).
+
 ## [2.0.0-rc.1] - 2026-07-18
 
 ### Added
