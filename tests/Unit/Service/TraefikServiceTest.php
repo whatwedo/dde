@@ -115,6 +115,10 @@ final class TraefikServiceTest extends TestCase
         $this->assertStringContainsString('entryPoints:', $content);
         $this->assertStringContainsString('address: ":80"', $content);
         $this->assertStringContainsString('address: ":443"', $content);
+        $this->assertStringContainsString('redirections:', $content);
+        $this->assertStringContainsString('to: websecure', $content);
+        $this->assertStringContainsString('scheme: https', $content);
+        $this->assertStringContainsString('permanent: false', $content);
         $this->assertStringContainsString('exposedByDefault: false', $content);
         $this->assertStringContainsString('network: dde', $content);
         $this->assertStringContainsString('directory: /etc/traefik/dynamic', $content);

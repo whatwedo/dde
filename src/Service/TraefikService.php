@@ -88,6 +88,12 @@ final class TraefikService extends AbstractSystemService implements ProjectNetwo
             entryPoints:
               web:
                 address: ":80"
+                http:
+                  redirections:
+                    entryPoint:
+                      to: websecure
+                      scheme: https
+                      permanent: false
               websecure:
                 address: ":443"
             providersThrottleDuration: 0s
