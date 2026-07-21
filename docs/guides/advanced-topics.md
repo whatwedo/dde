@@ -15,6 +15,10 @@ DNS resolution for `*.test` domains is handled by a dnsmasq container that resol
 
 dde uses [mkcert](https://github.com/FiloSottile/mkcert) for locally-trusted HTTPS. `system:install` creates a root CA trusted by your OS and browsers. Certificates are generated per-project during `project:up` — no manual setup needed.
 
+### Container Trust
+
+Project containers automatically trust the mkcert root CA. During `project:up`, dde bind-mounts the CA certificate into each container and the `ca-trust` adapter installs it into the container's certificate store. This enables HTTPS calls between local `.test` services from within containers (e.g. a PHP application calling `https://api.test`). Supported base images: Debian/Ubuntu, Alpine, RHEL/Fedora/CentOS, and openSUSE. If you generated the mkcert CA after containers were already running, recreate them with `dde project:down && dde project:up` to pick up the certificate.
+
 ## Multiple Projects
 
 Multiple projects run simultaneously, each with a unique hostname (`project-a.test`, `project-b.test`). Traefik routes requests by hostname, so there are no port conflicts.

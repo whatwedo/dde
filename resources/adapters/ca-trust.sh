@@ -16,8 +16,10 @@ configure() {
         cp /dde/mkcert-rootCA.crt /etc/pki/ca-trust/source/anchors/mkcert-rootCA.crt
         update-ca-trust extract >/dev/null 2>&1 || true
     elif command -v apk >/dev/null 2>&1; then
-        # Alpine — ca-certificates may not be installed yet
-        apk add --no-cache ca-certificates >/dev/null 2>&1 || true
+        # Alpine — only install ca-certificates when update-ca-certificates is missing
+        if ! command -v update-ca-certificates >/dev/null 2>&1; then
+            apk add --no-cache ca-certificates >/dev/null 2>&1 || true
+        fi
         cp /dde/mkcert-rootCA.crt /usr/local/share/ca-certificates/mkcert-rootCA.crt
         update-ca-certificates >/dev/null 2>&1 || true
     fi

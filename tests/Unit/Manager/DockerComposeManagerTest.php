@@ -552,6 +552,7 @@ final class DockerComposeManagerTest extends TestCase
             $this->createStub(DockerManager::class),
             new UserContext(),
             $worktreeManager,
+            $this->createStub(MkcertManager::class),
             new \Symfony\Component\Filesystem\Filesystem(),
             $processFactory,
         );
@@ -598,6 +599,7 @@ final class DockerComposeManagerTest extends TestCase
             $this->createStub(DockerManager::class),
             new UserContext(),
             $worktreeManager,
+            $this->createStub(MkcertManager::class),
             new \Symfony\Component\Filesystem\Filesystem(),
             $processFactory,
         );
@@ -647,6 +649,7 @@ final class DockerComposeManagerTest extends TestCase
             $this->createStub(DockerManager::class),
             new UserContext(),
             $worktreeManager,
+            $this->createStub(MkcertManager::class),
             new \Symfony\Component\Filesystem\Filesystem(),
             $processFactory,
         );

@@ -455,6 +455,8 @@ readonly class DockerComposeManager
             $projectNetwork => null,
         ]);
 
+        $caRootCertPath = $this->mkcertManager->getCaRootCertPath();
+
         foreach ($composeServices as $serviceName => $serviceConfig) {
             $imageName = $this->resolveServiceImage($serviceName, $serviceConfig, $projectDir);
 
@@ -576,8 +578,6 @@ readonly class DockerComposeManager
             }
 
             $volumes[] = 'dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro';
-
-            $caRootCertPath = $this->mkcertManager->getCaRootCertPath();
 
             if ($caRootCertPath !== null) {
                 $volumes[] = $caRootCertPath.':/dde/mkcert-rootCA.crt:ro';
