@@ -205,6 +205,49 @@ final class ProjectConfigManagerTest extends TestCase
         $this->assertNull($result);
     }
 
+    public function testFindProjectDirectoryStopsAtHome(): void
+    {
+        // The upward search must never inspect $HOME: the global config
+        // ~/.dde/config.yml would otherwise be mistaken for a project marker.
+        $home = $this->createTempDir();
+        $globalConfigDir = $home.'/.dde';
+        mkdir($globalConfigDir, 0o755, true);
+        $this->tempDirs[] = $globalConfigDir;
+
+        $globalConfigFile = $globalConfigDir.'/config.yml';
+        file_put_contents($globalConfigFile, '');
+        $this->tempFiles[] = $globalConfigFile;
+
+        $subDir = $home.'/git/whatwedo/test/app';
+        mkdir($subDir, 0o755, true);
+        $this->tempDirs[] = $subDir;
+
+        chdir($subDir);
+
+        $result = $this->createManager(userHomeDir: $home)->findProjectDirectory();
+        $this->assertNull($result);
+    }
+
+    public function testFindProjectDirectoryFindsMarkerBelowHome(): void
+    {
+        $home = $this->createTempDir();
+
+        $projectDir = $home.'/git/whatwedo/test';
+        mkdir($projectDir.'/.dde', 0o755, true);
+        $this->tempDirs[] = $projectDir.'/.dde';
+        file_put_contents($projectDir.'/.dde/config.yml', 'name: test');
+        $this->tempFiles[] = $projectDir.'/.dde/config.yml';
+
+        $subDir = $projectDir.'/app';
+        mkdir($subDir, 0o755, true);
+        $this->tempDirs[] = $subDir;
+
+        chdir($subDir);
+
+        $result = $this->createManager(userHomeDir: $home)->findProjectDirectory();
+        $this->assertSame($projectDir, $result);
+    }
+
     // --- findDockerProjectDirectory tests ---
 
     public function testFindDockerProjectDirectoryFindsDockerCompose(): void
@@ -362,12 +405,13 @@ final class ProjectConfigManagerTest extends TestCase
 
     // --- helper methods ---
 
-    private function createManager(string $globalConfigDir = '/tmp/nonexistent-dde-config'): ProjectConfigManager
+    private function createManager(string $globalConfigDir = '/tmp/nonexistent-dde-config', string $userHomeDir = '/nonexistent-home'): ProjectConfigManager
     {
         return new ProjectConfigManager(
             globalConfigManager: new GlobalConfigManager(configDir: $globalConfigDir),
             serviceRegistry: new ServiceRegistry([], new DatabaseAdapterRegistry([])),
             worktreeManager: new \App\Manager\WorktreeManager(new ProcessFactory(), new DatabaseAdapterRegistry([])),
+            userHomeDir: $userHomeDir,
         );
     }
 
