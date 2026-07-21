@@ -39,6 +39,7 @@ readonly class ProjectConfigManager
         private GlobalConfigManager $globalConfigManager,
         private ServiceRegistry $serviceRegistry,
         private WorktreeManager $worktreeManager,
+        private string $userHomeDir = '',
         private Filesystem $filesystem = new Filesystem(),
         private Processor $processor = new Processor(),
     ) {
@@ -70,7 +71,7 @@ readonly class ProjectConfigManager
             return null;
         }
 
-        return $this->searchUpward($directory, [self::PROJECT_MARKER]);
+        return $this->searchUpward($directory, [self::PROJECT_MARKER], $this->userHomeDir);
     }
 
     public function findDockerProjectDirectory(): ?string
@@ -131,9 +132,17 @@ readonly class ProjectConfigManager
     /**
      * @param list<string> $candidates
      */
-    private function searchUpward(string $directory, array $candidates): ?string
+    private function searchUpward(string $directory, array $candidates, string $stopAt = ''): ?string
     {
+        // $HOME is never a project directory (it holds the global ~/.dde config),
+        // so the upward search stops before inspecting it.
+        $stopAtReal = $stopAt !== '' ? (realpath($stopAt) ?: $stopAt) : null;
+
         while (true) {
+            if ($directory === $stopAtReal) {
+                break;
+            }
+
             foreach ($candidates as $configFile) {
                 if ($this->filesystem->exists($directory.'/'.$configFile)) {
                     return $directory;

@@ -33,7 +33,7 @@ abstract class AbstractProjectCommand extends AbstractBaseCommand
             $directory = $this->configManager->findProjectDirectory();
 
             if ($directory === null) {
-                throw new \RuntimeException('No project directory found. Are you inside a dde project?');
+                throw new \RuntimeException('No dde project found here. Run "dde project:init" to initialize the current directory.');
             }
 
             $this->projectDirectory = $directory;
