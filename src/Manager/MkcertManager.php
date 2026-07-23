@@ -117,6 +117,38 @@ readonly class MkcertManager
     }
 
     /**
+     * Returns the absolute path to the mkcert root CA certificate on the host,
+     * or null if mkcert is not installed or the CA has not been generated yet.
+     */
+    public function getCaRootCertPath(): ?string
+    {
+        if (! $this->isMkcertInstalled()) {
+            return null;
+        }
+
+        $process = $this->processFactory->create(['mkcert', '-CAROOT']);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            return null;
+        }
+
+        $caRoot = trim($process->getOutput());
+
+        if ($caRoot === '') {
+            return null;
+        }
+
+        $certPath = $caRoot.'/rootCA.pem';
+
+        if (! $this->filesystem->exists($certPath)) {
+            return null;
+        }
+
+        return $certPath;
+    }
+
+    /**
      * @param array<string> $domains
      *
      * @throws \RuntimeException

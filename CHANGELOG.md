@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- The mkcert root CA is now trusted inside project containers, enabling HTTPS calls between local `.test` services. (#216)
 - Reproducible builds — two builds from the same commit now produce a byte-identical PHAR and binary. (#213)
 
 ### Changed

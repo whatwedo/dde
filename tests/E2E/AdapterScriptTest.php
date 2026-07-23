@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\E2E;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
@@ -180,5 +181,103 @@ final class AdapterScriptTest extends TestCase
         $combined = $process->getOutput().$process->getErrorOutput();
         $this->assertStringNotContainsString('Option is ambiguous', $combined);
         $this->assertStringNotContainsString('adduser [--uid', $combined);
+    }
+
+    /**
+     * Regression: the ca-trust adapter used to branch on trust-store directory
+     * existence, in this order: /usr/local/share/ca-certificates first. That
+     * directory exists on minimal Debian *without* the ca-certificates package
+     * (so update-ca-certificates was absent and the CA was silently dropped),
+     * and it also exists on openSUSE (whose update-ca-certificates reads only
+     * /etc/pki/trust/anchors, so that branch shadowed the SUSE one and trusted
+     * nothing). Both symptoms: in-container `curl https://<other>.test` failed
+     * with a certificate error. The adapter now keys off the trust tooling and
+     * installs ca-certificates on demand, so the mounted mkcert CA lands in the
+     * consumed trust bundle on every supported base image.
+     *
+     * @param non-empty-string $consumedBundle path to the store the CA must reach,
+     *                                          not the anchor dir the adapter writes to
+     */
+    #[Group('e2e')]
+    #[DataProvider('caTrustImageProvider')]
+    public function testCaTrustAdapterInstallsMkcertCaIntoConsumedTrustStore(string $image, string $consumedBundle): void
+    {
+        $adaptersDir = \dirname(__DIR__, 2).'/resources/adapters';
+
+        // A throwaway self-signed CA; only its verbatim base64 body is used as a
+        // marker that survives into the regenerated bundle.
+        $caPem = <<<'PEM'
+            -----BEGIN CERTIFICATE-----
+            MIIDGzCCAgOgAwIBAgIUBAqXZM5zUi574Ap9gAoHRc7sE28wDQYJKoZIhvcNAQEL
+            BQAwHTEbMBkGA1UEAwwSbWtjZXJ0IGRkZSB0ZXN0IENBMB4XDTI2MDcyMzA5MTgy
+            NVoXDTM2MDcyMDA5MTgyNVowHTEbMBkGA1UEAwwSbWtjZXJ0IGRkZSB0ZXN0IENB
+            MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuOlub4QE8vR5dH1j1+Fh
+            m3bAASX4UaD8W5WDB3sQusWjDwiEd7m18rKbsZVCYLdRI8jzA9VrRcsJQJwTr/V/
+            zaSyNXI0/Fzb10sYkClNxvJ5zIoQk0/Gvz/UYIEQnmUdEbh1LVWHvcXgixztf7Zu
+            QVm+FIc8bJZ38XnlxJa5R0Ex8W/nHb/91NFkRnWI2fIpxnUxdtQqW33CvTlwlvUF
+            0tWHKBJmqzc6mfON4KemDllUsI3bwJQZw6jk1WA6KXExdYz0IHhSNxb16lMAIXBu
+            XwIwJJ0J6OrF2Vn6chNC7ARh/457dysdUfqwmEgtnzhhHgxwekeXyHrp3Kmam+Qu
+            twIDAQABo1MwUTAdBgNVHQ4EFgQUcoZ8Ro/4SU+yL3+lMy/8bgqeReEwHwYDVR0j
+            BBgwFoAUcoZ8Ro/4SU+yL3+lMy/8bgqeReEwDwYDVR0TAQH/BAUwAwEB/zANBgkq
+            hkiG9w0BAQsFAAOCAQEANROOq23PdrzLoDaTzHVJV8jw6qTGWZI/gx7bBsFk5ZbK
+            zukSfb8ROkqNEf9T7tteJ6YuZB0HqxZ2irHoDi9lyDHkAXHBUi0726Qf/R7+h+f5
+            c3s90HWkN7tFelDKor8eWeG3Sc8/hZ4ZbcebUyBx5LgU+IBN30XR2xZPMUyyddsM
+            RJi62WUQp2W4kBJVI+PczVBcEj3ja2wo53mrkDj3RzuDK1JqqvHZlgXg8yGV+VCL
+            ZqdIqXvGCuHP0SwTJ5EvW9d0s9nUb+fTWMqNXHtoP1AMIKzTp1w8/nidlXURJfC6
+            A7xCX14VlbD2rQ80cxNAHu3ge6p5K4gUeDDQcr9/HQ==
+            -----END CERTIFICATE-----
+            PEM;
+
+        // A base64 line from the cert body — grepped for in the consumed bundle.
+        $marker = 'MIIDGzCCAgOgAwIBAgIUBAqXZM5zUi574Ap9gAoHRc7sE28wDQYJKoZIhvcNAQEL';
+
+        $script = sprintf(<<<'SH'
+            set -e
+            mkdir -p /dde
+            cat > /dde/mkcert-rootCA.crt <<'CERT'
+            %s
+            CERT
+            . /adapters/ca-trust.sh
+            if type detect >/dev/null 2>&1 && detect; then
+                configure
+            fi
+            echo "===BUNDLE==="
+            cat "%s" 2>/dev/null || true
+            SH, $caPem, $consumedBundle);
+
+        $process = new Process([
+            'docker', 'run', '--rm',
+            '-v', $adaptersDir.':/adapters:ro',
+            $image,
+            'sh', '-c', $script,
+        ]);
+        $process->setTimeout(180);
+        $process->run();
+
+        $this->assertTrue(
+            $process->isSuccessful(),
+            sprintf("ca-trust run failed on %s:\nSTDOUT: %s\nSTDERR: %s", $image, $process->getOutput(), $process->getErrorOutput()),
+        );
+
+        $bundle = explode('===BUNDLE===', $process->getOutput(), 2)[1] ?? '';
+        $this->assertStringContainsString(
+            $marker,
+            $bundle,
+            sprintf('mkcert CA did not reach the consumed trust bundle %s on %s', $consumedBundle, $image),
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function caTrustImageProvider(): iterable
+    {
+        // alpine:latest mirrors the whatwedo symfony base image's trust mechanism
+        // (Alpine + ca-certificates), which was verified manually against
+        // registry.whatwedo.ch/whatwedo/docker-base-images/symfony:v2.10.
+        yield 'debian minimal (installs ca-certificates)' => ['debian:13', '/etc/ssl/certs/ca-certificates.crt'];
+        yield 'alpine minimal (installs ca-certificates)' => ['alpine:latest', '/etc/ssl/certs/ca-certificates.crt'];
+        yield 'opensuse leap (SUSE anchor dir)' => ['opensuse/leap', '/var/lib/ca-certificates/ca-bundle.pem'];
+        yield 'fedora (update-ca-trust)' => ['fedora:latest', '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem'];
     }
 }
