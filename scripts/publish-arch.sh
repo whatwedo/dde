@@ -54,7 +54,7 @@ arch = ${ARCH}
 size = ${INSTALLED_SIZE}
 pkgdesc = Docker Development Environment
 url = https://github.com/whatwedo/dde
-builddate = $(date +%s)
+builddate = ${SOURCE_DATE_EPOCH:-$(date +%s)}
 packager = whatwedo GmbH <welove@whatwedo.ch>
 license = AGPL-3.0-or-later
 EOF

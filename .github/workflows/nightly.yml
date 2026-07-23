@@ -24,6 +24,7 @@ jobs:
     outputs:
       app_version: ${{ steps.meta.outputs.app_version }}
       pkg_version: ${{ steps.meta.outputs.pkg_version }}
+      source_date_epoch: ${{ steps.meta.outputs.source_date_epoch }}
     steps:
       - uses: actions/checkout@v7
 
@@ -32,9 +33,11 @@ jobs:
         run: |
           SHA=$(git rev-parse --short HEAD)
           TS=$(date -u +%Y%m%d.%H%M)
+          EPOCH=$(git log -1 --format=%ct)
           echo "app_version=${SHA}" >> "$GITHUB_OUTPUT"
           echo "pkg_version=${TS}" >> "$GITHUB_OUTPUT"
-          echo "Nightly app_version=${SHA} pkg_version=${TS}"
+          echo "source_date_epoch=${EPOCH}" >> "$GITHUB_OUTPUT"
+          echo "Nightly app_version=${SHA} pkg_version=${TS} SOURCE_DATE_EPOCH=${EPOCH}"
 
   build:
     name: Build
@@ -67,6 +70,7 @@ jobs:
         run: ./scripts/publish-apt.sh "${{ needs.meta.outputs.pkg_version }}" dist packages.dde.sh nightly
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          SOURCE_DATE_EPOCH: ${{ needs.meta.outputs.source_date_epoch }}
 
       - name: Upload binaries to S3 (nightly)
         run: |
@@ -100,6 +104,8 @@ jobs:
           merge-multiple: true
 
       - name: Publish Alpine repo (nightly)
+        env:
+          SOURCE_DATE_EPOCH: ${{ needs.meta.outputs.source_date_epoch }}
         run: |
           echo "${{ secrets.ALPINE_RSA_PRIVATE_KEY }}" > /tmp/alpine.rsa
           chmod 600 /tmp/alpine.rsa
@@ -134,6 +140,7 @@ jobs:
         run: ./scripts/publish-arch.sh "${{ needs.meta.outputs.pkg_version }}" dist packages.dde.sh nightly
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          SOURCE_DATE_EPOCH: ${{ needs.meta.outputs.source_date_epoch }}
 
   rpm:
     name: Publish RPM repo (nightly)
@@ -163,6 +170,7 @@ jobs:
         run: ./scripts/publish-rpm.sh "${{ needs.meta.outputs.pkg_version }}" dist packages.dde.sh nightly
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          SOURCE_DATE_EPOCH: ${{ needs.meta.outputs.source_date_epoch }}
 
   homebrew:
     name: Update Homebrew formula (nightly)

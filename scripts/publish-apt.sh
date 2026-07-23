@@ -84,7 +84,7 @@ Suite: stable
 Codename: stable
 Architectures: amd64 arm64
 Components: main
-Date: $(date -R -u)
+Date: $(date -R -u ${SOURCE_DATE_EPOCH:+-d @"$SOURCE_DATE_EPOCH"})
 EOF
 
 (cd "${REPO}/dists/stable" && {

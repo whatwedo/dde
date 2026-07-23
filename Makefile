@@ -48,10 +48,8 @@ qa:             ## Full check: ECS + PHPStan + Rector + Tests (w/o e2E)
 ## Build
 build:          ## Build PHAR binary
 	composer install --no-dev --optimize-autoloader
-	rm -rf var/cache/*
-	APP_ENV=prod php bin/console cache:warmup --quiet
 	curl -fsSL https://github.com/box-project/box/releases/download/4.7.0/box.phar -o /tmp/box.phar
-	php /tmp/box.phar compile
+	./scripts/compile-phar.sh /tmp/box.phar
 	rm -rf var/cache/*
 	composer install
 
