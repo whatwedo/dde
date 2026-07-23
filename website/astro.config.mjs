@@ -85,6 +85,7 @@ export default defineConfig({
 						{ label: 'Development Setup', slug: 'contributing/development-setup' },
 						{ label: 'Architecture', slug: 'contributing/architecture' },
 						{ label: 'Testing', slug: 'contributing/testing' },
+						{ label: 'Commit Conventions', slug: 'contributing/commit-conventions' },
 						{ label: 'Release Process', slug: 'contributing/release-process' },
 						{ label: 'Adding a Command', slug: 'contributing/adding-a-command' },
 						{ label: 'Adding a Service', slug: 'contributing/adding-a-service' },

@@ -15,11 +15,11 @@ dde uses [Semantic Versioning](https://semver.org/):
 
 ## Creating a Release
 
-A release bundles three artifacts that must stay in lockstep: a new section at the top of `CHANGELOG.md`, the `APP_VERSION` constant in `src/Application.php`, and a GPG-signed annotated tag `v<version>`.
+A release bundles two artifacts that must stay in lockstep: a new section at the top of `CHANGELOG.md` and a GPG-signed annotated tag `v<version>`. The version string the binary reports is **not** edited by hand — see [Version Injection](#version-injection) below.
 
 ### Automated (Claude Code skill)
 
-The repo ships a `releasing` skill (`.claude/skills/releasing/SKILL.md`) that walks Claude Code through the whole sequence — categorising commits, drafting the changelog entry, bumping `APP_VERSION`, creating the signed commit + tag, and pausing before the push for explicit approval. To trigger it inside Claude Code, ask Claude to "create a release" (or invoke the skill directly via `/releasing` if the slash binding is available); the model loads the skill and follows it step by step.
+The repo ships a `releasing` skill (`.claude/skills/releasing/SKILL.md`) that walks Claude Code through the whole sequence — categorising commits, drafting the changelog entry, creating the signed commit + tag, and pausing before the push for explicit approval. To trigger it inside Claude Code, ask Claude to "create a release" (or invoke the skill directly via `/releasing` if the slash binding is available); the model loads the skill and follows it step by step.
 
 ### Manual
 
@@ -27,15 +27,14 @@ If you prefer to drive the release by hand:
 
 1. Ensure all changes are merged to the release branch and the QA pipeline passes
 2. Add a `## [<version>] - YYYY-MM-DD` section at the top of `CHANGELOG.md` with the user-visible Added/Changed/Fixed bullets
-3. Update `APP_VERSION` in `src/Application.php` (single source of truth for `dde --version`)
-4. Commit signed + signed-off:
+3. Commit signed + signed-off (do **not** touch `src/Application.php` — CI injects the version):
 
 ```bash
-git add CHANGELOG.md src/Application.php
-git commit -S --signoff -m "chore(release): bump version to v2.1.0"
+git add CHANGELOG.md
+git commit -S --signoff -m "chore(release): prepare v2.1.0"
 ```
 
-5. Create the annotated, signed tag and push:
+4. Create the annotated, signed tag and push:
 
 ```bash
 git tag -s v2.1.0 -m "v2.1.0"
@@ -56,7 +55,13 @@ Pushing a `v*` tag triggers the release workflow (`.github/workflows/release.yml
 6. **Publishes the package repos** (APT, Alpine, Arch, RPM) and the Homebrew binaries to the `packages.dde.sh` S3 bucket
 7. **Invalidates the CloudFront cache** so the freshly published repo indexes are served immediately instead of stale cached copies
 
-The same publish + invalidate flow runs on every push to `v2` via the nightly workflow (`.github/workflows/nightly.yml`), targeting the `*-nightly` repo paths in the same bucket and the same CloudFront distribution.
+The same publish + invalidate flow runs on every push to `v2` via the nightly workflow (`.github/workflows/nightly.yml`), targeting the `*-nightly` repo paths in the same bucket and the same CloudFront distribution. There is no GitHub Release for nightlies; the package version is a UTC `YYYYMMDD.HHMM` stamp and the package name is `dde-nightly` with `Conflicts: dde`.
+
+Both channels call the reusable multi-platform build workflow (`.github/workflows/build.yml`, `workflow_call`), passing an `app-version-string` input: the release workflow passes the git tag, the nightly workflow the short commit SHA.
+
+### Version Injection
+
+`Application::APP_VERSION` is committed as the literal placeholder `@APP_VERSION@`; `build.yml` substitutes it before `box compile`. A local `bin/console` keeps the placeholder and a constructor fallback reports `dev`. Never hand-edit the constant.
 
 ### Required secrets
 

@@ -70,7 +70,12 @@ make test-unit    # Run unit tests only
 make build
 ```
 
-This produces `bin/dde.phar` using [humbug/box](https://github.com/box-project/box).
+This produces `bin/dde.phar` using [humbug/box](https://github.com/box-project/box). The actual `box compile` is wrapped by `scripts/compile-phar.sh`, the single source of truth for a byte-identical, reproducible PHAR (used by `build.sh`, the `Makefile`, and CI) — see [Reproducible Builds](../internals/reproducible-builds.md) for the how and why.
+
+PHAR-specific runtime behaviour:
+
+- `bin/console` detects the PHAR context via `str_starts_with(__DIR__, 'phar://')` and disables Dotenv.
+- `Kernel` overrides `getCacheDir()`/`getLogDir()` in the PHAR (pre-warmed cache, temp log dir).
 
 ### Standalone Binary
 
@@ -78,7 +83,17 @@ This produces `bin/dde.phar` using [humbug/box](https://github.com/box-project/b
 make build-binary
 ```
 
-This combines the PHAR with `micro.sfx` from [static-php-cli](https://github.com/crazywhalecc/static-php-cli) into a standalone executable. The build script (`scripts/build.sh`) automates the micro.sfx download and reads the target PHP version from `composer.json`.
+This combines the PHAR with `micro.sfx` from [static-php-cli](https://github.com/crazywhalecc/static-php-cli) into a standalone executable. The build script (`scripts/build.sh`) automates the micro.sfx download and reads the target PHP version from `composer.json` — the `php` constraint under `require` there is the single source of truth for the PHP version, propagated to `build.sh` and the CI workflows.
+
+## Continuous Integration
+
+`.github/workflows/ci.yml` runs on every push and pull request: ECS, PHPStan, Rector (dry-run), and tests.
+
+Pitfalls worth knowing:
+
+- CI runs `ecs check` **without** `--fix`, while `make ecs` locally rewrites files in place. A green local `make qa` with a dirty working tree means CI will fail — commit the auto-fixed files.
+- PHPStan requires a Symfony cache warmup (dev env) before it can analyse the container XML; the `make phpstan` target handles this.
+- Tests tagged `#[Group('e2e')]` require Docker and are excluded from CI (`--exclude-group=e2e`).
 
 ## Project Structure
 
