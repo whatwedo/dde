@@ -45,6 +45,6 @@ labels:
   - "traefik.http.routers.myapp.tls=true"
 ```
 
-## Migration from v1
+## v1 Projects
 
-In v1, routing was configured via `VIRTUAL_HOST` and `VIRTUAL_PORT` environment variables on containers. These are no longer used in v2. Run `dde project:init` to regenerate the correct Traefik label configuration for your project.
+Routing is configured exclusively via Traefik labels; `VIRTUAL_HOST` and `VIRTUAL_PORT` environment variables are not read. `dde project:init` migrates a v1 project's variables to the label configuration — see [Migration from v1](../guides/migration-from-v1.md).
