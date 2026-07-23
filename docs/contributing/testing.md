@@ -3,7 +3,7 @@ title: "Testing"
 ---
 
 
-dde uses PHPUnit for all tests. Tests are organized into unit tests and E2E tests, with strict separation.
+dde uses PHPUnit for all tests. Tests are organized into three tiers — unit, integration, and E2E — with strict separation.
 
 ## Test Structure
 
@@ -20,6 +20,8 @@ tests/
       Check/
         BinaryPathCheckTest.php
         ...
+    ...
+  Integration/
     ...
   E2E/
     ...
@@ -43,24 +45,32 @@ make test-coverage
 
 ## Test Categories
 
-### Unit Tests
+### Unit Tests (`tests/Unit/`)
 
-Unit tests verify individual classes in isolation. They mock dependencies and do not require Docker or any external services.
-
-Every new class should have a corresponding unit test covering at minimum:
+Unit tests verify individual classes in isolation. They mock dependencies and do not require Docker, external services, or CLI invocation. This is the default tier: every new class gets a unit test, written together with the code (TDD: red → green → refactor), covering at minimum:
 
 - The happy path (expected behavior with valid inputs)
 - The most important error cases (invalid inputs, edge cases)
 
-### E2E Tests
+### Integration Tests (`tests/Integration/`)
 
-E2E tests require a running Docker daemon and are tagged with:
+Integration tests wire real collaborators (e.g. a real `DockerComposeParser` instead of a mock) but still run without a Docker daemon. They are part of the default `make test` run.
+
+### E2E Tests (`tests/E2E/`)
+
+E2E tests spawn the `bin/console` CLI against a real Docker daemon and are tagged with:
 
 ```php
 #[Group('e2e')]
 ```
 
 These tests are excluded from the standard test suite and CI. Run them explicitly with `make test-e2e`.
+
+Every E2E test must own its setUp/tearDown: an isolated `tempDir`, `DDE_CONFIG_DIR` / `DDE_DATA_DIR` pointing at a random path, and containers cleaned up with `$this->cleanupLeftoverContainers()`.
+
+### Regression Tests
+
+When a fix addresses a real-world bug, add a regression test that would have caught the bug. Verify it by reverting the fix and watching the test fail.
 
 ## Full QA Suite
 
@@ -112,3 +122,5 @@ final class ImageManagerTest extends TestCase
 - Use `self::assert*()` instead of `$this->assert*()`
 - Mock external dependencies (Docker, filesystem, processes)
 - Each test method tests one behavior
+- Use `#[DataProvider]` with `iterable<string, array{…}>` providers for parametrised cases
+- Mark tests that do not assert on their mocks with the `#[AllowMockObjectsWithoutExpectations]` attribute

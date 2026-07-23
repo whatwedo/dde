@@ -142,6 +142,8 @@ services:
       dde-services-myproject: null
 ```
 
+Implementation rule: whenever generated YAML must *replace* a key whose list-form value Compose would otherwise merge with the base file, emit it via `Symfony\Component\Yaml\Tag\TaggedValue` with the `!override` tag — never by string concatenation.
+
 Project containers join exactly one network: the per-project one. Extra networks (an integration with an external Docker network outside the dde stack) are not supported on the base compose path — wire them up post-`up` via a hook or `docker network connect` if needed.
 
 `dde-services-<project>` (main checkout) or `dde-services-<project>-<suffix>` (worktree) is the per-project network where the versioned service containers (`mariadb`, `postgres`, …) are reachable under their canonical names. The worktree variant lets a branch run a different service version than main without alias collisions.

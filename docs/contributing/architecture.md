@@ -16,16 +16,17 @@ dde follows a layered architecture with thin commands, manager-based orchestrati
 
 Commands are the CLI entry points. They are thin wrappers that delegate to managers and services.
 
-- `App\Command\Project\*` -- project-scoped commands (init, up, down, shell, exec, logs, etc.)
+- `App\Command\Project\*` -- project-scoped commands (init, up, down, stop, shell, exec, logs, open, status, describe, update)
 - `App\Command\Project\Database\*` -- database commands (db, db:export, db:import, db:snapshot:*)
 - `App\Command\Project\Service\*` -- per-project service management (service:list, service:enable, service:disable)
-- `App\Command\System\*` -- system-wide commands (install, update, up, down, restart, status, doctor, cleanup)
+- `App\Command\System\*` -- system-wide commands (install, update, up, down, stop, restart, status, doctor, cleanup, service:up)
 - `App\Command\AboutCommand` -- version and system information
 
 Base classes:
 
 - `AbstractBaseCommand` -- root base class, provides `FormatterResolver` and `resolveFormatter()`
-- `AbstractProjectCommand` -- adds project directory detection, config resolution, database helpers
+- `AbstractProjectCommand` -- adds project directory detection, config resolution
+- `AbstractDatabaseCommand` -- adds database adapter resolution and connection helpers
 - `AbstractSystemCommand` -- marker base class for system commands
 
 All commands use the `#[AsCommand]` attribute for registration.
@@ -36,30 +37,38 @@ Managers contain the core business logic and orchestrate complex operations.
 
 | Manager | Responsibility |
 |---------|---------------|
-| `ProjectLifecycleManager` | Full project up/down/restart orchestration (services, certs, dev layers, overrides) |
+| `ProjectLifecycleManager` | Project up/down orchestration (services, certs, dev layers, overrides) |
+| `SystemLifecycleManager` | System up/down/stop/update orchestration (global services + versioned containers, image rebuild with `--pull`, post-install refresh for completion + claude-skill) |
 | `ProjectInitManager` | `.dde/` directory structure creation during `project:init` |
-| `DockerComposeManager` | Docker Compose CLI calls (`up`, `down`, `build`), override file generation |
+| `ProjectInitAdaptationManager` | Project adaptation logic during `project:init` (compose/env migration proposals; `EnvMigrationProposal` is its DTO) |
+| `DockerComposeManager` | Docker Compose CLI calls, runtime override generation |
 | `DockerManager` | Low-level Docker CLI (inspect, network, volume, exec, image operations) |
-| `ImageManager` | Image label inspection, dev layer Dockerfile generation, build, cache invalidation |
-| `ConfigManager` | YAML config loading, override chain resolution, project directory detection, worktree detection |
+| `ImageManager` | Image label inspection, dev layer build, cache invalidation |
+| `GlobalConfigManager` | Global `~/.dde/config.yml` loading |
+| `ProjectConfigManager` | Project `.dde/config.yml` loading, merge with global config, project directory detection |
+| `WorktreeManager` | Git worktree detection, hostname resolution / rewriting (incl. subdomains), DB-name resolution, environment override computation (incl. `env_file` values) |
 | `DatabaseManager` | Database shell, export, import, snapshot management, port resolution |
 | `SystemServiceManager` | Versionable service container lifecycle (start, stop, status, port allocation) |
 | `ServiceConfigManager` | Service container configuration generation |
-| `CertificateManager` | TLS certificate orchestration, domain extraction from compose files |
-| `MkcertManager` | mkcert CLI wrapper, certificate generation, Traefik dynamic TLS config, cert registry |
+| `MkcertManager` | mkcert CLI wrapper, cert generation, Traefik dynamic TLS config, CA root path resolution for container trust |
 | `CompletionManager` | Shell completion generation and installation |
+| `CleanupManager` | Container and volume cleanup |
+| `ProjectInfoManager` | Project info display |
+| `ClaudeCodeManager` | Detects a Claude Code installation and installs/refreshes the bundled `skills/claude/dde` skill |
 
 ### Services (`App\Service\`)
 
-System services represent the infrastructure containers managed by `system:up`/`system:down`.
+System services encapsulate the infrastructure containers managed by `system:up`/`system:down`. They implement `ServiceInterface`.
 
-- `ServiceInterface` -- (not used directly; `AbstractSystemService` is the base)
+- `ServiceInterface` -- contract for system services, collected via container tag
+- `ProjectNetworkAwareInterface` -- extends `ServiceInterface`; marks global services that must be attached to every per-project network (with their DNS aliases)
 - `AbstractSystemService` -- base class with start/stop/status logic via `DockerManager`
 - `TraefikService` -- reverse proxy (ports 80/443), network creation, Traefik config management
-- `DnsmasqService` -- DNS resolver for `.test` TLD, image build, resolver file management
+- `DnsmasqService` -- DNS resolver for the `.test` TLD, image build, resolver file management
 - `SshAgentService` -- SSH agent socket sharing across containers
 - `MailpitService` -- mail testing service
-- `ServiceRegistry` -- service type definitions (`SERVICE_TYPES` constant), version defaults, port mappings, global service collection
+- `ServiceRegistry` -- service type definitions, version defaults, port mappings, global service collection
+- `ImageBuilder` -- Docker image building for system services
 
 ### Configuration (`App\Config\`)
 
@@ -70,15 +79,17 @@ System services represent the infrastructure containers managed by `system:up`/`
 
 #### Definition (`App\Config\Definition\`)
 
-- `GlobalConfigDefinition` -- Symfony TreeBuilder schema for global config
-- `ProjectConfigDefinition` -- Symfony TreeBuilder schema for project config
+- `GlobalConfigDefinition` -- Symfony TreeBuilder schema for the global config
+- `ProjectConfigDefinition` -- Symfony TreeBuilder schema for the project config
 
 ### Models (`App\Model\`)
 
 - `ContainerConfig` -- Docker container creation parameters (image, ports, volumes, labels, etc.)
-- `ContainerInfo` -- Running container metadata from `docker inspect`
+- `ContainerInfo` -- running container metadata from `docker inspect`
+- `ContainerStatus` -- container state representation
 - `ServiceDefinition` -- service name, version, container name, ports
-- `ServiceStatus` -- running/stopped status of a service container
+- `ServiceStartStatus` / `ServiceStatus` -- start outcome and running/stopped status of a service container
+- `SystemLifecycleProgress` -- progress events emitted by `SystemLifecycleManager`, rendered live by the `system:*` commands
 - `UserContext` -- host UID/GID for user mapping inside containers
 
 ### Parsers (`App\Parser\`)
@@ -86,13 +97,9 @@ System services represent the infrastructure containers managed by `system:up`/`
 - `DockerComposeParser` -- reads and normalizes docker-compose.yml files
 - `DockerfileParser` -- extracts information from Dockerfiles (base image, labels)
 
-### Modifier (`App\Util\DockerComposeModifier`)
-
-- `DockerComposeModifier` -- applies persistent modifications to a project's docker-compose.yml during `project:init`: adds Traefik labels, injects `DATABASE_URL`/`MAILER_DSN` for detected dde services, migrates `VIRTUAL_HOST`/`VIRTUAL_PORT` (v1) to labels, and removes v1 boilerplate (external `dde` network, SSH-Agent volume mount + `SSH_AUTH_SOCK`, `DDE_UID`/`DDE_GID` build args, fixed `container_name`) that is now injected by the runtime overlay instead
-
 ### Adapters (`App\Adapter\`)
 
-- `AdapterRegistry` -- discovers and provides adapter scripts (built-in from `resources/adapters/` and project-specific from `.dde/adapters/`). Handles PHAR extraction.
+- `AdapterRegistry` -- discovers and provides adapter scripts (built-in ones from `resources/adapters/`, project-specific ones from `.dde/adapters/`). Handles PHAR extraction.
 
 ### Database (`App\Database\`)
 
@@ -106,11 +113,11 @@ System services represent the infrastructure containers managed by `system:up`/`
 - `CheckInterface` -- contract for health checks (tagged with `dde.doctor_check`)
 - `CheckResult` -- check outcome (name, status, message, fixHint)
 - `CheckStatus` -- enum: `Ok`, `Warning`, `Error`
-- `App\Doctor\Check\*` -- 10 concrete check implementations
+- `App\Doctor\Check\*` -- 11 concrete check implementations
 
 ### Events (`App\Event\`)
 
-- `AbstractProjectEvent` -- base class carrying project directory
+- `AbstractProjectEvent` -- base class carrying the project directory
 - `ProjectUpPreEvent`, `ProjectUpPostEvent` -- dispatched before/after project:up
 - `ProjectDownPreEvent`, `ProjectDownPostEvent` -- dispatched before/after project:down
 
@@ -131,18 +138,31 @@ System services represent the infrastructure containers managed by `system:up`/`
 - `OutputFormatterInterface` -- contract for output formatting (success, error, table, isInteractive)
 - `TextFormatter` -- human-readable console output with Symfony styling
 - `JsonFormatter` -- structured JSON output
+- `OutputFormat` -- enum of the supported `--output` values
 - `FormatterResolver` -- resolves and caches the active formatter
 
-### EventListener (`App\EventListener\`)
+### Event Listeners (`App\EventListener\`)
 
-- `OutputFormatListener` -- validates `--output` option and configures the formatter on every command
+- `OutputFormatListener` -- validates the `--output` option and configures the formatter on every command
+- `SystemInstallCheckListener` -- warns when commands run before `system:install` completed
 
 ### Utilities (`App\Util\`)
 
+- `ComposeEnvEntryParser` -- compose `environment:` entry normalisation
+- `DockerComposeModifier` -- persistent modifications to a project's `docker-compose.yml` during `project:init`: adds Traefik labels, injects `DATABASE_URL`/`MAILER_DSN` for detected dde services, migrates `VIRTUAL_HOST`/`VIRTUAL_PORT` (v1) to labels, and removes v1 boilerplate that the runtime overlay injects instead
+- `DiffUtil` -- unified diffs for file comparisons
+- `IdentifierSanitizer` -- slug sanitisation for hostnames and DB identifiers
+- `NdJsonParser` -- newline-delimited JSON parsing (Docker CLI output)
+- `PrivilegeEscalator` -- optimistic-then-sudo wrapper for host-level writes during `system:install`
+- `ProcessFactory` -- `symfony/process` factory used by the managers
 - `ShellDetectorUtil` -- detects the current shell (zsh, bash, etc.)
-- `TempFileUtil` -- creates temporary directories/files
+- `TempFileUtil` -- temporary directories/files
+- `TraefikLabelGenerator` -- pure generation of the Traefik v3 label set for a hostname (incl. hostname allow-list against `Host()` rule injection)
 - `UrlOpenerUtil` -- opens URLs in the default browser (cross-platform)
-- `DiffUtil` -- generates unified diffs for file comparisons
+
+### Exceptions (`App\Exception\`)
+
+- `HookFailedException` -- raised when a lifecycle hook script exits non-zero
 
 ## Container Labels
 
@@ -158,8 +178,10 @@ Every container created via `DockerManager::run()` (i.e. all dde-managed system 
 1. **Thin commands**: Commands only handle CLI I/O. All logic lives in managers and services.
 2. **Dependency injection**: All classes use constructor injection with Symfony autowiring. No static methods or service locators.
 3. **`#[AsCommand]` registration**: All commands use the attribute, no manual YAML configuration.
-4. **`symfony/process` for all external calls**: Docker, git, mkcert, dig -- all external tools are called via `Process`. No `shell_exec()` or `exec()`.
+4. **`symfony/process` for all external calls**: Docker, git, mkcert, dig -- all external tools are called via `Process`, and only from manager classes. No `shell_exec()` or `exec()`.
 5. **Strict types**: Every file declares `strict_types=1`.
 6. **Readonly where possible**: Value objects and services use `readonly` properties.
-7. **PHP enums for fixed sets**: `CheckStatus`, output format options, etc.
+7. **PHP enums for fixed sets**: `CheckStatus`, `OutputFormat`, etc. — no constant lists.
 8. **Explicit return types**: No implicit returns, no mixed returns without reason.
+9. **Not `final` by default**: Only leaf classes that implement an interface or extend an abstract class are `final`; pure static utilities may be `final`.
+10. **Single source of truth**: Domain values (e.g. DB credentials) live in the class whose responsibility they are (`DatabaseAdapter`), every other caller delegates to it. No hardcoded duplicates.
