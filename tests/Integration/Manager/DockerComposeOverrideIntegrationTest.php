@@ -15,6 +15,7 @@ use App\Database\MariaDbAdapter;
 use App\Database\PostgresAdapter;
 use App\Manager\DockerComposeManager;
 use App\Manager\DockerManager;
+use App\Manager\MkcertManager;
 use App\Manager\WorktreeManager;
 use App\Model\UserContext;
 use App\Util\ProcessFactory;
@@ -527,11 +528,15 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
             dataDir: $this->tempDir.'/data',
         );
 
+        $mkcertManager = $this->createStub(MkcertManager::class);
+        $mkcertManager->method('getCaRootCertPath')->willReturn(null);
+
         $this->manager = new DockerComposeManager(
             adapterRegistry: $this->adapterRegistry,
             dockerManager: $dockerManager,
             userContext: $userContext,
             worktreeManager: new WorktreeManager(new ProcessFactory(), new DatabaseAdapterRegistry([new MariaDbAdapter(), new PostgresAdapter()])),
+            mkcertManager: $mkcertManager,
         );
     }
 

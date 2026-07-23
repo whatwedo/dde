@@ -15,6 +15,22 @@ DNS resolution for `*.test` domains is handled by a dnsmasq container that resol
 
 dde uses [mkcert](https://github.com/FiloSottile/mkcert) for locally-trusted HTTPS. `system:install` creates a root CA trusted by your OS and browsers. Certificates are generated per-project during `project:up` — no manual setup needed.
 
+### Container Trust
+
+Once mkcert is set up (`system:install` generates the root CA), project containers trust it automatically. During `project:up`, dde bind-mounts the CA certificate into every shell-bearing container and the `ca-trust` adapter installs it into the container's certificate store. Supported base images: Debian/Ubuntu, Alpine, RHEL/Fedora/CentOS, and openSUSE. On minimal Debian/Ubuntu or Alpine images that lack the `ca-certificates` package, the adapter installs it on first start (only when the trust-store updater is missing). If you generated the mkcert CA after containers were already running, recreate them with `dde project:down && dde project:up` to pick up the certificate.
+
+Trusting the CA only removes the certificate error — it does not make `.test` hostnames reachable on its own. Inside a container, `<name>.test` resolves via the host's dnsmasq to `127.0.0.1`, which is the *container's* own loopback, not Traefik on the host. For a container to reach a `.test` service (its own or another project's), that hostname must be mapped to the Docker host in the service's compose `extra_hosts`, so it hits Traefik on the host, which routes by hostname:
+
+```yaml
+services:
+  app:
+    extra_hosts:
+      - "api.test:host-gateway"
+      - "other-project.test:host-gateway"
+```
+
+With both pieces in place — the `extra_hosts` mapping and the trusted CA — an in-container `curl https://api.test` resolves, routes through Traefik, and verifies the certificate without `--insecure`.
+
 ## Multiple Projects
 
 Multiple projects run simultaneously, each with a unique hostname (`project-a.test`, `project-b.test`). Traefik routes requests by hostname, so there are no port conflicts.
