@@ -14,9 +14,9 @@ final class ResolvedConfig
     public array $dnsForward { get => $this->globalConfig->dnsForward; }
 
     /**
-     * @var array<string>
+     * @var array<string>|null null = not configured (auto-detect), empty array = explicitly no keys
      */
-    public array $sshKeys { get => $this->globalConfig->sshKeys; }
+    public ?array $sshKeys { get => $this->globalConfig->sshKeys; }
 
     /**
      * @var array<ServiceDefinition>

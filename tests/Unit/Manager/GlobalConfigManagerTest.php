@@ -30,7 +30,7 @@ final class GlobalConfigManagerTest extends TestCase
         $this->assertInstanceOf(GlobalConfig::class, $config);
         $this->assertSame('text', $config->output);
         $this->assertSame(GlobalConfigDefinition::DNS_FORWARD, $config->dnsForward);
-        $this->assertSame([], $config->sshKeys);
+        $this->assertNull($config->sshKeys);
         $this->assertSame([], $config->warnings);
     }
 
@@ -58,6 +58,19 @@ final class GlobalConfigManagerTest extends TestCase
         $config = $manager->load();
 
         $this->assertSame(['~/.ssh/id_ed25519'], $config->sshKeys);
+    }
+
+    public function testLoadKeepsExplicitEmptySshKeys(): void
+    {
+        $configDir = $this->createTempDir();
+        $path = $configDir.'/config.yml';
+        file_put_contents($path, "ssh:\n  keys: []\n");
+        $this->tempFiles[] = $path;
+
+        $manager = new GlobalConfigManager(configDir: $configDir);
+        $config = $manager->load();
+
+        $this->assertSame([], $config->sshKeys);
     }
 
     public function testLoadParsesDnsForward(): void

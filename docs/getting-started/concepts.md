@@ -57,7 +57,8 @@ dns:
     - 9.9.9.9
     - 149.112.112.112
 ssh:
-  keys: []                          # SSH key paths to add to the agent
+  keys:                             # SSH key paths to add to the agent
+    - ~/.ssh/id_ed25519             # omit = auto-detect, empty list = none
 services:
   mariadb:
     version: "11.8"
