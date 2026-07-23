@@ -158,17 +158,16 @@ final class SshAgentService extends AbstractSystemService
      */
     public function getConfiguredKeys(): array
     {
-        $globalConfig = $this->globalConfigManager->load();
-        $configuredKeys = array_map(
-            fn (string $key): string => str_starts_with($key, '~/') ? $this->userHomeDir.substr($key, 1) : $key,
-            $globalConfig->sshKeys,
-        );
+        $sshKeys = $this->globalConfigManager->load()->sshKeys;
 
-        if ($configuredKeys !== []) {
-            return $configuredKeys;
+        if ($sshKeys === null) {
+            return $this->detectSshKeys();
         }
 
-        return $this->detectSshKeys();
+        return array_map(
+            fn (string $key): string => str_starts_with($key, '~/') ? $this->userHomeDir.substr($key, 1) : $key,
+            $sshKeys,
+        );
     }
 
     /**

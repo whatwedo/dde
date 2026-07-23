@@ -26,7 +26,7 @@ Returns a `GlobalConfig` DTO containing:
 
 - `output` -- default output format (text/json)
 - `dnsForward` -- DNS forward servers for dnsmasq
-- `sshKeys` -- SSH key paths for the agent
+- `sshKeys` -- SSH key paths for the agent (`null` when not configured, which triggers auto-detection; an explicit empty list disables key loading)
 - `serviceVersions` -- global version overrides (e.g. `mariadb: "10"`)
 - `warnings` -- any validation warnings
 

@@ -127,13 +127,24 @@ final class SshAgentServiceTest extends TestCase
         $this->assertSame([$fakeHome.'/.ssh/id_ed25519'], $service->getConfiguredKeys());
     }
 
-    public function testGetConfiguredKeysFallsBackToDetection(): void
+    public function testGetConfiguredKeysFallsBackToDetectionWhenNotConfigured(): void
     {
-        $service = $this->createService();
+        $fakeHome = $this->tempDir.'/fakehome';
+        $this->filesystem->dumpFile($fakeHome.'/.ssh/id_ed25519', "-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----");
 
-        // With no configured keys, it falls back to auto-detection
-        // Result depends on host ~/.ssh — just verify it returns an array
-        $this->assertIsArray($service->getConfiguredKeys());
+        $service = $this->createService(sshKeys: null, userHomeDir: $fakeHome);
+
+        $this->assertSame([$fakeHome.'/.ssh/id_ed25519'], $service->getConfiguredKeys());
+    }
+
+    public function testGetConfiguredKeysReturnsEmptyForExplicitEmptyList(): void
+    {
+        $fakeHome = $this->tempDir.'/fakehome';
+        $this->filesystem->dumpFile($fakeHome.'/.ssh/id_ed25519', "-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----");
+
+        $service = $this->createService(sshKeys: [], userHomeDir: $fakeHome);
+
+        $this->assertSame([], $service->getConfiguredKeys());
     }
 
     public function testDetectSshKeysFindsPrivateKeys(): void
@@ -327,9 +338,9 @@ final class SshAgentServiceTest extends TestCase
     }
 
     /**
-     * @param array<string> $sshKeys
+     * @param array<string>|null $sshKeys
      */
-    private function createService(array $sshKeys = [], string $userHomeDir = '/tmp'): SshAgentService
+    private function createService(?array $sshKeys = null, string $userHomeDir = '/tmp'): SshAgentService
     {
         $this->globalConfigManager->method('load')->willReturn(new GlobalConfig(sshKeys: $sshKeys));
 

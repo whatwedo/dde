@@ -10,14 +10,14 @@ final readonly class GlobalConfig
 {
     /**
      * @param array<string> $dnsForward
-     * @param array<string> $sshKeys
+     * @param array<string>|null $sshKeys null = not configured (auto-detect), empty array = explicitly no keys
      * @param array<string, string> $serviceVersions
      * @param list<string> $warnings
      */
     public function __construct(
         public string $output = GlobalConfigDefinition::OUTPUT,
         public array $dnsForward = GlobalConfigDefinition::DNS_FORWARD,
-        public array $sshKeys = GlobalConfigDefinition::SSH_KEYS,
+        public ?array $sshKeys = null,
         public array $serviceVersions = [],
         public array $warnings = [],
         public ?string $defaultBrowser = null,
@@ -27,8 +27,9 @@ final readonly class GlobalConfig
     /**
      * @param array<string, mixed> $processed Output from Processor::processConfiguration()
      * @param list<string> $warnings
+     * @param bool $sshKeysConfigured whether ssh.keys was explicitly present in the raw config (the processor cannot distinguish an explicit empty list from the default)
      */
-    public static function fromProcessedConfig(array $processed, array $warnings = []): self
+    public static function fromProcessedConfig(array $processed, array $warnings = [], bool $sshKeysConfigured = false): self
     {
         $serviceVersions = [];
         foreach ($processed['services'] as $name => $config) {
@@ -40,7 +41,7 @@ final readonly class GlobalConfig
         return new self(
             output: $processed['output'],
             dnsForward: $processed['dns']['forward'],
-            sshKeys: $processed['ssh']['keys'],
+            sshKeys: $sshKeysConfigured ? $processed['ssh']['keys'] : null,
             serviceVersions: $serviceVersions,
             warnings: $warnings,
             defaultBrowser: $processed['default_browser'],

@@ -31,12 +31,14 @@ readonly class GlobalConfigManager
 
         try {
             $processed = $this->processor->processConfiguration(new GlobalConfigDefinition(), [$data]);
+            $sshKeysConfigured = is_array($data['ssh'] ?? null) && array_key_exists('keys', $data['ssh']);
         } catch (InvalidConfigurationException $invalidConfigurationException) {
             $warnings[] = sprintf('Invalid global config "%s": %s', $path, $invalidConfigurationException->getMessage());
             $processed = $this->processor->processConfiguration(new GlobalConfigDefinition(), [[]]);
+            $sshKeysConfigured = false;
         }
 
-        return GlobalConfig::fromProcessedConfig($processed, $warnings);
+        return GlobalConfig::fromProcessedConfig($processed, $warnings, $sshKeysConfigured);
     }
 
     /**
