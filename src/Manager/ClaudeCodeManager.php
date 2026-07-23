@@ -41,7 +41,15 @@ readonly class ClaudeCodeManager
         }
 
         $this->filesystem->mkdir(dirname($skillTarget));
+
+        // copy() propagates the source permissions; inside the PHAR the skill is
+        // read-only, so normalise the target to keep it overwritable on refresh.
+        if ($this->filesystem->exists($skillTarget)) {
+            $this->filesystem->chmod($skillTarget, 0o644);
+        }
+
         $this->filesystem->copy($skillSource, $skillTarget, overwriteNewerFiles: true);
+        $this->filesystem->chmod($skillTarget, 0o644);
     }
 
     public function isSkillInstalled(): bool
