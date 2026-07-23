@@ -24,7 +24,9 @@ dns:
     - 9.9.9.9
     - 149.112.112.112
 
-# SSH keys to load (empty = all keys in ~/.ssh/)
+# SSH keys to load into the agent.
+# Omit the setting to auto-detect all private keys in ~/.ssh/.
+# An explicit empty list (keys: []) loads no keys at all.
 ssh:
   keys:
     - ~/.ssh/id_ed25519

@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- An explicit empty `ssh.keys: []` in the global config now disables SSH key loading. (#257)
 - Project commands no longer mistake `$HOME` for a project directory when run outside a dde project; the upward search for `.dde/config.yml` now stops at `$HOME`, so it can no longer match the global `~/.dde/config.yml`. Outside a project, commands like `dde up` now point to `dde project:init` instead of failing with a misleading missing-compose-file error.
 
 ## [2.0.0-rc.1] - 2026-07-18

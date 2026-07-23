@@ -16,7 +16,7 @@ final class GlobalConfigTest extends TestCase
 
         $this->assertSame('text', $config->output);
         $this->assertSame(GlobalConfigDefinition::DNS_FORWARD, $config->dnsForward);
-        $this->assertSame([], $config->sshKeys);
+        $this->assertNull($config->sshKeys);
         $this->assertSame([], $config->serviceVersions);
         $this->assertNull($config->defaultBrowser);
     }
@@ -63,7 +63,7 @@ final class GlobalConfigTest extends TestCase
             'default_browser' => '/usr/bin/firefox',
         ];
 
-        $config = GlobalConfig::fromProcessedConfig($processed, ['some warning']);
+        $config = GlobalConfig::fromProcessedConfig($processed, ['some warning'], sshKeysConfigured: true);
 
         $this->assertSame('json', $config->output);
         $this->assertSame(['1.1.1.1'], $config->dnsForward);
@@ -72,5 +72,24 @@ final class GlobalConfigTest extends TestCase
         $this->assertSame('6', $config->serviceVersions['valkey']);
         $this->assertSame(['some warning'], $config->warnings);
         $this->assertSame('/usr/bin/firefox', $config->defaultBrowser);
+    }
+
+    public function testFromProcessedConfigWithoutExplicitSshKeysYieldsNull(): void
+    {
+        $processed = [
+            'output' => 'text',
+            'dns' => [
+                'forward' => GlobalConfigDefinition::DNS_FORWARD,
+            ],
+            'ssh' => [
+                'keys' => GlobalConfigDefinition::SSH_KEYS,
+            ],
+            'services' => [],
+            'default_browser' => null,
+        ];
+
+        $config = GlobalConfig::fromProcessedConfig($processed);
+
+        $this->assertNull($config->sshKeys);
     }
 }

@@ -50,7 +50,7 @@ final class ResolvedConfigTest extends TestCase
 
         $this->assertSame(GlobalConfigDefinition::OUTPUT, $resolved->output);
         $this->assertSame(GlobalConfigDefinition::DNS_FORWARD, $resolved->dnsForward);
-        $this->assertSame(GlobalConfigDefinition::SSH_KEYS, $resolved->sshKeys);
+        $this->assertNull($resolved->sshKeys);
         $this->assertSame([], $resolved->serviceVersions);
         $this->assertSame('', $resolved->projectName);
         $this->assertSame([], $resolved->services);

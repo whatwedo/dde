@@ -71,9 +71,3 @@ parameters:
 			identifier: assign.propertyType
 			count: 2
 			path: tests/Unit/Parser/DockerfileParserTest.php
-
-		-
-			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with array\<string\> will always evaluate to true\.$#'
-			identifier: method.alreadyNarrowedType
-			count: 1
-			path: tests/Unit/Service/SshAgentServiceTest.php

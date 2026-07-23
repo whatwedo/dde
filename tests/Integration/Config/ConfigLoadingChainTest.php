@@ -195,7 +195,7 @@ final class ConfigLoadingChainTest extends TestCase
         self::assertInstanceOf(GlobalConfig::class, $globalConfig);
         self::assertSame(GlobalConfigDefinition::OUTPUT, $globalConfig->output);
         self::assertSame(GlobalConfigDefinition::DNS_FORWARD, $globalConfig->dnsForward);
-        self::assertSame(GlobalConfigDefinition::SSH_KEYS, $globalConfig->sshKeys);
+        self::assertNull($globalConfig->sshKeys);
         self::assertSame([], $globalConfig->serviceVersions);
         self::assertSame([], $globalConfig->warnings);
     }
