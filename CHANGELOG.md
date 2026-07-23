@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Reproducible builds — two builds from the same commit now produce a byte-identical PHAR and binary. (#213)
+
 ### Changed
 
 - Plain HTTP requests are now redirected to HTTPS by default (Traefik's `web` entry point forwards to `websecure`; recreate the container via `dde system:down && dde system:up` to pick it up).

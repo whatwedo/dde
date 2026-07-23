@@ -10,6 +10,7 @@ config/reference.php
 bin/dde
 bin/dde.phar
 box.phar
+box.compile.json
 
 # IDE and local tooling
 .claude/*.local.*

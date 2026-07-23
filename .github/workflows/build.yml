@@ -68,12 +68,6 @@ jobs:
       - name: Install production dependencies
         run: composer install --no-dev --optimize-autoloader --no-progress
 
-      - name: Warm Symfony cache
-        shell: bash
-        run: |
-          rm -rf var/cache/prod
-          APP_ENV=prod php bin/console cache:warmup --env=prod
-
       - name: Substitute @APP_VERSION@ placeholder
         shell: bash
         env:
@@ -108,8 +102,9 @@ jobs:
           php box.phar --version || { echo "Error: box.phar is corrupt"; exit 1; }
           chmod +x box.phar
 
-      - name: Build PHAR
-        run: php box.phar compile
+      - name: Build PHAR (reproducible)
+        shell: bash
+        run: scripts/compile-phar.sh box.phar
 
       - name: Download micro.sfx
         run: |

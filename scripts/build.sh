@@ -39,10 +39,8 @@ MICRO_SFX_CACHED="${CACHE_DIR}/micro-${PHP_VERSION}-${PLATFORM}-${ARCH}.sfx"
 echo "==> Building PHAR..."
 cd "$PROJECT_DIR"
 composer install --no-dev --optimize-autoloader --quiet
-rm -rf var/cache/*
-APP_ENV=prod php bin/console cache:warmup --quiet
 curl -fsSL https://github.com/box-project/box/releases/download/4.7.0/box.phar -o /tmp/box.phar
-php /tmp/box.phar compile
+"$SCRIPT_DIR/compile-phar.sh" /tmp/box.phar
 rm -rf var/cache/*
 composer install --quiet
 
