@@ -47,6 +47,7 @@ Based on Symfony 8, PHP 8.5, built as a single-file binary via static-php-cli.
 - PHAR: `make build` — builds `bin/dde.phar` via humbug/box (`box.phar`, standalone)
 - Binary: `make build-binary` — combines PHAR with `micro.sfx` from static-php-cli into standalone executable
 - Build script: `scripts/build.sh` — automates micro.sfx download and binary creation, reads PHP version from `composer.json`
+- Reproducible PHAR: `scripts/compile-phar.sh` — single source of truth for the reproducible `box compile` (used by `build.sh`, the `Makefile` `build` target, and `build.yml`). box ignores `SOURCE_DATE_EPOCH`, so it injects a `timestamp` into a generated `box.compile.json` and warms the Symfony cache with `SOURCE_DATE_EPOCH` set (for a deterministic `container.build_time`). See `docs/internals/reproducible-builds.md`
 - PHAR context: `bin/console` detects PHAR via `str_starts_with(__DIR__, 'phar://')` and disables Dotenv
 - Kernel overrides `getCacheDir()`/`getLogDir()` for PHAR (pre-warmed cache, temp log dir)
 - PHP version: single source of truth in `composer.json` (`require.php`), propagated to build.sh and CI workflows
