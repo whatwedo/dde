@@ -101,18 +101,6 @@ Full documentation is available in the [docs/](docs/) directory:
 **Contributing**
 - [Development Setup](docs/contributing/development-setup.md) -- [Architecture](docs/contributing/architecture.md) -- [Testing](docs/contributing/testing.md) -- [Release Process](docs/contributing/release-process.md) -- [Adding a Command](docs/contributing/adding-a-command.md) -- [Adding a Service](docs/contributing/adding-a-service.md) -- [Adding an Adapter](docs/contributing/adding-an-adapter.md)
 
-## Roadmap
-
-- [ ] Testing basic commands and migration from v1 to v2
-- [ ] Testing database commands and worktree support
-- [ ] Testing agent integrations
-- [ ] Notify users when a new release is available
-- [ ] Add Sentry error tracking
-- [ ] GitHub Pages documentation site
-- [ ] Detect Dockerfile or docker-compose changes and prompt the user to update the project
-- [x] Arch Linux package
-- [ ] Windows x64 build and Chocolatey package
-
 ## License
 
 This project is licensed under the [AGPL-3.0-or-later](LICENSE) license.
