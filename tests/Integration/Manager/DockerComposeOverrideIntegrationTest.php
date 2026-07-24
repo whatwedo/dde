@@ -9,6 +9,7 @@ use App\Config\Definition\GlobalConfigDefinition;
 use App\Config\GlobalConfig;
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
+use App\Config\SshAgentMode;
 use App\Config\WorktreeInfo;
 use App\Database\DatabaseAdapterRegistry;
 use App\Database\MariaDbAdapter;
@@ -471,6 +472,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
             sshKeys: GlobalConfigDefinition::SSH_KEYS,
             serviceVersions: [],
             warnings: [],
+            sshAgentMode: SshAgentMode::Managed,
         );
         $project = new ProjectConfig(
             name: $projectName,
@@ -492,6 +494,7 @@ final class DockerComposeOverrideIntegrationTest extends TestCase
             sshKeys: GlobalConfigDefinition::SSH_KEYS,
             serviceVersions: [],
             warnings: [],
+            sshAgentMode: SshAgentMode::Managed,
         );
         $project = new ProjectConfig(
             name: $projectName,

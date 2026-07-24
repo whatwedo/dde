@@ -57,7 +57,7 @@ final class ResolvedConfigTest extends TestCase
         $this->assertSame([], $resolved->services);
         $this->assertSame([], $resolved->containers);
         $this->assertNull($resolved->defaultBrowser);
-        $this->assertSame(SshAgentMode::Managed, $resolved->sshAgentMode);
+        $this->assertSame(SshAgentMode::Host, $resolved->sshAgentMode);
         $this->assertNull($resolved->sshAgentSource);
     }
 
@@ -72,11 +72,11 @@ final class ResolvedConfigTest extends TestCase
         $this->assertSame('env', $resolved->sshAgentSource);
     }
 
-    public function testSshAgentModeDefaultsToManaged(): void
+    public function testSshAgentModeDefaultsToHost(): void
     {
         $resolved = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig());
 
-        $this->assertSame(SshAgentMode::Managed, $resolved->sshAgentMode);
+        $this->assertSame(SshAgentMode::Host, $resolved->sshAgentMode);
         $this->assertNull($resolved->sshAgentSource);
     }
 

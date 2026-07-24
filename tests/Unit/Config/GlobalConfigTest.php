@@ -20,7 +20,7 @@ final class GlobalConfigTest extends TestCase
         $this->assertNull($config->sshKeys);
         $this->assertSame([], $config->serviceVersions);
         $this->assertNull($config->defaultBrowser);
-        $this->assertSame(SshAgentMode::Managed, $config->sshAgentMode);
+        $this->assertSame(SshAgentMode::Host, $config->sshAgentMode);
         $this->assertNull($config->sshAgentSource);
     }
 
@@ -83,7 +83,7 @@ final class GlobalConfigTest extends TestCase
         $this->assertSame('/run/user/1000/keyring/ssh', $config->sshAgentSource);
     }
 
-    public function testFromProcessedConfigDefaultsToManagedMode(): void
+    public function testFromProcessedConfigWithManagedMode(): void
     {
         $processed = [
             'output' => 'text',

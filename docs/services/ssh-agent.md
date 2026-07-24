@@ -5,6 +5,8 @@ title: "SSH-Agent"
 
 The SSH-Agent service shares SSH keys from the host into project containers, enabling git operations, SSH connections, and other key-based authentication inside containers.
 
+The service container runs only in `managed` agent mode (`ssh.agent.mode: managed` in `~/.dde/config.yml`). By default (`host` mode) dde forwards your existing host SSH agent into project containers and runs no agent container — see the [SSH agent guide](../guides/ssh-agent.md).
+
 ## How It Works
 
 1. The SSH-Agent container runs an `ssh-agent` process.

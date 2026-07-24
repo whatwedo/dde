@@ -21,7 +21,7 @@ final readonly class GlobalConfig
         public array $serviceVersions = [],
         public array $warnings = [],
         public ?string $defaultBrowser = null,
-        public SshAgentMode $sshAgentMode = SshAgentMode::Managed,
+        public SshAgentMode $sshAgentMode = SshAgentMode::Host,
         public ?string $sshAgentSource = GlobalConfigDefinition::SSH_AGENT_SOURCE,
     ) {
     }

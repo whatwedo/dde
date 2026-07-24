@@ -144,7 +144,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
 
@@ -167,7 +167,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -192,7 +192,7 @@ final class DockerComposeManagerTest extends TestCase
         $dockerManager->method('imageHasShell')->willReturn(true);
         $manager = $this->createManagerWithDockerManager($dockerManager, $mkcertManager);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -211,7 +211,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -233,7 +233,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -361,7 +361,7 @@ final class DockerComposeManagerTest extends TestCase
         $hostSocket = $this->createUnixSocket($this->tempDir.'/host-agent.sock');
 
         $cases = [
-            'managed' => [$this->manager, new GlobalConfig()],
+            'managed' => [$this->manager, new GlobalConfig(sshAgentMode: SshAgentMode::Managed)],
             'host-available' => [
                 $this->createManagerWithResolver(new HostSshAgentResolver(osFamily: 'Linux', authSock: $hostSocket)),
                 new GlobalConfig(sshAgentMode: SshAgentMode::Host),
@@ -419,7 +419,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -444,7 +444,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -462,7 +462,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -481,7 +481,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -508,7 +508,7 @@ final class DockerComposeManagerTest extends TestCase
 
         $manager = $this->createManagerWithDockerManager($dockerManager);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -542,7 +542,7 @@ final class DockerComposeManagerTest extends TestCase
 
         $manager = $this->createManagerWithDockerManager($dockerManager);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -561,7 +561,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -581,7 +581,7 @@ final class DockerComposeManagerTest extends TestCase
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -612,7 +612,7 @@ final class DockerComposeManagerTest extends TestCase
 
         $manager = $this->createManagerWithDockerManager($dockerManager);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -639,7 +639,7 @@ final class DockerComposeManagerTest extends TestCase
 
         $manager = $this->createManagerWithDockerManager($dockerManager);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -673,7 +673,7 @@ final class DockerComposeManagerTest extends TestCase
 
         $manager = $this->createManagerWithDockerManager($dockerManager);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -993,7 +993,7 @@ final class DockerComposeManagerTest extends TestCase
     {
         // empty temp dir with no compose file
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/No services found/');
@@ -1014,7 +1014,7 @@ final class DockerComposeManagerTest extends TestCase
 
         file_put_contents($this->tempDir.'/compose.yml', Yaml::dump($composeData, 4, 2));
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'test-project'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'test-project'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1146,7 +1146,7 @@ final class DockerComposeManagerTest extends TestCase
         );
 
         $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1204,7 +1204,7 @@ final class DockerComposeManagerTest extends TestCase
         );
 
         $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1249,7 +1249,7 @@ final class DockerComposeManagerTest extends TestCase
         );
 
         $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1310,7 +1310,7 @@ final class DockerComposeManagerTest extends TestCase
         );
 
         $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1363,7 +1363,7 @@ final class DockerComposeManagerTest extends TestCase
         );
 
         $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1409,7 +1409,7 @@ final class DockerComposeManagerTest extends TestCase
         );
 
         $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1458,7 +1458,7 @@ final class DockerComposeManagerTest extends TestCase
 
         $manager = $this->createManagerWithRealWorktreeManager();
         $config = ResolvedConfig::merge(
-            new GlobalConfig(),
+            new GlobalConfig(sshAgentMode: SshAgentMode::Managed),
             new ProjectConfig(name: 'beispiel', services: [new ServiceDefinition(name: 'mariadb')]),
         );
 
@@ -1502,7 +1502,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1542,7 +1542,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1581,7 +1581,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1625,7 +1625,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1657,7 +1657,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1696,7 +1696,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1718,7 +1718,7 @@ ENV);
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1737,7 +1737,7 @@ ENV);
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'My Project_42'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'My Project_42'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1756,7 +1756,7 @@ ENV);
             ],
         ]);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $this->manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1779,7 +1779,7 @@ ENV);
 
         $manager = $this->createManagerWithDockerManager($dockerManager);
 
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1809,7 +1809,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1843,7 +1843,7 @@ ENV);
 
         $manager = $this->createManagerWithRealWorktreeManager();
         $config = ResolvedConfig::merge(
-            new GlobalConfig(),
+            new GlobalConfig(sshAgentMode: SshAgentMode::Managed),
             new ProjectConfig(name: 'beispiel', services: [new ServiceDefinition(name: 'mariadb')]),
         );
 
@@ -1881,7 +1881,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1928,7 +1928,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManagerForShellLess();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -1970,7 +1970,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
@@ -2003,7 +2003,7 @@ ENV);
         );
 
         $manager = $this->createManagerWithRealWorktreeManager();
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
 
         $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
         $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
