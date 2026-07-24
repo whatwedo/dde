@@ -57,20 +57,20 @@ Your application is now available at `https://my-app.test` with a trusted TLS ce
 
 dde takes a different approach: **your existing Docker images work as-is.** dde adds a thin runtime layer that remaps the container user's UID/GID to match the host, and uses service adapters (nginx, php-fpm, apache) to reconfigure processes at startup. There is no custom Dockerfile layer — the same image you deploy to production runs locally.
 
-| | dde | DDEV |
-|---|---|---|
-| Custom prod images | Works as-is | Requires DDEV image layers |
-| Image management | Your Dockerfiles, unchanged | DDEV-managed Dockerfiles |
-| Runtime overhead | Thin entrypoint (UID remap) | Full image rebuild per project |
-| Language | PHP (single binary via [static-php-cli](https://static-php.dev)) | Go |
-| License | AGPL-3.0 | Apache-2.0 |
+|                    | dde                                                              | DDEV                           |
+| ------------------ | ---------------------------------------------------------------- | ------------------------------ |
+| Custom prod images | Works as-is                                                      | Requires DDEV image layers     |
+| Image management   | Your Dockerfiles, unchanged                                      | DDEV-managed Dockerfiles       |
+| Runtime overhead   | Thin entrypoint (UID remap)                                      | Full image rebuild per project |
+| Language           | PHP (single binary via [static-php-cli](https://static-php.dev)) | Go                             |
+| License            | AGPL-3.0                                                         | Apache-2.0                     |
 
 ## Supported Platforms
 
-| OS      | Architecture     |
-|---------|-----------------|
-| macOS   | x86_64, arm64   |
-| Linux   | x86_64, arm64   |
+| OS    | Architecture  |
+| ----- | ------------- |
+| macOS | x86_64, arm64 |
+| Linux | x86_64, arm64 |
 
 ## Documentation
 

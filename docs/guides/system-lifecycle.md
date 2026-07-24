@@ -83,12 +83,12 @@ Implementation contract: [system:install internals](../internals/system-install.
 
 ## Quick reference
 
-| Situation                                    | Command            |
-|----------------------------------------------|--------------------|
-| Closing the laptop, resume later             | `system:stop`      |
-| Tearing down, cleaning up                    | `system:down`      |
-| After first-time installation                | `system:install`   |
-| After `brew upgrade dde` or similar          | `system:update`    |
-| Bring services back up (after stop or down)  | `system:up`        |
+| Situation                                   | Command          |
+| ------------------------------------------- | ---------------- |
+| Closing the laptop, resume later            | `system:stop`    |
+| Tearing down, cleaning up                   | `system:down`    |
+| After first-time installation               | `system:install` |
+| After `brew upgrade dde` or similar         | `system:update`  |
+| Bring services back up (after stop or down) | `system:up`      |
 
 See also: [Commands](../getting-started/commands.md), [Installation](../getting-started/installation.md).

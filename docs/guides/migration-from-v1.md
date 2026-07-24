@@ -7,16 +7,16 @@ dde v2 is a complete rewrite. v1 and v2 cannot run side by side — you must ful
 
 ## Overview of changes
 
-| Component         | v1                          | v2                              |
-|-------------------|-----------------------------|---------------------------------|
-| Language          | Bash                        | PHP 8.5 + static-php-cli        |
-| Reverse proxy     | nginx-proxy                 | Traefik v3                       |
-| TLS certificates  | Custom openssl CA           | mkcert (OS-trusted root CA)     |
-| Mail catcher      | MailCrab                    | Mailpit                          |
-| Configuration     | Shell variables             | YAML (`~/.dde/config.yml`, `.dde/config.yml`) |
-| Worktree support  | None                        | Automatic hostname per worktree  |
-| Plugin system     | None                        | `.dde/plugins/` directory        |
-| Global config     | None                        | `~/.dde/config.yml`             |
+| Component        | v1                | v2                                            |
+| ---------------- | ----------------- | --------------------------------------------- |
+| Language         | Bash              | PHP 8.5 + static-php-cli                      |
+| Reverse proxy    | nginx-proxy       | Traefik v3                                    |
+| TLS certificates | Custom openssl CA | mkcert (OS-trusted root CA)                   |
+| Mail catcher     | MailCrab          | Mailpit                                       |
+| Configuration    | Shell variables   | YAML (`~/.dde/config.yml`, `.dde/config.yml`) |
+| Worktree support | None              | Automatic hostname per worktree               |
+| Plugin system    | None              | `.dde/plugins/` directory                     |
+| Global config    | None              | `~/.dde/config.yml`                           |
 
 ## Step-by-step migration
 
@@ -96,9 +96,9 @@ Because dde-specific values live only in `docker-compose.yml`, the [worktree ove
 
 With that split in mind, `project:init` applies these two rules:
 
-| Variable | Where | Behaviour |
-|---|---|---|
-| `MAILER_DSN` | compose `environment:` + `.env` | Only when `mailpit` is a configured dde service. compose gets `smtp://mailpit:1025`; `.env` is rewritten to `null://null` (so the app is safe to run outside dde too). |
+| Variable       | Where                           | Behaviour                                                                                                                                                                                                                                                                                                    |
+| -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `MAILER_DSN`   | compose `environment:` + `.env` | Only when `mailpit` is a configured dde service. compose gets `smtp://mailpit:1025`; `.env` is rewritten to `null://null` (so the app is safe to run outside dde too).                                                                                                                                       |
 | `DATABASE_URL` | compose `environment:` + `.env` | User-prompted. If the `.env` value matches a configured dde DB service, you are asked whether to migrate. Accepting rewrites `.env` to `<scheme>://app:changeme@127.0.0.1:<port>/<db>?<query>` and adds a compose entry `<scheme>://<root>:<root>@<service>/<sanitized-db>?serverVersion=<version>&<query>`. |
 
 In non-interactive mode (piped stdout, `--no-interaction`) the `DATABASE_URL` prompt is silently rejected — run `project:init` in a real terminal if you want to apply it.
@@ -114,14 +114,14 @@ Any customisations that previously relied on the `dde` user can be implemented u
 
 ## Breaking changes
 
-| v1 command/feature             | v2 equivalent                    | Notes                                    |
-|-------------------------------|----------------------------------|------------------------------------------|
-| `dde project fix-permissions` | Removed                          | No longer needed (automatic UID/GID mapping) |
-| `dde project exec-root`      | `dde project:exec --root`       | Now a flag on `project:exec`             |
-| `VIRTUAL_HOST` env var        | Traefik labels (auto-generated) | Set automatically by `project:init`      |
-| Custom openssl CA             | mkcert root CA                  | Installed via `system:install`           |
-| MailCrab                      | Mailpit                         | Different web UI, same SMTP interface    |
-| nginx-proxy                   | Traefik v3                      | Routing via labels instead of env vars   |
+| v1 command/feature            | v2 equivalent                   | Notes                                                       |
+| ----------------------------- | ------------------------------- | ----------------------------------------------------------- |
+| `dde project fix-permissions` | Removed                         | No longer needed (automatic UID/GID mapping)                |
+| `dde project exec-root`       | `dde project:exec --root`       | Now a flag on `project:exec`                                |
+| `VIRTUAL_HOST` env var        | Traefik labels (auto-generated) | Set automatically by `project:init`                         |
+| Custom openssl CA             | mkcert root CA                  | Installed via `system:install`                              |
+| MailCrab                      | Mailpit                         | Different web UI, same SMTP interface                       |
+| nginx-proxy                   | Traefik v3                      | Routing via labels instead of env vars                      |
 | `DDE_BROWSER` env var         | `default_browser` config option | Browser for `project:open` now lives in `~/.dde/config.yml` |
 
 ## v2: restart commands removed

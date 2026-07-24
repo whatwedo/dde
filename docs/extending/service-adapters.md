@@ -51,11 +51,11 @@ configure() {
 
 dde ships with three built-in adapters in `resources/adapters/`:
 
-| Adapter | Detects | Configures |
-|---|---|---|
-| apache.sh | `apache2` or `httpd` | Updates run user/group to `dde` |
-| nginx.sh | `nginx` | Updates the `user` directive and directory ownership to `dde` |
-| php-fpm.sh | a `www.conf` pool config | Updates pool user/group and listen owner/group to `dde` |
+| Adapter    | Detects                  | Configures                                                    |
+| ---------- | ------------------------ | ------------------------------------------------------------- |
+| apache.sh  | `apache2` or `httpd`     | Updates run user/group to `dde`                               |
+| nginx.sh   | `nginx`                  | Updates the `user` directive and directory ownership to `dde` |
+| php-fpm.sh | a `www.conf` pool config | Updates pool user/group and listen owner/group to `dde`       |
 
 > **Resolved group, not literal `dde`.** When `DDE_GID` maps onto a group that already exists in the image (e.g. gid 20 → `dialout` on Debian, which is `staff` on the macOS host), the entrypoint reuses that group rather than creating one named `dde`. The adapters therefore resolve the dde user's real primary group via `id -gn dde` and write *that* name — hardcoding `dde` would point nginx/php-fpm at a non-existent group and break startup.
 

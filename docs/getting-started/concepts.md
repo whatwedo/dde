@@ -19,12 +19,12 @@ dde manages two layers of Docker containers:
 
 The supported per-project services are:
 
-| Service   | Default version | Default port |
-|-----------|----------------|-------------|
-| MariaDB   | 11.8           | 3306        |
-| PostgreSQL| 18.3           | 5432        |
-| Valkey    | 9              | 6379        |
-| Mailpit   | latest         | 8025        |
+| Service    | Default version | Default port |
+| ---------- | --------------- | ------------ |
+| MariaDB    | 11.8            | 3306         |
+| PostgreSQL | 18.3            | 5432         |
+| Valkey     | 9               | 6379         |
+| Mailpit    | latest          | 8025         |
 
 ## Configuration hierarchy
 

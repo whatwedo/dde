@@ -12,11 +12,11 @@ a leftover resolver file (#205).
 
 ## Privileged host paths
 
-| Platform | Operations |
-|---|---|
+| Platform                 | Operations                                                                         |
+| ------------------------ | ---------------------------------------------------------------------------------- |
 | Linux / systemd-resolved | `/etc/systemd/resolved.conf.d/dde-test.conf`, `systemctl restart systemd-resolved` |
-| Linux / NetworkManager | `/etc/NetworkManager/dnsmasq.d/dde-test.conf`, `systemctl restart NetworkManager` |
-| macOS | `/etc/resolver/test` |
+| Linux / NetworkManager   | `/etc/NetworkManager/dnsmasq.d/dde-test.conf`, `systemctl restart NetworkManager`  |
+| macOS                    | `/etc/resolver/test`                                                               |
 
 All three run through `App\Service\DnsmasqService::configureDns*()` and are the
 **only** escalated call sites. `DnsmasqService::ensureConfig()` (writes under

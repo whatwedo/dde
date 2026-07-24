@@ -16,12 +16,12 @@ The Mailpit web interface is accessible at:
 
 Configure your project to send mail through Mailpit's SMTP server:
 
-| Setting | Value |
-|---|---|
-| SMTP Host | `mail` (network alias) |
-| SMTP Port | `1025` |
-| Authentication | None |
-| Encryption | None |
+| Setting        | Value                  |
+| -------------- | ---------------------- |
+| SMTP Host      | `mail` (network alias) |
+| SMTP Port      | `1025`                 |
+| Authentication | None                   |
+| Encryption     | None                   |
 
 ### Symfony Mailer DSN
 

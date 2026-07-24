@@ -8,15 +8,15 @@ Layered architecture: thin commands under `App\Command\{Project,System}\` delega
 
 Read the page that matches your task before touching code:
 
-| Task | Read |
-|------|------|
-| Anything under `src/` | `docs/contributing/architecture.md` — namespace map, design principles |
-| Writing tests | `docs/contributing/testing.md` |
-| Build, PHAR, local dev setup | `docs/contributing/development-setup.md` |
-| Reproducible builds | `docs/internals/reproducible-builds.md` |
-| Release, CI/CD, nightly channel | `docs/contributing/release-process.md` |
-| Compose override generation | `docs/internals/docker-compose-override.md` |
-| Committing | `docs/contributing/commit-conventions.md` |
+| Task                            | Read                                                                   |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| Anything under `src/`           | `docs/contributing/architecture.md` — namespace map, design principles |
+| Writing tests                   | `docs/contributing/testing.md`                                         |
+| Build, PHAR, local dev setup    | `docs/contributing/development-setup.md`                               |
+| Reproducible builds             | `docs/internals/reproducible-builds.md`                                |
+| Release, CI/CD, nightly channel | `docs/contributing/release-process.md`                                 |
+| Compose override generation     | `docs/internals/docker-compose-override.md`                            |
+| Committing                      | `docs/contributing/commit-conventions.md`                              |
 
 User-facing behaviour is documented in `docs/guides/` and `docs/services/`, internal contracts in `docs/internals/`.
 

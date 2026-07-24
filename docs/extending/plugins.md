@@ -9,10 +9,10 @@ Plugins are shell scripts that register custom commands in dde. They allow you t
 
 Plugins are loaded from two locations:
 
-| Location | Scope |
-|----------|-------|
-| `~/.dde/plugins/` | Global -- available in all projects |
-| `.dde/plugins/` | Project -- available only in the current project |
+| Location          | Scope                                            |
+| ----------------- | ------------------------------------------------ |
+| `~/.dde/plugins/` | Global -- available in all projects              |
+| `.dde/plugins/`   | Project -- available only in the current project |
 
 If a project plugin defines the same `@command` name as a global plugin, the **project plugin takes precedence**.
 
@@ -70,11 +70,11 @@ This registers as `dde project:cache:clear`.
 
 Plugins are registered under the `project:` namespace. The full command name is `project:<@command-value>`.
 
-| `@command` value | Registered as |
-|------------------|---------------|
-| `hello` | `dde project:hello` |
-| `web:hash-pw` | `dde project:web:hash-pw` |
-| `cache:clear` | `dde project:cache:clear` |
+| `@command` value | Registered as             |
+| ---------------- | ------------------------- |
+| `hello`          | `dde project:hello`       |
+| `web:hash-pw`    | `dde project:web:hash-pw` |
+| `cache:clear`    | `dde project:cache:clear` |
 
 All plugin commands appear in `dde list` output with their `@description` text.
 

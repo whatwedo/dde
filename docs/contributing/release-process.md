@@ -67,13 +67,13 @@ Both channels call the reusable multi-platform build workflow (`.github/workflow
 
 The publishing jobs read these repository secrets:
 
-| Secret | Purpose |
-|--------|---------|
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | IAM credentials for the `packages.dde.sh` bucket and the CloudFront invalidation |
-| `CLOUDFRONT_DISTRIBUTION_ID` | The distribution that fronts `packages.dde.sh`; used by `aws cloudfront create-invalidation --paths "/*"` |
-| `GPG_PRIVATE_KEY` / `GPG_PASSPHRASE` | Sign the APT/Arch/RPM repo metadata |
-| `ALPINE_RSA_PRIVATE_KEY` | Sign the Alpine repo index |
-| `HOMEBREW_SSH_KEY` | Push the updated formula to the Homebrew tap repo |
+| Secret                                        | Purpose                                                                                                   |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | IAM credentials for the `packages.dde.sh` bucket and the CloudFront invalidation                          |
+| `CLOUDFRONT_DISTRIBUTION_ID`                  | The distribution that fronts `packages.dde.sh`; used by `aws cloudfront create-invalidation --paths "/*"` |
+| `GPG_PRIVATE_KEY` / `GPG_PASSPHRASE`          | Sign the APT/Arch/RPM repo metadata                                                                       |
+| `ALPINE_RSA_PRIVATE_KEY`                      | Sign the Alpine repo index                                                                                |
+| `HOMEBREW_SSH_KEY`                            | Push the updated formula to the Homebrew tap repo                                                         |
 
 The IAM principal behind `AWS_ACCESS_KEY_ID` needs `cloudfront:CreateInvalidation` (and `cloudfront:GetInvalidation`) on the distribution in addition to its existing `s3:*` access to the bucket. A whole-distribution `/*` invalidation counts as a single path for billing.
 
@@ -81,12 +81,12 @@ The IAM principal behind `AWS_ACCESS_KEY_ID` needs `cloudfront:CreateInvalidatio
 
 The release pipeline produces binaries for 4 platforms:
 
-| Platform | Architecture | Binary Name |
-|----------|-------------|-------------|
-| macOS | x86_64 | `dde-darwin-amd64` |
-| macOS | arm64 (Apple Silicon) | `dde-darwin-arm64` |
-| Linux | x86_64 | `dde-linux-amd64` |
-| Linux | arm64 | `dde-linux-arm64` |
+| Platform | Architecture          | Binary Name        |
+| -------- | --------------------- | ------------------ |
+| macOS    | x86_64                | `dde-darwin-amd64` |
+| macOS    | arm64 (Apple Silicon) | `dde-darwin-arm64` |
+| Linux    | x86_64                | `dde-linux-amd64`  |
+| Linux    | arm64                 | `dde-linux-arm64`  |
 
 ### Build Process
 

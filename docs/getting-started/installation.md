@@ -141,19 +141,19 @@ dde system:doctor
 
 This runs 11 checks covering:
 
-| Check             | What it verifies                                      |
-|-------------------|-------------------------------------------------------|
-| BinaryPath        | dde binary is in PATH and executable                  |
-| DockerAvailable   | Docker daemon is reachable                            |
-| DockerCompose     | `docker compose` subcommand is available              |
-| Mkcert            | mkcert binary is installed                            |
-| RootCaTrusted     | mkcert root CA is installed in the system trust store |
-| Dnsmasq           | dnsmasq container is running                          |
-| DnsResolution     | `*.test` domains resolve to 127.0.0.1                |
-| Network           | The `dde` Docker network exists                       |
-| Traefik           | Traefik container is running and healthy              |
-| SshAgent          | An SSH agent is reachable (host agent socket, or the managed container) |
-| Mailpit           | Mailpit container is running                          |
+| Check           | What it verifies                                                        |
+| --------------- | ----------------------------------------------------------------------- |
+| BinaryPath      | dde binary is in PATH and executable                                    |
+| DockerAvailable | Docker daemon is reachable                                              |
+| DockerCompose   | `docker compose` subcommand is available                                |
+| Mkcert          | mkcert binary is installed                                              |
+| RootCaTrusted   | mkcert root CA is installed in the system trust store                   |
+| Dnsmasq         | dnsmasq container is running                                            |
+| DnsResolution   | `*.test` domains resolve to 127.0.0.1                                   |
+| Network         | The `dde` Docker network exists                                         |
+| Traefik         | Traefik container is running and healthy                                |
+| SshAgent        | An SSH agent is reachable (host agent socket, or the managed container) |
+| Mailpit         | Mailpit container is running                                            |
 
 All checks should pass. If any fail, re-run `dde system:install` or consult the error message for guidance.
 

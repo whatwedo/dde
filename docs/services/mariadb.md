@@ -5,8 +5,8 @@ title: "MariaDB"
 
 ## Default Credentials
 
-| Variable | Value |
-|---|---|
+| Variable                | Value  |
+| ----------------------- | ------ |
 | `MARIADB_ROOT_PASSWORD` | `root` |
 
 ## Connection

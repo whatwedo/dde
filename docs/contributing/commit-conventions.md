@@ -21,16 +21,16 @@ Examples: `feat(project):`, `fix(config):`, `test(manager):`, `docs(commands):`,
 
 ## Choosing the Type
 
-| Type | Use for |
-|------|---------|
-| `feat` | **Reserved for changes visible to end-users of dde** — a new command, flag, or automatic behaviour they experience. Internal utilities, new framework classes, refactor-enablers, internal APIs are **not** features. Be strict: if a user would not notice it, it is not `feat`. |
-| `fix` | User-visible bug fixes. |
-| `perf` | Same behaviour, measurably faster or lighter. |
-| `refactor` | The surface stays the same, the implementation moves (renaming, extraction, delegation). |
-| `chore` | Everything that doesn't belong elsewhere: new internal classes without behaviour change, tooling tweaks, formatting that isn't pure `style`. |
-| `style` | Pure whitespace/formatting only (no code-visible behaviour). Prefer `chore` when unsure. |
-| `test` | Test additions, renames, scope changes. Use `test(e2e):` / `test(unit):` to disambiguate when relevant. |
-| `docs` | Documentation-only changes. |
+| Type       | Use for                                                                                                                                                                                                                                                                           |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `feat`     | **Reserved for changes visible to end-users of dde** — a new command, flag, or automatic behaviour they experience. Internal utilities, new framework classes, refactor-enablers, internal APIs are **not** features. Be strict: if a user would not notice it, it is not `feat`. |
+| `fix`      | User-visible bug fixes.                                                                                                                                                                                                                                                           |
+| `perf`     | Same behaviour, measurably faster or lighter.                                                                                                                                                                                                                                     |
+| `refactor` | The surface stays the same, the implementation moves (renaming, extraction, delegation).                                                                                                                                                                                          |
+| `chore`    | Everything that doesn't belong elsewhere: new internal classes without behaviour change, tooling tweaks, formatting that isn't pure `style`.                                                                                                                                      |
+| `style`    | Pure whitespace/formatting only (no code-visible behaviour). Prefer `chore` when unsure.                                                                                                                                                                                          |
+| `test`     | Test additions, renames, scope changes. Use `test(e2e):` / `test(unit):` to disambiguate when relevant.                                                                                                                                                                           |
+| `docs`     | Documentation-only changes.                                                                                                                                                                                                                                                       |
 
 `feat`, `fix`, and `perf` commits require a `CHANGELOG.md` entry in the same branch.
 
