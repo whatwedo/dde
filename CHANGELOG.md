@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [2.0.0-rc.2] - 2026-07-24
+
+### BREAKING
+
+- The `host` SSH-agent mode is now the default: dde forwards your host SSH agent into project containers instead of running its own agent container. Set `ssh.agent.mode: managed` in `~/.dde/config.yml` to keep the managed agent. See [the SSH agent guide](docs/guides/ssh-agent.md). (#113)
 
 ### Added
 
@@ -12,7 +16,6 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- The `host` SSH-agent mode is now the default: dde forwards your host SSH agent into project containers instead of running its own agent container. Set `ssh.agent.mode: managed` in `~/.dde/config.yml` to keep the managed agent. See [the SSH agent guide](docs/guides/ssh-agent.md). (#113)
 - Plain HTTP requests are now redirected to HTTPS by default (Traefik's `web` entry point forwards to `websecure`; recreate the container via `dde system:down && dde system:up` to pick it up).
 
 ### Fixed
@@ -192,3 +195,13 @@ executable via static-php-cli, running on macOS and Linux.
 - Bash-based implementation
 - nginx-proxy dependency
 - Custom OpenSSL CA
+
+[2.0.0-rc.2]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-rc.2
+[2.0.0-rc.1]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-rc.1
+[2.0.0-beta.2]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-beta.2
+[2.0.0-beta.1]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-beta.1
+[2.0.0-alpha.5]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-alpha.5
+[2.0.0-alpha.4]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-alpha.4
+[2.0.0-alpha.3]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-alpha.3
+[2.0.0-alpha.2]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-alpha.2
+[2.0.0-alpha.1]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-alpha.1
