@@ -17,6 +17,25 @@ jobs:
     name: CI
     uses: ./.github/workflows/ci.yml
 
+  meta:
+    name: Compute release metadata
+    needs: [ci]
+    runs-on: ubuntu-latest
+    outputs:
+      source_date_epoch: ${{ steps.meta.outputs.source_date_epoch }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Computed once on the runner: `git log` fails with "dubious ownership"
+      # inside the container-based package jobs, silently yielding an empty
+      # SOURCE_DATE_EPOCH.
+      - name: Resolve commit timestamp
+        id: meta
+        run: |
+          EPOCH=$(git log -1 --format=%ct)
+          echo "source_date_epoch=${EPOCH}" >> "$GITHUB_OUTPUT"
+          echo "Release SOURCE_DATE_EPOCH=${EPOCH}"
+
   build:
     name: Build
     needs: [ci]
@@ -53,7 +72,7 @@ jobs:
 
   packages:
     name: Publish packages
-    needs: [release]
+    needs: [release, meta]
     runs-on: ubuntu-latest
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -61,9 +80,6 @@ jobs:
       AWS_DEFAULT_REGION: eu-central-1
     steps:
       - uses: actions/checkout@v7
-
-      - name: Set SOURCE_DATE_EPOCH
-        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -78,6 +94,7 @@ jobs:
         run: ./scripts/publish-apt.sh "${{ github.ref_name }}" dist packages.dde.sh stable
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          SOURCE_DATE_EPOCH: ${{ needs.meta.outputs.source_date_epoch }}
 
       - name: Upload binaries to S3
         run: |
@@ -89,7 +106,7 @@ jobs:
 
   alpine:
     name: Publish Alpine repo
-    needs: [release]
+    needs: [release, meta]
     runs-on: ubuntu-latest
     # apk-tools 2.x so `apk index` emits the classic v2 APKINDEX, readable by
     # both apk-tools 2.x and 3.x clients.
@@ -110,10 +127,9 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Set SOURCE_DATE_EPOCH
-        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-
       - name: Publish Alpine repo
+        env:
+          SOURCE_DATE_EPOCH: ${{ needs.meta.outputs.source_date_epoch }}
         run: |
           echo "${{ secrets.ALPINE_RSA_PRIVATE_KEY }}" > /tmp/alpine.rsa
           chmod 600 /tmp/alpine.rsa
@@ -122,7 +138,7 @@ jobs:
 
   arch:
     name: Publish Arch repo
-    needs: [release]
+    needs: [release, meta]
     runs-on: ubuntu-latest
     container: archlinux:latest
     env:
@@ -144,17 +160,15 @@ jobs:
       - name: Import GPG key
         run: echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
 
-      - name: Set SOURCE_DATE_EPOCH
-        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-
       - name: Publish Arch repo
         run: ./scripts/publish-arch.sh "${{ github.ref_name }}" dist packages.dde.sh stable
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          SOURCE_DATE_EPOCH: ${{ needs.meta.outputs.source_date_epoch }}
 
   rpm:
     name: Publish RPM repo
-    needs: [release]
+    needs: [release, meta]
     runs-on: ubuntu-latest
     container: fedora:latest
     env:
@@ -176,13 +190,11 @@ jobs:
       - name: Import GPG key
         run: echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
 
-      - name: Set SOURCE_DATE_EPOCH
-        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-
       - name: Publish RPM repo
         run: ./scripts/publish-rpm.sh "${{ github.ref_name }}" dist packages.dde.sh stable
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          SOURCE_DATE_EPOCH: ${{ needs.meta.outputs.source_date_epoch }}
 
   homebrew:
     name: Update Homebrew formula
