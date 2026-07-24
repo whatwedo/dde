@@ -13,7 +13,7 @@ dde manages two layers of Docker containers:
 
 - **Traefik** -- Reverse proxy on ports 80 and 443. Routes traffic to project containers based on labels.
 - **dnsmasq** -- DNS server that resolves `*.test` domains to `127.0.0.1`. Forwards other queries to upstream DNS (default: `9.9.9.9`, `149.112.112.112`).
-- **SSH agent** -- Holds SSH keys and makes them available to project containers via a shared volume.
+- **SSH agent** -- Runs only in `managed` agent mode and holds the SSH keys dde loads. By default dde forwards your host SSH agent into project containers instead, without an extra container — see the [SSH agent guide](../guides/ssh-agent.md).
 
 **Project containers** are defined in your project's `docker-compose.yml` and started/stopped by `project:up` and `project:down`. These include your application container(s) and any per-project services (databases, caches, mail).
 

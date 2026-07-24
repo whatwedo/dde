@@ -123,7 +123,7 @@ services:
       SSH_AUTH_SOCK: "/tmp/ssh-agent/socket"
 ```
 
-`SSH_AUTH_SOCK` is only injected for services whose image has a shell (see `DockerManager::imageHasShell()`). Shell-less images (e.g. scratch or distroless) receive only the labels + networks and are left otherwise untouched.
+`SSH_AUTH_SOCK` is only injected for services whose image has a shell (see `DockerManager::imageHasShell()`), and only when an agent socket is actually mounted — in `host` mode an unresolved host agent omits it (see [SSH-Agent Socket](#4-ssh-agent-socket)). Shell-less images (e.g. scratch or distroless) receive only the labels + networks and are left otherwise untouched.
 
 ### 3. Networks
 
@@ -154,9 +154,22 @@ The per-project network is created on every `project:up`, regardless of whether 
 
 When a project switches a service version (e.g. `mariadb 11.8` → `10.11`), `project:up` detaches the previously attached `dde-<service>-*` container of the same service type before connecting the new one. Without this cleanup the canonical alias (`mariadb`) would resolve to two containers and Docker DNS would round-robin between them, randomly routing application traffic to the wrong database. Containers of unrelated service types and project app containers are left untouched.
 
-### 4. SSH-Agent Volume
+### 4. SSH-Agent Socket
 
-For every shell-bearing service, the override mounts the shared SSH-Agent socket directory and declares the backing volume at the top level:
+For every shell-bearing service, the override mounts an SSH agent socket at `/tmp/ssh-agent/socket`. Only the host side of the mount depends on the global `ssh.agent.mode` (see the [SSH agent guide](../guides/ssh-agent.md)).
+
+In `host` mode (the default), the resolved host agent socket is bind-mounted read-write using the long volume syntax (a socket path containing `:` would corrupt the short form). When no host agent can be resolved, both the mount and `SSH_AUTH_SOCK` are omitted entirely:
+
+```yaml
+services:
+  web:
+    volumes:
+      - type: bind
+        source: /run/host-services/ssh-auth.sock
+        target: /tmp/ssh-agent/socket
+```
+
+In `managed` mode, the shared socket directory volume is mounted read-only and declared at the top level (the volume block is only emitted in this mode — in `host` mode it would be dead config):
 
 ```yaml
 services:
@@ -169,7 +182,7 @@ volumes:
     external: true
 ```
 
-Paired with `SSH_AUTH_SOCK=/tmp/ssh-agent/socket` (see above), this gives container processes transparent access to the host SSH keys without any wiring in the project's compose file.
+Whenever one of these mounts is emitted, it is paired with `SSH_AUTH_SOCK=/tmp/ssh-agent/socket` (see above), giving container processes transparent access to an SSH agent without any wiring in the project's compose file.
 
 ### 5. Dev Layer Image Override
 

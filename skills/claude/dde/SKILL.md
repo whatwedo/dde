@@ -71,7 +71,7 @@ Options for up/down/update:
 
 ## System services
 
-dde runs global services (Traefik, dnsmasq, Mailpit, SSH-Agent). Manage them with:
+dde runs global services (Traefik, dnsmasq, Mailpit, optionally a managed SSH-Agent). Manage them with:
 
 ```bash
 dde system:status --output=json   # Show status of all services

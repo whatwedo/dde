@@ -290,7 +290,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         // mariadb default is 11.8; requesting 10.6 must receive isDefault=false
         // so it gets a dynamic host port and not port 3306.
         $config = new ResolvedConfig(
-            globalConfig: new GlobalConfig(),
+            globalConfig: new GlobalConfig(sshAgentMode: SshAgentMode::Managed),
             projectConfig: new ProjectConfig(name: 'test-project', services: [
                 new ServiceDefinition(name: 'mariadb', version: '10.6'),
             ]),
@@ -1278,7 +1278,7 @@ final class ProjectLifecycleManagerTest extends TestCase
     #[AllowMockObjectsWithoutExpectations]
     public function testUpGeneratesCertificateForAllRewrittenWorktreeDomains(): void
     {
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
         $projectDir = '/tmp/test-project-beispiel-wt';
 
         $worktreeInfo = new \App\Config\WorktreeInfo(
@@ -1347,7 +1347,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         // not subdomains of the project. mkcert must not be asked to sign
         // them — generating a local trusted cert for a domain the project
         // does not own is at best confusing, at worst a security smell.
-        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
         $projectDir = '/tmp/test-project-beispiel-wt';
 
         $worktreeInfo = new \App\Config\WorktreeInfo(
@@ -1412,7 +1412,7 @@ final class ProjectLifecycleManagerTest extends TestCase
     private function createConfig(array $services = []): ResolvedConfig
     {
         return new ResolvedConfig(
-            globalConfig: new GlobalConfig(),
+            globalConfig: new GlobalConfig(sshAgentMode: SshAgentMode::Managed),
             projectConfig: new ProjectConfig(name: 'test-project', services: $services),
         );
     }

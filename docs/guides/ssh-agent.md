@@ -19,15 +19,15 @@ on the host.
 ```yaml
 ssh:
   agent:
-    mode: managed   # managed (default) | host
+    mode: host      # host (default) | managed
     source: ~       # unset | env (host SSH_AUTH_SOCK) | <socket path>
 ```
 
-- `managed` (**default**) — dde runs its own `dde-ssh-agent` container,
+- `host` (**default**) — dde forwards your existing host agent (1Password,
+  Bitwarden, a plain `ssh-agent`, or a hardware token such as a YubiKey) into
+  containers and holds no keys itself.
+- `managed` — dde runs its own `dde-ssh-agent` container,
   discovers private-key files (from `ssh.keys` or `~/.ssh`), and loads them.
-- `host` — dde forwards your existing host agent (1Password, Bitwarden, a plain
-  `ssh-agent`, or a hardware token such as a YubiKey) into containers and holds
-  no keys itself.
 
 `source` applies only in `host` mode:
 
@@ -46,8 +46,6 @@ bridge.
 
 Only the *host side* of the `/tmp/ssh-agent/socket` mount differs by mode:
 
-- **`managed`** — dde's `dde-ssh-agent` container, via the named volume
-  `dde_ssh-agent_socket-dir` (`dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro`).
 - **`host`, macOS** — Docker Desktop's host-services bridge
   `/run/host-services/ssh-auth.sock`, which forwards whatever the host
   `SSH_AUTH_SOCK` points at (OrbStack exposes the same socket). This is Docker's
@@ -57,6 +55,8 @@ Only the *host side* of the `/tmp/ssh-agent/socket` mount differs by mode:
   verifies it instead; an explicit `source` path cannot work here.
 - **`host`, Linux** — the resolved socket (`SSH_AUTH_SOCK`, or the explicit
   `source` path) bind-mounted directly.
+- **`managed`** — dde's `dde-ssh-agent` container, via the named volume
+  `dde_ssh-agent_socket-dir` (`dde_ssh-agent_socket-dir:/tmp/ssh-agent:ro`).
 
 In `host` mode the socket is mounted **read-write**: Docker Desktop lands it as
 `root:root`, so the entrypoint chowns it to the `dde` user while still running as
@@ -96,13 +96,13 @@ Then set `source`:
 
 `dde system:doctor` checks the prerequisite per mode:
 
-- **`managed`** — the `dde-ssh-agent` container is running (fix: `dde system:up`).
 - **`host`, Linux** — the resolved socket exists and is a live socket (the
   reliable "agent responds" signal short of running `ssh-add`); on a miss it
   tells you to start your agent and point `SSH_AUTH_SOCK` at it.
 - **`host`, macOS** — the host `SSH_AUTH_SOCK` is visible to the Docker Desktop /
   OrbStack runtime (see the caveat below). An explicit `source` path is reported
   as an **error**, since it cannot work on macOS.
+- **`managed`** — the `dde-ssh-agent` container is running (fix: `dde system:up`).
 
 ### macOS host-environment caveat
 
@@ -170,5 +170,6 @@ restart the agent (or replug the token) and you must re-up.
 
 In `host` mode every project container can list your identities and ask the agent
 to sign with them while it runs — the same trust model as `ssh -A` agent
-forwarding and as the `managed` agent. Do not enable `host` mode for projects
-whose container code you do not trust.
+forwarding and as the `managed` agent. For projects whose container code you do
+not trust, switch to `managed` mode with a restricted `ssh.keys` list — the
+container then only ever sees the keys dde loads, not your personal agent.

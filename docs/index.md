@@ -22,7 +22,7 @@ hero:
 - **Local DNS** — dnsmasq resolves `*.test` domains to localhost. No `/etc/hosts` editing required.
 - **Per-project services** — MariaDB, PostgreSQL, Valkey, and Mailpit with version pinning — isolated per project.
 - **Git worktree support** — Each worktree gets its own hostname and TLS certificate for parallel feature development.
-- **SSH agent forwarding** — A shared SSH agent container makes your host keys available inside all containers.
+- **SSH agent forwarding** — Your host SSH agent (plain `ssh-agent`, 1Password, Bitwarden, or a hardware token) is forwarded into your project containers; private keys never leave the host.
 - **Hook system** — Run custom scripts on `project:up` and `project:down` lifecycle events.
 - **Plugin system** — Extend dde with project-local or global plugins to add custom commands.
 - **Shell completion** — Bash and Zsh completions installed automatically via `dde system:install`.

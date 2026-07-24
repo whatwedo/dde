@@ -24,10 +24,13 @@ dns:
     - 9.9.9.9
     - 149.112.112.112
 
-# SSH keys to load into the agent.
-# Omit the setting to auto-detect all private keys in ~/.ssh/.
-# An explicit empty list (keys: []) loads no keys at all.
+# SSH agent mode: host (default) forwards your existing host agent;
+# managed runs dde's own agent container. See the SSH agent guide.
+# Keys apply to managed mode only: omit the setting to auto-detect all
+# private keys in ~/.ssh/, an explicit empty list (keys: []) loads none.
 ssh:
+  agent:
+    mode: managed
   keys:
     - ~/.ssh/id_ed25519
 

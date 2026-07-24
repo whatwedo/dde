@@ -66,7 +66,7 @@ The `system:install` command sets up all system-level components that dde needs:
 - **mkcert** -- Installs a local root CA into your system trust store. All project certificates are signed by this CA, so browsers trust them without warnings.
 - **dnsmasq** -- Configures DNS resolution for `*.test` domains. On macOS this uses `/etc/resolver/test`; on Linux it integrates with systemd-resolved or NetworkManager.
 - **Traefik** -- Starts a Traefik v3 reverse proxy container on ports 80 and 443 that routes traffic to your project containers.
-- **SSH agent** -- Starts a shared SSH agent container so your SSH keys are available inside project containers.
+- **SSH agent** -- By default your host SSH agent is forwarded into project containers, so nothing needs to be started. Only with `ssh.agent.mode: managed` does dde start its own SSH agent container — see the [SSH agent guide](../guides/ssh-agent.md).
 - **Shell completion** -- Installs completion scripts for your detected shell (Bash or Zsh).
 
 DNS queries are forwarded to `9.9.9.9` and `149.112.112.112` (Quad9) by default. You can override this in the global config at `~/.dde/config.yml`.
@@ -152,7 +152,7 @@ This runs 11 checks covering:
 | DnsResolution     | `*.test` domains resolve to 127.0.0.1                |
 | Network           | The `dde` Docker network exists                       |
 | Traefik           | Traefik container is running and healthy              |
-| SshAgent          | SSH agent container is running                        |
+| SshAgent          | An SSH agent is reachable (host agent socket, or the managed container) |
 | Mailpit           | Mailpit container is running                          |
 
 All checks should pass. If any fail, re-run `dde system:install` or consult the error message for guidance.

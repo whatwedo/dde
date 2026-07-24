@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- The `host` SSH-agent mode is now the default: dde forwards your host SSH agent into project containers instead of running its own agent container. Set `ssh.agent.mode: managed` in `~/.dde/config.yml` to keep the managed agent. See [the SSH agent guide](docs/guides/ssh-agent.md). (#113)
 - Plain HTTP requests are now redirected to HTTPS by default (Traefik's `web` entry point forwards to `websecure`; recreate the container via `dde system:down && dde system:up` to pick it up).
 
 ### Fixed

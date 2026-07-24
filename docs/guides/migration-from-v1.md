@@ -79,6 +79,10 @@ dde project:up
 
 Open `https://my-app.test` in your browser to verify. Firefox users may need to restart the browser to trust the certificate.
 
+#### SSH agent
+
+v1 always ran its own SSH-Agent container and loaded your private-key files into it. v2 instead forwards your existing host SSH agent (`SSH_AUTH_SOCK`) into project containers by default, so no keys are copied anywhere. To keep the v1-style behaviour, set `ssh.agent.mode: managed` in `~/.dde/config.yml` — see the [SSH agent guide](./ssh-agent.md).
+
 #### .env file migration
 
 While adapting the project, `project:init` also inspects the `.env`/`.env.local`/`.env.dev` files and migrates a small, well-known set of variables.

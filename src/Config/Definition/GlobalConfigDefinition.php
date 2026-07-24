@@ -17,7 +17,7 @@ final class GlobalConfigDefinition implements ConfigurationInterface
 
     public const array SSH_KEYS = [];
 
-    public const string SSH_AGENT_MODE = SshAgentMode::Managed->value;
+    public const string SSH_AGENT_MODE = SshAgentMode::Host->value;
 
     public const ?string SSH_AGENT_SOURCE = null;
 
@@ -70,7 +70,7 @@ final class GlobalConfigDefinition implements ConfigurationInterface
                         ->end()
                         ->arrayNode('agent')
                             ->addDefaultsIfNotSet()
-                            ->info('SSH agent mode: "managed" runs dde\'s own agent container; "host" forwards the developer\'s host agent. Global-only setting.')
+                            ->info('SSH agent mode: "host" (default) forwards the developer\'s host agent; "managed" runs dde\'s own agent container. Global-only setting.')
                             ->children()
                                 ->enumNode('mode')
                                     ->values(self::supportedSshAgentModes())
