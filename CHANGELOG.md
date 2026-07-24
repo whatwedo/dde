@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Refreshing the Claude Code skill no longer fails with "Permission denied": the skill file is copied read-only out of the PHAR, which made every subsequent refresh unable to overwrite it. The target file is now kept writable. If a previous version already left a read-only copy behind, run `chmod 644 ~/.claude/skills/dde/SKILL.md` once.
+- Refreshing the Claude Code skill no longer fails with "Permission denied".
 - An explicit empty `ssh.keys: []` in the global config now disables SSH key loading. (#257)
 - Project commands no longer mistake `$HOME` for a project directory when run outside a dde project; the upward search for `.dde/config.yml` now stops at `$HOME`, so it can no longer match the global `~/.dde/config.yml`. Outside a project, commands like `dde up` now point to `dde project:init` instead of failing with a misleading missing-compose-file error.
 
