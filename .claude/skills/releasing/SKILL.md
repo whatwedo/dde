@@ -13,7 +13,7 @@ A dde release is two artifacts that must stay in lockstep:
 - `CHANGELOG.md` — new section at the top
 - Annotated, GPG-signed git tag `v<version>`
 
-The release commit `chore(release): document v<version>` updates `CHANGELOG.md`, and the tag points at that commit.
+The release commit `docs(changelog): document the v<version> release` updates `CHANGELOG.md`, and the tag points at that commit. The commit is `docs` because it only touches documentation — the version string itself is injected by CI (see below), so nothing else changes.
 
 The version string the binary reports is **not** edited by hand. `src/Application.php` carries the literal `@APP_VERSION@` placeholder, and `.github/workflows/build.yml` substitutes it from the git tag at build time (stable) or the short SHA (nightly).
 
@@ -74,7 +74,7 @@ Both commit and tag must be GPG-signed. Sign-off is required (AGENTS.md: "Never 
 
 ```bash
 git add CHANGELOG.md
-git commit -S --signoff -m "chore(release): document v<new-version>"
+git commit -S --signoff -m "docs(changelog): document the v<new-version> release"
 git tag -s v<new-version> -m "v<new-version>"
 ```
 
@@ -135,7 +135,7 @@ Verify in the browser at `https://github.com/whatwedo/dde/releases/tag/v<version
 - [ ] CHANGELOG entry lists only user-visible changes
 - [ ] Today's date, ISO format
 - [ ] `src/Application.php` NOT modified (placeholder is injected by CI)
-- [ ] Commit signed + signed-off, subject `chore(release): document v<version>`
+- [ ] Commit signed + signed-off, subject `docs(changelog): document the v<version> release`
 - [ ] Annotated tag signed, subject exactly `v<version>`
 - [ ] No push without explicit user approval
 - [ ] GitHub release notes populated from CHANGELOG section
