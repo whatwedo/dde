@@ -74,12 +74,12 @@ The arguments passed to the entrypoint (`$@`) are the original entrypoint and CM
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DDE_UID` | 1000 | User ID for the dde user |
-| `DDE_GID` | 1000 | Group ID for the dde user |
-| `DDE_SHELL` | (unset) | Override shell detection (e.g. `bash`, `zsh`) |
-| `DDE_ADAPTERS_DIR` | `/dde/adapters` | Path to built-in adapter scripts |
+| Variable           | Default         | Description                                   |
+| ------------------ | --------------- | --------------------------------------------- |
+| `DDE_UID`          | 1000            | User ID for the dde user                      |
+| `DDE_GID`          | 1000            | Group ID for the dde user                     |
+| `DDE_SHELL`        | (unset)         | Override shell detection (e.g. `bash`, `zsh`) |
+| `DDE_ADAPTERS_DIR` | `/dde/adapters` | Path to built-in adapter scripts              |
 
 ## Key Design Decisions
 

@@ -29,14 +29,14 @@ private const array SERVICE_TYPES = [
 
 Each entry requires:
 
-| Key | Description |
-|-----|-------------|
-| `image` | Docker Hub image name |
+| Key              | Description                                            |
+| ---------------- | ------------------------------------------------------ |
+| `image`          | Docker Hub image name                                  |
 | `defaultVersion` | Default version tag (used if not overridden in config) |
-| `defaultPort` | Default port the service exposes |
-| `dataPath` | Subdirectory name for persistent data |
-| `dataMount` | Mount path inside the container for data volume |
-| `environment` | Default environment variables (e.g. root passwords) |
+| `defaultPort`    | Default port the service exposes                       |
+| `dataPath`       | Subdirectory name for persistent data                  |
+| `dataMount`      | Mount path inside the container for data volume        |
+| `environment`    | Default environment variables (e.g. root passwords)    |
 
 ## Step 2: Test the Service
 

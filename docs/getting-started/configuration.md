@@ -103,10 +103,10 @@ Settings are resolved with the following priority (highest first):
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DDE_CONFIG_DIR` | `~/.dde` | Global configuration directory |
-| `DDE_DATA_DIR` | `~/.dde/data` | Data directory (services, certs) |
-| `DDE_UID` | Current user's UID | UID for the container user |
-| `DDE_GID` | Current user's GID | GID for the container user |
-| `DDE_SHELL` | Auto-detected (zsh > bash > sh) | Override container shell |
+| Variable         | Default                         | Description                      |
+| ---------------- | ------------------------------- | -------------------------------- |
+| `DDE_CONFIG_DIR` | `~/.dde`                        | Global configuration directory   |
+| `DDE_DATA_DIR`   | `~/.dde/data`                   | Data directory (services, certs) |
+| `DDE_UID`        | Current user's UID              | UID for the container user       |
+| `DDE_GID`        | Current user's GID              | GID for the container user       |
+| `DDE_SHELL`      | Auto-detected (zsh > bash > sh) | Override container shell         |

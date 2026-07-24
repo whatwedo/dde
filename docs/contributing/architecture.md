@@ -35,26 +35,26 @@ All commands use the `#[AsCommand]` attribute for registration.
 
 Managers contain the core business logic and orchestrate complex operations.
 
-| Manager | Responsibility |
-|---------|---------------|
-| `ProjectLifecycleManager` | Project up/down orchestration (services, certs, dev layers, overrides) |
-| `SystemLifecycleManager` | System up/down/stop/update orchestration (global services + versioned containers, image rebuild with `--pull`, post-install refresh for completion + claude-skill) |
-| `ProjectInitManager` | `.dde/` directory structure creation during `project:init` |
-| `ProjectInitAdaptationManager` | Project adaptation logic during `project:init` (compose/env migration proposals; `EnvMigrationProposal` is its DTO) |
-| `DockerComposeManager` | Docker Compose CLI calls, runtime override generation |
-| `DockerManager` | Low-level Docker CLI (inspect, network, volume, exec, image operations) |
-| `ImageManager` | Image label inspection, dev layer build, cache invalidation |
-| `GlobalConfigManager` | Global `~/.dde/config.yml` loading |
-| `ProjectConfigManager` | Project `.dde/config.yml` loading, merge with global config, project directory detection |
-| `WorktreeManager` | Git worktree detection, hostname resolution / rewriting (incl. subdomains), DB-name resolution, environment override computation (incl. `env_file` values) |
-| `DatabaseManager` | Database shell, export, import, snapshot management, port resolution |
-| `SystemServiceManager` | Versionable service container lifecycle (start, stop, status, port allocation) |
-| `ServiceConfigManager` | Service container configuration generation |
-| `MkcertManager` | mkcert CLI wrapper, cert generation, Traefik dynamic TLS config, CA root path resolution for container trust |
-| `CompletionManager` | Shell completion generation and installation |
-| `CleanupManager` | Container and volume cleanup |
-| `ProjectInfoManager` | Project info display |
-| `ClaudeCodeManager` | Detects a Claude Code installation and installs/refreshes the bundled `skills/claude/dde` skill |
+| Manager                        | Responsibility                                                                                                                                                     |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ProjectLifecycleManager`      | Project up/down orchestration (services, certs, dev layers, overrides)                                                                                             |
+| `SystemLifecycleManager`       | System up/down/stop/update orchestration (global services + versioned containers, image rebuild with `--pull`, post-install refresh for completion + claude-skill) |
+| `ProjectInitManager`           | `.dde/` directory structure creation during `project:init`                                                                                                         |
+| `ProjectInitAdaptationManager` | Project adaptation logic during `project:init` (compose/env migration proposals; `EnvMigrationProposal` is its DTO)                                                |
+| `DockerComposeManager`         | Docker Compose CLI calls, runtime override generation                                                                                                              |
+| `DockerManager`                | Low-level Docker CLI (inspect, network, volume, exec, image operations)                                                                                            |
+| `ImageManager`                 | Image label inspection, dev layer build, cache invalidation                                                                                                        |
+| `GlobalConfigManager`          | Global `~/.dde/config.yml` loading                                                                                                                                 |
+| `ProjectConfigManager`         | Project `.dde/config.yml` loading, merge with global config, project directory detection                                                                           |
+| `WorktreeManager`              | Git worktree detection, hostname resolution / rewriting (incl. subdomains), DB-name resolution, environment override computation (incl. `env_file` values)         |
+| `DatabaseManager`              | Database shell, export, import, snapshot management, port resolution                                                                                               |
+| `SystemServiceManager`         | Versionable service container lifecycle (start, stop, status, port allocation)                                                                                     |
+| `ServiceConfigManager`         | Service container configuration generation                                                                                                                         |
+| `MkcertManager`                | mkcert CLI wrapper, cert generation, Traefik dynamic TLS config, CA root path resolution for container trust                                                       |
+| `CompletionManager`            | Shell completion generation and installation                                                                                                                       |
+| `CleanupManager`               | Container and volume cleanup                                                                                                                                       |
+| `ProjectInfoManager`           | Project info display                                                                                                                                               |
+| `ClaudeCodeManager`            | Detects a Claude Code installation and installs/refreshes the bundled `skills/claude/dde` skill                                                                    |
 
 ### Services (`App\Service\`)
 

@@ -9,11 +9,11 @@ Hooks are shell scripts that run automatically at defined points in the project 
 
 Place executable `*.sh` files in the corresponding `.dde/hooks/` subdirectory:
 
-| Directory | Trigger |
-|-----------|---------|
-| `.dde/hooks/project.up.pre/` | Before containers start |
-| `.dde/hooks/project.up.post/` | After containers are started |
-| `.dde/hooks/project.down.pre/` | Before containers stop |
+| Directory                       | Trigger                      |
+| ------------------------------- | ---------------------------- |
+| `.dde/hooks/project.up.pre/`    | Before containers start      |
+| `.dde/hooks/project.up.post/`   | After containers are started |
+| `.dde/hooks/project.down.pre/`  | Before containers stop       |
 | `.dde/hooks/project.down.post/` | After containers are stopped |
 
 These directories are created automatically by `dde project:init`.
@@ -93,11 +93,11 @@ For **pre-hooks** (`project.up.pre`, `project.down.pre`), a failure aborts the e
 
 Hooks are driven by Symfony events:
 
-| Event | Hook directory |
-|-------|---------------|
-| `ProjectUpPreEvent` | `project.up.pre` |
-| `ProjectUpPostEvent` | `project.up.post` |
-| `ProjectDownPreEvent` | `project.down.pre` |
+| Event                  | Hook directory      |
+| ---------------------- | ------------------- |
+| `ProjectUpPreEvent`    | `project.up.pre`    |
+| `ProjectUpPostEvent`   | `project.up.post`   |
+| `ProjectDownPreEvent`  | `project.down.pre`  |
 | `ProjectDownPostEvent` | `project.down.post` |
 
 The `HookSubscriber` listens to these events and delegates to `HookRunner`, which uses Symfony Finder to locate scripts and Symfony Process to execute them.

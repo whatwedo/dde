@@ -54,17 +54,17 @@ Where `<suffix>` is derived from the worktree directory name through `Identifier
 
 Assuming project name `my-app`:
 
-| Worktree directory | Hostname |
-|-------------------|----------|
-| `~/projects/my-app` (main) | `my-app.test` |
+| Worktree directory            | Hostname                |
+| ----------------------------- | ----------------------- |
+| `~/projects/my-app` (main)    | `my-app.test`           |
 | `~/projects/my-app-feature-x` | `feature-x.my-app.test` |
-| `~/projects/my-app-PROJ-123` | `proj-123.my-app.test` |
-| `~/projects/my-app-hotfix` | `hotfix.my-app.test` |
+| `~/projects/my-app-PROJ-123`  | `proj-123.my-app.test`  |
+| `~/projects/my-app-hotfix`    | `hotfix.my-app.test`    |
 
 If the directory name does not start with the project name:
 
-| Worktree directory | Hostname |
-|-------------------|----------|
+| Worktree directory         | Hostname                   |
+| -------------------------- | -------------------------- |
 | `~/worktrees/bugfix-login` | `bugfix-login.my-app.test` |
 
 > **Note:** a worktree whose suffix equals an existing project subdomain (e.g. worktree `feature-x` while the project already routes `feature-x.my-app.test`) collides with it — rename the worktree directory to avoid the clash.
@@ -93,8 +93,8 @@ Every environment variable whose value starts with a database URL scheme (`mysql
 
 The variable name is irrelevant: `DATABASE_URL`, `GUACAMOLE_DATABASE_URL`, `LEGACY_DB_URL`, … all get rewritten consistently as long as their value parses as a DB URL.
 
-| Main | Worktree `my-app-feature-x` |
-|---|---|
+| Main                                                            | Worktree `my-app-feature-x`                                               |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `mysql://root:root@mariadb/my_app?serverVersion=11.8.0-MariaDB` | `mysql://root:root@mariadb/my_app_feature_x?serverVersion=11.8.0-MariaDB` |
 
 The final database name is clamped to 63 characters (MySQL/PostgreSQL identifier limit). The rewrite is skipped if the URL has no path segment (`mysql://host:3306` or `mysql://host:3306/`).

@@ -125,11 +125,11 @@ launchctl setenv SSH_AUTH_SOCK "$SSH_AUTH_SOCK"
 The doctor confirms the socket exists and is live but never runs `ssh-add`, so
 two states pass green yet still fail inside the container:
 
-| Symptom in the container | Cause | Fix |
-|--------------------------|-------|-----|
-| `Permission denied (publickey)` | Agent has no usable identities — the vault is **locked** or its SSH integration is **off** | Unlock the vault and enable the integration, then retry (no re-up needed). |
+| Symptom in the container                        | Cause                                                                                                                                              | Fix                                                                                    |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `Permission denied (publickey)`                 | Agent has no usable identities — the vault is **locked** or its SSH integration is **off**                                                         | Unlock the vault and enable the integration, then retry (no re-up needed).             |
 | `Error connecting to agent: Connection refused` | The host agent **restarted** since bring-up (Docker Desktop relaunched, Mac woke from sleep, vault re-locked); the bind-mounted socket is now dead | `dde down && dde up` — the mount captures the socket at bring-up and does not refresh. |
-| `The agent has no identities` | Agent reachable but empty | Add/unlock keys in your agent (or in `managed` mode run `dde system:up`). |
+| `The agent has no identities`                   | Agent reachable but empty                                                                                                                          | Add/unlock keys in your agent (or in `managed` mode run `dde system:up`).              |
 
 Because the socket is bind-mounted at bring-up, restarting the agent leaves
 running containers on a dead socket while the doctor still reports green — the
@@ -156,10 +156,10 @@ ssh:
 The key material never leaves the token — a container can only ask it to sign,
 and whether a sign succeeds depends on the touch policy:
 
-| Key / policy | Effect in the container |
-|--------------|-------------------------|
+| Key / policy                              | Effect in the container                                                                                                |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `sk-` key, or PIV/PGP with touch required | Each signature needs a physical tap; a container can request one but cannot complete it unattended. Strongest posture. |
-| PIV without a touch policy | Signs silently while the token is plugged in — any socket access can sign. |
+| PIV without a touch policy                | Signs silently while the token is plugged in — any socket access can sign.                                             |
 
 Require touch (`ssh-keygen -t ed25519-sk -O verify-required`, or a PIV slot with
 `--touch-policy=always`): a forwarded socket then at most raises a touch prompt on

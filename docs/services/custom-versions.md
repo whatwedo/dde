@@ -23,19 +23,19 @@ The version string is used directly as the Docker image tag: `mariadb:10.6`.
 
 The container name includes the version:
 
-| Version | Container Name |
-|---|---|
+| Version          | Container Name     |
+| ---------------- | ------------------ |
 | `11.8` (default) | `dde-mariadb-11.8` |
-| `10.6` | `dde-mariadb-10.6` |
+| `10.6`           | `dde-mariadb-10.6` |
 
 ### Network Alias
 
 Only the default version receives a network alias. Non-default versions do not get one:
 
-| Version | Network Alias |
-|---|---|
-| `11.8` (default) | `mariadb` |
-| `10.6` | (none) |
+| Version          | Network Alias |
+| ---------------- | ------------- |
+| `11.8` (default) | `mariadb`     |
+| `10.6`           | (none)        |
 
 This means projects using a non-default version must connect using the container name or configure the connection manually.
 

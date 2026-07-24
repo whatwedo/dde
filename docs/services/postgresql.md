@@ -5,9 +5,9 @@ title: "PostgreSQL"
 
 ## Default Credentials
 
-| Variable | Value |
-|---|---|
-| `POSTGRES_USER` | `postgres` |
+| Variable            | Value      |
+| ------------------- | ---------- |
+| `POSTGRES_USER`     | `postgres` |
 | `POSTGRES_PASSWORD` | `postgres` |
 
 ## Connection

@@ -56,12 +56,12 @@ The next `project:up` will automatically rebuild the layer.
 
 The automatic layer and the runtime entrypoint serve complementary roles:
 
-| Concern | Auto Layer (build time) | Entrypoint (run time) |
-|---|---|---|
-| Install gosu/su-exec | Yes | No |
-| Create dde user | Yes (with build-time UID/GID) | Yes (with runtime UID/GID) |
-| UID/GID remapping | No | Yes |
-| Service adapters | No | Yes |
-| Shell detection | No | Yes |
+| Concern              | Auto Layer (build time)       | Entrypoint (run time)      |
+| -------------------- | ----------------------------- | -------------------------- |
+| Install gosu/su-exec | Yes                           | No                         |
+| Create dde user      | Yes (with build-time UID/GID) | Yes (with runtime UID/GID) |
+| UID/GID remapping    | No                            | Yes                        |
+| Service adapters     | No                            | Yes                        |
+| Shell detection      | No                            | Yes                        |
 
 The layer pre-installs the user and tools so that the entrypoint can run quickly without needing network access or package installation at every container start. The entrypoint handles runtime remapping in case the UID/GID has changed since the layer was built.

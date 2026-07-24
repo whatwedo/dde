@@ -131,11 +131,11 @@ dde has first-class support for [Git worktrees](https://git-scm.com/docs/git-wor
 
 Given a project named `my-app` and a worktree at `~/projects/my-app-feature-x`:
 
-| | Main checkout | Worktree checkout |
-|---|---|---|
-| URL | `https://my-app.test` | `https://feature-x.my-app.test` |
-| Every env var holding a DB URL (`mysql://…`, `postgres://…`, …) — `DATABASE_URL`, `GUACAMOLE_DATABASE_URL`, … | `…/my_app?…` | `…/my_app_feature_x?…` |
-| Container env for `APP_URL`, `MERCURE_URL`, `TRUSTED_HOSTS`, … | unchanged | main `.test` hostname replaced with worktree hostname |
+|                                                                                                               | Main checkout         | Worktree checkout                                     |
+| ------------------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------- |
+| URL                                                                                                           | `https://my-app.test` | `https://feature-x.my-app.test`                       |
+| Every env var holding a DB URL (`mysql://…`, `postgres://…`, …) — `DATABASE_URL`, `GUACAMOLE_DATABASE_URL`, … | `…/my_app?…`          | `…/my_app_feature_x?…`                                |
+| Container env for `APP_URL`, `MERCURE_URL`, `TRUSTED_HOSTS`, …                                                | unchanged             | main `.test` hostname replaced with worktree hostname |
 
 The DB URL rewrite is scheme-driven: any env var whose value starts with `mysql://`, `mariadb://`, `postgres://`, `postgresql://`, or `pgsql://` is candidate. It runs only when the project declares a matching dde database service (`mariadb` or `postgres`) in `.dde/config.yml`; otherwise the URL is assumed to point at an external database and is left untouched.
 

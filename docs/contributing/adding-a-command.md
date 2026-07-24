@@ -63,10 +63,10 @@ Required properties:
 
 ## Step 3: Extend the Right Base Class
 
-| Base Class | When to Use |
-|-----------|-------------|
+| Base Class               | When to Use                                                         |
+| ------------------------ | ------------------------------------------------------------------- |
 | `AbstractProjectCommand` | Commands that operate on a project (need project directory, config) |
-| `AbstractSystemCommand` | Commands that operate on the dde system (no project context needed) |
+| `AbstractSystemCommand`  | Commands that operate on the dde system (no project context needed) |
 
 `AbstractProjectCommand` provides:
 
