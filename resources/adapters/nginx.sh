@@ -19,7 +19,7 @@ configure() {
     done
 
     # Fix cache/log directories
-    for dir in /var/cache/nginx /var/log/nginx /var/run; do
+    for dir in /var/cache/nginx /var/log/nginx /var/run /var/lib/nginx/tmp; do
         [ -d "$dir" ] && chown -R "${dde_user}:${dde_group}" "$dir" 2>/dev/null || true
     done
 }
