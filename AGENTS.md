@@ -41,7 +41,7 @@ User-facing behaviour is documented in `docs/guides/` and `docs/services/`, inte
 
 A feature is complete only when documented in the same branch. All committed Markdown is written in English.
 
-- User-visible change (`feat`, `fix`, `perf`) → entry in `CHANGELOG.md`. No exceptions — a missing changelog entry is the most common review finding. Keep entries short; link the ticket and the PR, and additionally the docs page when relevant.
+- User-visible change (`feat`, `fix`, `perf`) → entry in `CHANGELOG.md`. No exceptions — a missing changelog entry is the most common review finding. **One short sentence per entry**, stating what changed for the user; the mechanism and the reasoning belong in the commit message and the PR, never here. Link the ticket and the PR, and additionally the docs page when relevant.
 - New command, flag, or automatic behaviour → `docs/guides/<topic>.md`, cross-referenced from related guides.
 - New manager/util or reshuffled responsibilities → `docs/contributing/architecture.md`; non-obvious internal contracts → `docs/internals/<topic>.md`.
 - v1 → v2 migration impact → `docs/guides/migration-from-v1.md`.
