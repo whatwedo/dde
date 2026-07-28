@@ -159,6 +159,7 @@ System services encapsulate the infrastructure containers managed by `system:up`
 - `ProcessFactory` -- `symfony/process` factory used by the managers
 - `ShellDetectorUtil` -- detects the current shell (zsh, bash, etc.)
 - `TempFileUtil` -- temporary directories/files
+- `TtyUtil` -- whether dde is attached to a terminal, i.e. whether a child process may take it over
 - `TraefikLabelGenerator` -- pure generation of the Traefik v3 label set for a hostname (incl. hostname allow-list against `Host()` rule injection)
 - `UrlOpenerUtil` -- opens URLs in the default browser (cross-platform)
 

@@ -118,7 +118,9 @@ final class ShellDetectorUtilTest extends TestCase
 
         foreach ($capturedOptions as $opts) {
             $this->assertSame('root', $opts['user']);
-            $this->assertTrue($opts['noTty']);
+            // Detection reads the `which` exit status, so it must never ask for
+            // a pty: TTY mode would route the process' streams to the terminal.
+            $this->assertArrayNotHasKey('interactive', $opts);
         }
     }
 

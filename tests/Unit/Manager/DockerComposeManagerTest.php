@@ -54,15 +54,14 @@ final class DockerComposeManagerTest extends TestCase
         $this->assertStringContainsString('dde', $commandLine);
     }
 
-    public function testExecWithNoTtyOption(): void
+    public function testExecPassesNoTtyByDefault(): void
     {
-        $process = $this->manager->exec('/tmp', 'web', ['ls'], [
-            'noTty' => true,
-        ]);
+        $process = $this->manager->exec('/tmp', 'web', ['ls']);
 
         $commandLine = $process->getCommandLine();
 
         $this->assertStringContainsString('--no-TTY', $commandLine);
+        $this->assertFalse($process->isTty());
     }
 
     public function testExecWithEnvOption(): void

@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Plugin;
 
 use App\Util\ProcessFactory;
+use App\Util\TtyUtil;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Process\Process;
 
 final class PluginProxyCommand extends Command
 {
@@ -68,7 +68,7 @@ final class PluginProxyCommand extends Command
         // shells). The developer watches the output and aborts with Ctrl-C.
         $process = $this->processFactory->create($command, null, null);
 
-        if (Process::isTtySupported() && $output instanceof ConsoleOutputInterface) {
+        if (TtyUtil::hasTerminal() && $output instanceof ConsoleOutputInterface) {
             $process->setTty(true);
             $process->run();
         } else {
