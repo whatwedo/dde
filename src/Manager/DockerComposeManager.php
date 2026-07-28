@@ -15,6 +15,7 @@ use App\Util\ComposeEnvEntryParser;
 use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
 use App\Util\TempFileUtil;
+use App\Util\TtyUtil;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use Symfony\Component\Dotenv\Dotenv;
@@ -107,7 +108,7 @@ readonly class DockerComposeManager
 
     /**
      * @param array<string> $command
-     * @param array{composeFiles?: list<string>, user?: string, noTty?: bool, interactive?: bool, env?: array<string, string>} $options
+     * @param array{composeFiles?: list<string>, user?: string, interactive?: bool, env?: array<string, string>} $options
      */
     public function exec(string $projectDir, string $service, array $command, array $options = []): Process
     {
@@ -119,7 +120,9 @@ readonly class DockerComposeManager
             $cmd[] = $options['user'];
         }
 
-        if ($options['noTty'] ?? false) {
+        $useTty = ($options['interactive'] ?? false) && TtyUtil::hasTerminal();
+
+        if (! $useTty) {
             $cmd[] = '--no-TTY';
         }
 
@@ -138,8 +141,8 @@ readonly class DockerComposeManager
 
         $process = $this->processFactory->create($cmd, $projectDir, null);
 
-        if ($options['interactive'] ?? false) {
-            $process->setTty(Process::isTtySupported());
+        if ($useTty) {
+            $process->setTty(true);
         }
 
         return $process;

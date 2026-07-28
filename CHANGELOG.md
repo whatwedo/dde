@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- `dde exec` now allocates a pty when dde is attached to a terminal, so signals reach the process in the container. (#271)
+- Plugin scripts no longer lose a piped stdin to the terminal. (#271)
+
 ## [2.0.0-rc.2] - 2026-07-24
 
 ### BREAKING

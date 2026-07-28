@@ -42,7 +42,12 @@ final class ProjectExecCommandTest extends TestCase
         $this->assertSame('Execute a command in a project container', $this->command->getDescription());
     }
 
-    public function testExecWithCommandRunsNonInteractive(): void
+    /**
+     * Regression guard for #271: without a pty in the container, Ctrl-C only
+     * kills the local client and leaves long-running processes (dev servers,
+     * watchers, workers) alive.
+     */
+    public function testExecRequestsAnInteractiveProcess(): void
     {
         $this->setupProjectFixture();
 
@@ -59,7 +64,7 @@ final class ProjectExecCommandTest extends TestCase
                 ['ls', '-la'],
                 $this->callback(static function (array $options): bool {
                     return $options['user'] === 'dde'
-                        && $options['noTty'] === true;
+                        && ($options['interactive'] ?? false) === true;
                 }),
             )
             ->willReturn($process);

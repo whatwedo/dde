@@ -70,7 +70,7 @@ final class ProjectExecCommand extends AbstractProjectCommand
 
         $process = $this->dockerComposeManager->exec($projectDir, $service, $cmd, [
             'user' => $isRoot ? 'root' : 'dde',
-            'noTty' => true,
+            'interactive' => true,
         ]);
         $process->run(function (string $type, string $buffer) use ($output): void {
             $output->write($buffer);

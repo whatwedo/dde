@@ -50,7 +50,6 @@ class ShellDetectorUtil
         foreach (self::SHELL_CANDIDATES as $shell) {
             $process = $this->dockerComposeManager->exec($projectDir, $service, ['which', $shell], [
                 'user' => 'root',
-                'noTty' => true,
             ]);
             $process->run();
 
