@@ -113,11 +113,7 @@ Extract the CHANGELOG section for this version, derive the pre-release flag, and
 ```bash
 version="<version-without-v-prefix>"   # e.g. 2.0.0-alpha.5
 
-notes=$(awk -v ver="$version" '
-  /^## \[/ { p=0 }
-  index($0, "## ["ver"]")==1 { p=1; next }
-  p
-' CHANGELOG.md)
+notes=$(sed -n "/^## \[$version\]/,/^## \[/p" CHANGELOG.md | sed '1d;$d')
 
 prerelease_flag=""
 case "$version" in
@@ -126,6 +122,8 @@ esac
 
 gh release edit "v$version" --notes "$notes" $prerelease_flag
 ```
+
+Keep `$0`, `$1`, … out of the snippets on this page (that is why the extraction uses `sed`, not `awk`): when this skill is invoked as `/releasing <version>`, those tokens are replaced with the invocation arguments before the page reaches the agent, and the command silently stops matching.
 
 Verify in the browser at `https://github.com/whatwedo/dde/releases/tag/v<version>` — the description should match the CHANGELOG section and the "Pre-release" badge should be visible for alpha/beta/rc tags.
 
