@@ -19,7 +19,7 @@ export default defineConfig({
 			description: 'Docker Development Environment',
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/whatwedo/dde' }],
 			editLink: {
-				baseUrl: 'https://github.com/whatwedo/dde/edit/v2/',
+				baseUrl: 'https://github.com/whatwedo/dde/edit/main/',
 			},
 			components: {
 				// Rewrites the synthesized edit URL: the docs symlink under

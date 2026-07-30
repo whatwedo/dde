@@ -55,7 +55,7 @@ Pushing a `v*` tag triggers the release workflow (`.github/workflows/release.yml
 6. **Publishes the package repos** (APT, Alpine, Arch, RPM) and the Homebrew binaries to the `packages.dde.sh` S3 bucket
 7. **Invalidates the CloudFront cache** so the freshly published repo indexes are served immediately instead of stale cached copies
 
-The same publish + invalidate flow runs on every push to `v2` via the nightly workflow (`.github/workflows/nightly.yml`), targeting the `*-nightly` repo paths in the same bucket and the same CloudFront distribution. There is no GitHub Release for nightlies; the package version is a UTC `YYYYMMDD.HHMM` stamp and the package name is `dde-nightly` with `Conflicts: dde`.
+The same publish + invalidate flow runs on every push to `main` via the nightly workflow (`.github/workflows/nightly.yml`), targeting the `*-nightly` repo paths in the same bucket and the same CloudFront distribution. There is no GitHub Release for nightlies; the package version is a UTC `YYYYMMDD.HHMM` stamp and the package name is `dde-nightly` with `Conflicts: dde`.
 
 Both channels call the reusable multi-platform build workflow (`.github/workflows/build.yml`, `workflow_call`), passing an `app-version-string` input: the release workflow passes the git tag, the nightly workflow the short commit SHA.
 

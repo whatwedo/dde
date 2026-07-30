@@ -2,13 +2,13 @@ name: Link Check
 
 on:
   push:
-    branches: [v2]
+    branches: [main]
     paths:
       - '**/*.md'
       - '.github/workflows/link-check.yml'
       - 'lychee.toml'
   pull_request:
-    branches: [v2]
+    branches: [main]
     paths:
       - '**/*.md'
       - '.github/workflows/link-check.yml'

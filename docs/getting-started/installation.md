@@ -73,7 +73,7 @@ DNS queries are forwarded to `9.9.9.9` and `149.112.112.112` (Quad9) by default.
 
 ## Nightly channel
 
-A separate `dde-nightly` package is published from the `v2` development branch
+A separate `dde-nightly` package is published from the `main` branch
 on every push. It installs the same `dde` binary as the stable package but
 carries the package name `dde-nightly` and declares a conflict with `dde`, so
 you can run one channel or the other on a machine — not both.

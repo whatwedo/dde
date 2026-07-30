@@ -3,7 +3,7 @@ name: Nightly
 on:
   push:
     branches:
-      - v2
+      - main
 
 concurrency:
   group: nightly

@@ -1,6 +1,6 @@
 # dde -- Docker Development Environment
 
-[![CI](https://github.com/whatwedo/dde/actions/workflows/ci.yml/badge.svg?branch=v2)](https://github.com/whatwedo/dde/actions/workflows/ci.yml)
+[![CI](https://github.com/whatwedo/dde/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/whatwedo/dde/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html.en)
 [![GitHub release](https://img.shields.io/github/v/release/whatwedo/dde)](https://github.com/whatwedo/dde/releases)
 
