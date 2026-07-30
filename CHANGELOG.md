@@ -2,12 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [2.0.0] - 2026-07-30
+
+dde v2 is stable. It replaces the Bash-based v1 with a single static binary.
+The [migration guide](https://dde.sh/guides/migration-from-v1/) walks through
+moving an existing project over.
 
 ### Fixed
 
 - `dde exec` now allocates a pty when dde is attached to a terminal, so signals reach the process in the container. (#271)
 - Plugin scripts no longer lose a piped stdin to the terminal. (#271)
+- nginx can write its temporary files in project containers, so large uploads no longer fail.
 
 ## [2.0.0-rc.2] - 2026-07-24
 
@@ -203,6 +208,7 @@ executable via static-php-cli, running on macOS and Linux.
 - nginx-proxy dependency
 - Custom OpenSSL CA
 
+[2.0.0]: https://github.com/whatwedo/dde/releases/tag/v2.0.0
 [2.0.0-rc.2]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-rc.2
 [2.0.0-rc.1]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-rc.1
 [2.0.0-beta.2]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-beta.2

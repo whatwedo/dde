@@ -24,7 +24,7 @@ git tag --sort=-v:refname | head -5
 git log "$(git tag --sort=-v:refname | head -1)..HEAD" --oneline
 ```
 
-Versioning scheme in use (as of v2):
+Versioning scheme in use:
 - `v2.0.0-alpha.N` — pre-release, bump `N`
 - `v2.0.0-beta.N`, `v2.0.0-rc.N` — later pre-release tracks
 - `v2.0.0`, `v2.0.1`, `v2.1.0` — stable semver
