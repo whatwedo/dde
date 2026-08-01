@@ -133,7 +133,7 @@ final class SshAgentServiceTest extends TestCase
         $fakeHome = $this->tempDir.'/fakehome';
         $this->filesystem->dumpFile($fakeHome.'/.ssh/id_ed25519', "-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----");
 
-        $service = $this->createService(sshKeys: null, userHomeDir: $fakeHome);
+        $service = $this->createService(userHomeDir: $fakeHome);
 
         $this->assertSame([$fakeHome.'/.ssh/id_ed25519'], $service->getConfiguredKeys());
     }
@@ -236,7 +236,7 @@ final class SshAgentServiceTest extends TestCase
         $service = $this->createService();
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Dockerfile not found');
+        $this->expectExceptionMessageIsOrContains('Dockerfile not found');
 
         $service->buildImage();
     }

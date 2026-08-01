@@ -141,7 +141,7 @@ final class CompletionManagerTest extends TestCase
             $reflection = new \ReflectionMethod($service, 'getHomePath');
 
             $this->expectException(\RuntimeException::class);
-            $this->expectExceptionMessage('HOME environment variable is not set.');
+            $this->expectExceptionMessageIsOrContains('HOME environment variable is not set.');
 
             $reflection->invoke($service);
         } finally {

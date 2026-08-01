@@ -141,7 +141,7 @@ final class ImageBuilderTest extends TestCase
             });
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('docker build failed');
+        $this->expectExceptionMessageIsOrContains('docker build failed');
 
         try {
             $this->imageBuilder->buildIfChanged('my-image:local', $hashFile, $files, 'dde-test-');
