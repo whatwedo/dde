@@ -328,7 +328,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willThrowException(new \RuntimeException('mkcert not found'));
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('mkcert not found');
+        $this->expectExceptionMessageIsOrContains('mkcert not found');
 
         $this->manager->up($config, $projectDir, false);
     }
@@ -346,7 +346,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->willThrowException(new \RuntimeException('Docker build failed'));
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Docker build failed');
+        $this->expectExceptionMessageIsOrContains('Docker build failed');
 
         $this->manager->up($config, $projectDir, false);
     }
@@ -374,7 +374,7 @@ final class ProjectLifecycleManagerTest extends TestCase
             ->with('/tmp/override.yml');
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('compose up failed');
+        $this->expectExceptionMessageIsOrContains('compose up failed');
 
         $this->manager->up($config, $projectDir, false);
     }

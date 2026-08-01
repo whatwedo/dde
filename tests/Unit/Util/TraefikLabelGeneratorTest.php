@@ -105,7 +105,7 @@ final class TraefikLabelGeneratorTest extends TestCase
     public function testGenerateLabelsThrowsOnEmptyHostnames(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('At least one hostname is required');
+        $this->expectExceptionMessageIsOrContains('At least one hostname is required');
 
         TraefikLabelGenerator::generateLabels([], 'web');
     }

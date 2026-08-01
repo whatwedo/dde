@@ -107,7 +107,7 @@ final class ApplicationTest extends TestCase
         $input = new ArgvInput(['bin/console', '-C', $this->tempDir.'/missing', 'list']);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('is not a directory');
+        $this->expectExceptionMessageIsOrContains('is not a directory');
 
         Application::resolveProjectDirectory($input);
     }
@@ -119,7 +119,7 @@ final class ApplicationTest extends TestCase
         $input = new ArgvInput(['bin/console', '-C', $file, 'list']);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('is not a directory');
+        $this->expectExceptionMessageIsOrContains('is not a directory');
 
         Application::resolveProjectDirectory($input);
     }

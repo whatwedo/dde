@@ -184,7 +184,7 @@ final class DnsmasqServiceTest extends TestCase
         $this->filesystem->remove($this->projectDir.'/resources/docker/dnsmasq/Dockerfile');
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Dockerfile not found');
+        $this->expectExceptionMessageIsOrContains('Dockerfile not found');
 
         $this->service->buildImage();
     }

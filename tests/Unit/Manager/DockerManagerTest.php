@@ -598,7 +598,7 @@ final class DockerManagerTest extends TestCase
         $filePath = sys_get_temp_dir().'/dde_test_missing_'.bin2hex(random_bytes(8)).'/dump.sql';
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('for writing');
+        $this->expectExceptionMessageIsOrContains('for writing');
 
         $manager->execCaptureToFileWithEnv('dde-mariadb-11.8', ['mysqldump'], [], $filePath);
     }

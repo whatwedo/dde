@@ -47,7 +47,7 @@ final class OutputFormatListenerTest extends TestCase
         $event = $this->createEvent('xml');
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Invalid output format "xml". Allowed values: text, json.');
+        $this->expectExceptionMessageIsOrContains('Invalid output format "xml". Allowed values: text, json.');
 
         ($this->listener)($event);
     }

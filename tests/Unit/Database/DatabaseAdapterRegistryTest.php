@@ -39,7 +39,7 @@ final class DatabaseAdapterRegistryTest extends TestCase
     public function testGetAdapterThrowsForUnknownService(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('No database adapter found for service "mongodb"');
+        $this->expectExceptionMessageIsOrContains('No database adapter found for service "mongodb"');
 
         $this->registry->getAdapter('mongodb');
     }

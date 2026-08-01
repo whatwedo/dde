@@ -39,7 +39,7 @@ final class AbstractProjectCommandTest extends TestCase
         };
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('dde project:init');
+        $this->expectExceptionMessageIsOrContains('dde project:init');
 
         $command->callGetProjectDirectory();
     }

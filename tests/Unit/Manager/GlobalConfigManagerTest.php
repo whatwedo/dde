@@ -139,7 +139,7 @@ final class GlobalConfigManagerTest extends TestCase
         $manager = new GlobalConfigManager(configDir: $configDir);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Invalid YAML');
+        $this->expectExceptionMessageIsOrContains('Invalid YAML');
         $manager->load();
     }
 

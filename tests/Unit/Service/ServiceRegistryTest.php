@@ -76,7 +76,7 @@ final class ServiceRegistryTest extends TestCase
     public function testGetServicePortThrowsForUnknownService(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Unknown service "unknown".');
+        $this->expectExceptionMessageIsOrContains('Unknown service "unknown".');
 
         $this->registry->getServicePort('unknown');
     }

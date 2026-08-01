@@ -167,7 +167,7 @@ final class DatabaseManagerTest extends TestCase
             ->willThrowException(new \RuntimeException('Container is not running'));
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Container is not running');
+        $this->expectExceptionMessageIsOrContains('Container is not running');
 
         $this->databaseManager->exportDumpToFile($service, 'testdb', '/tmp/snapshot.sql');
     }

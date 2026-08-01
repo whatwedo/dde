@@ -313,7 +313,7 @@ final class ImageManagerTest extends TestCase
             ->willThrowException(new \RuntimeException('build failed'));
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('build failed');
+        $this->expectExceptionMessageIsOrContains('build failed');
 
         $this->manager->buildDevLayer('nginx:latest', 'fail-project');
     }

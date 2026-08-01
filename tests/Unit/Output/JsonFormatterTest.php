@@ -93,7 +93,7 @@ final class JsonFormatterTest extends TestCase
         $formatter = new JsonFormatter();
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Output not initialized. Call setOutput() first.');
+        $this->expectExceptionMessageIsOrContains('Output not initialized. Call setOutput() first.');
 
         $formatter->success(null);
     }
