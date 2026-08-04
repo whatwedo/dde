@@ -127,9 +127,17 @@ Options for all DB commands:
 
 dde has first-class support for [Git worktrees](https://git-scm.com/docs/git-worktree): when you run `dde project:up` from a non-main worktree checkout, dde automatically assigns that checkout its own hostname (`<suffix>.<project>.test`, a subdomain of the project host) **and automatically rewrites every database-URL-valued environment variable** to point at a worktree-specific database name.
 
+### Entering a worktree
+
+When the work is supposed to happen in a worktree, switch the session with the native **EnterWorktree** tool; use **ExitWorktree** to leave. How the worktree was created doesn't matter — pass its `path` to enter an existing one; without a `path`, EnterWorktree creates a fresh worktree at `.claude/worktrees/<name>` inside the main checkout. ExitWorktree removes only a worktree it created itself in this session; one entered via `path` is left on disk (`action: "keep"`).
+
+Do not rely on `cd` to enter a worktree: the Bash tool's working directory resets after every call, so after `git worktree add` + `cd` the session still points at the main checkout — dde would keep targeting main while the worktree files live elsewhere.
+
+dde fully supports worktrees nested at `.claude/worktrees/<name>`: worktree detection is based on the current working directory, the worktree shares the main checkout's `.dde/`, and the hostname/database naming below works exactly the same — the suffix is derived from the worktree directory's basename, regardless of where the worktree lives (`.claude/worktrees/feature-x` → `https://feature-x.my-app.test`, DB `my_app_feature_x`).
+
 ### What dde does automatically per worktree
 
-Given a project named `my-app` and a worktree at `~/projects/my-app-feature-x`:
+Given a project named `my-app` and a worktree directory named `my-app-feature-x` (the location is irrelevant — `~/projects/my-app-feature-x` and `<main>/.claude/worktrees/my-app-feature-x` behave identically):
 
 |                                                                                                               | Main checkout         | Worktree checkout                                     |
 | ------------------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------- |
@@ -163,16 +171,14 @@ Most projects ship a one-shot install script (f.ex. `make install`) that creates
 dde project:exec make install
 ```
 
-As an alternative, when you want the worktree to start from main's current state (this both creates the DB and loads the dump):
+As an alternative, when you want the worktree to start from main's current state (this both creates the DB and loads the dump). Use `-C` instead of `cd` — the shell working directory does not persist across Bash tool calls:
 
 ```bash
 # In main: export
-cd ~/projects/my-app
-dde project:db:export /tmp/seed.sql
+dde -C ~/projects/my-app project:db:export /tmp/seed.sql
 
 # In worktree: import into the auto-named DB
-cd ~/projects/my-app-feature-x
-dde project:db:import /tmp/seed.sql
+dde -C ~/projects/my-app/.claude/worktrees/feature-x project:db:import /tmp/seed.sql
 ```
 
 ### Running main and worktree in parallel

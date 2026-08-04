@@ -19,6 +19,8 @@ dde project:up           # https://feature-x.my-app.test, DB: my_app_feature_x
 
 Both worktrees stay reachable at the same time. Each gets its own per-project Docker network, so a worktree can run a different service version than main (e.g. upgrading from Postgres 16 to 18 on a branch). Both write to different databases so the branches never corrupt each other's state.
 
+> **AI agents:** in a harness whose shell resets its working directory between calls (e.g. Claude Code's Bash tool), `cd` never moves the session — after `git worktree add` + `cd` the session still points at the main checkout, so dde keeps targeting main. The session must be switched with the harness's native tool: in Claude Code that is `EnterWorktree` (and `ExitWorktree` to leave). It enters an existing worktree — however it was created — when given its `path`, and without one creates a fresh worktree at `.claude/worktrees/<name>` inside the main checkout. dde detects that nested layout like any other worktree; see [How Detection Works](#how-detection-works). Entering from the main checkout only requires the target to appear in `git worktree list`, so a sibling directory works; switching straight from one worktree into another requires the target to live under `.claude/worktrees/`.
+
 ## How Detection Works
 
 When `dde project:up` runs, `WorktreeManager::detect()` executes `git worktree list --porcelain` and compares the **current working directory** against every entry in the output. The worktree whose real path is the longest prefix of CWD wins. This deliberately decouples worktree detection from the directory where dde found `.dde/config.yml`:
@@ -139,6 +141,8 @@ cd ~/projects/my-app
 git worktree add ~/projects/my-app-feature-x feature/feature-x
 git worktree add ~/projects/my-app-PROJ-123 feature/PROJ-123
 ```
+
+The sibling-directory layout shown here is a convention, not a requirement — dde derives the hostname suffix from the worktree directory's basename wherever the worktree lives, including nested inside the main checkout (e.g. `.claude/worktrees/feature-x` → `https://feature-x.my-app.test`). How the worktree is created doesn't matter; what matters for agents is how the session enters it — see the note in the [TL;DR](#tldr).
 
 ### 2. Start each worktree
 
