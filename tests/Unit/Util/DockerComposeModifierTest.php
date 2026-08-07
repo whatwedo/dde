@@ -600,7 +600,7 @@ final class DockerComposeModifierTest extends TestCase
         $changes = $this->modifier->addServiceEnvironment($config, 'web', 'myproject');
 
         $this->assertCount(1, $changes);
-        $this->assertContains('MAILER_DSN=smtp://mailpit:1025', $config['services']['web']['environment']);
+        $this->assertContains('MAILER_DSN=smtp://mail:1025', $config['services']['web']['environment']);
     }
 
     public function testAddServiceEnvironmentAddsBothDatabaseAndMailer(): void
@@ -623,7 +623,7 @@ final class DockerComposeModifierTest extends TestCase
 
         $this->assertCount(2, $changes);
         $this->assertContains('DATABASE_URL=mysql://root:root@mariadb:3306/myproject', $config['services']['web']['environment']);
-        $this->assertContains('MAILER_DSN=smtp://mailpit:1025', $config['services']['web']['environment']);
+        $this->assertContains('MAILER_DSN=smtp://mail:1025', $config['services']['web']['environment']);
     }
 
     public function testAddServiceEnvironmentSkipsExistingVariables(): void
@@ -737,7 +737,7 @@ final class DockerComposeModifierTest extends TestCase
             'image' => 'nginx',
         ];
 
-        $result = $this->modifier->setEnvironmentVariable($service, 'MAILER_DSN', 'smtp://mailpit:1025', $projectDir);
+        $result = $this->modifier->setEnvironmentVariable($service, 'MAILER_DSN', 'smtp://mail:1025', $projectDir);
 
         $this->assertFalse($result);
         $this->assertArrayNotHasKey('environment', $service);

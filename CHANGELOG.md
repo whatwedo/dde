@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - nginx worker can now traverse `/var/lib/nginx/` in project containers — the parent directory lacked the execute bit for others, so (large) uploads still failed even after the v2.0.0 fix.
 - `project:init` now lowercases the project name, so worktrees no longer break on a name containing uppercase letters. (#276)
+- The auto-injected `MAILER_DSN` now points at `smtp://mail:1025`, so mail sent from a project lands in the Mailpit served at `mail.test` — existing projects have to change the DSN in their `docker-compose.yml` by hand. (#275)
 
 ## [2.0.0] - 2026-07-30
 

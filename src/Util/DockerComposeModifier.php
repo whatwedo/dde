@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Util;
 
 use App\Database\DatabaseAdapterRegistry;
+use App\Service\MailpitService;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Yaml\Yaml;
 
@@ -217,7 +218,7 @@ readonly class DockerComposeModifier
         }
 
         // Detect mailpit
-        if (in_array('mailpit', $serviceNames, true) && $this->setEnvironmentVariable($service, 'MAILER_DSN', 'smtp://mailpit:1025', $projectDir)) {
+        if (in_array('mailpit', $serviceNames, true) && $this->setEnvironmentVariable($service, 'MAILER_DSN', MailpitService::MAILER_DSN, $projectDir)) {
             $changes[] = sprintf('Added MAILER_DSN for mailpit to service "%s"', $serviceName);
         }
 

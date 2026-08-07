@@ -11,6 +11,13 @@ final class MailpitService extends AbstractSystemService implements ProjectNetwo
     public const string HOSTNAME = 'mail.test';
 
     /**
+     * SMTP DSN projects use to reach Mailpit. Points at the `mail` alias, the
+     * only name under which the container serving `mail.test` is reachable on a
+     * project network.
+     */
+    public const string MAILER_DSN = 'smtp://mail:1025';
+
+    /**
      * @var list<string>
      */
     private const array PROJECT_NETWORK_ALIASES = ['mail'];

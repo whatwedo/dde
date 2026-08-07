@@ -336,13 +336,13 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $hasCompose = false;
 
         foreach ($env as $k => $v) {
-            if (($k === 'MAILER_DSN' && $v === 'smtp://mailpit:1025')
-                || (is_int($k) && $v === 'MAILER_DSN=smtp://mailpit:1025')) {
+            if (($k === 'MAILER_DSN' && $v === 'smtp://mail:1025')
+                || (is_int($k) && $v === 'MAILER_DSN=smtp://mail:1025')) {
                 $hasCompose = true;
             }
         }
 
-        $this->assertTrue($hasCompose, 'Expected MAILER_DSN=smtp://mailpit:1025 in compose');
+        $this->assertTrue($hasCompose, 'Expected MAILER_DSN=smtp://mail:1025 in compose');
 
         $envContent = (string) file_get_contents($this->tempDir.'/.env');
         $this->assertStringContainsString('MAILER_DSN=null://null', $envContent);
@@ -608,7 +608,7 @@ final class ProjectInitAdaptationManagerTest extends TestCase
         $hasCompose = false;
 
         foreach ($env as $k => $v) {
-            if (($k === 'MAILER_DSN' && $v === 'smtp://mailpit:1025') || (is_int($k) && $v === 'MAILER_DSN=smtp://mailpit:1025')) {
+            if (($k === 'MAILER_DSN' && $v === 'smtp://mail:1025') || (is_int($k) && $v === 'MAILER_DSN=smtp://mail:1025')) {
                 $hasCompose = true;
             }
         }
