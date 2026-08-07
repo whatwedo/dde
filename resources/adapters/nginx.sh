@@ -22,4 +22,9 @@ configure() {
     for dir in /var/cache/nginx /var/log/nginx /var/run /var/lib/nginx/tmp; do
         [ -d "$dir" ] && chown -R "${dde_user}:${dde_group}" "$dir" 2>/dev/null || true
     done
+
+    # The parent /var/lib/nginx/ is typically nginx:nginx 750. The dde user is
+    # "other" relative to that ownership, so without the execute bit it cannot
+    # traverse into /var/lib/nginx/tmp/ at all. chmod o+x is minimal — traverse only, no read.
+    [ -d /var/lib/nginx ] && chmod o+x /var/lib/nginx 2>/dev/null || true
 }

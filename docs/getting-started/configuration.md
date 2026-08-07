@@ -58,6 +58,10 @@ containers:
     shell: zsh
 ```
 
+### Name
+
+`name` is the identity that every derived resource is built from — Docker network names, worktree hostnames and database identifiers. `project:init` lowercases whatever you enter, because those names are matched case-sensitively downstream.
+
 ### Services
 
 Services can be specified as a simple string (uses the global default version) or with an explicit version:

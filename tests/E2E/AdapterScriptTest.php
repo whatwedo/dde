@@ -184,6 +184,65 @@ final class AdapterScriptTest extends TestCase
     }
 
     /**
+     * Regression: v2.0.0 chown'd /var/lib/nginx/tmp to the dde user but left
+     * /var/lib/nginx/ owned nginx:nginx 750 — the dde worker (run as "other")
+     * had no traverse bit on the parent and could never reach the temp dir,
+     * so large uploads returned HTTP 500 Permission denied.
+     */
+    public function testNginxAdapterGrantsTraverseBitOnVarLibNginx(): void
+    {
+        $adaptersDir = \dirname(__DIR__, 2).'/resources/adapters';
+
+        $script = <<<'SH'
+            set -e
+            # Create nginx group/user and the dde user in the pre-existing gid-20 group.
+            echo "nginx:x:101:" >> /etc/group
+            echo "nginx:x:101:101:nginx:/var/lib/nginx:/sbin/nologin" >> /etc/passwd
+            echo "dde:x:501:20:dde:/home/dde:/bin/sh" >> /etc/passwd
+
+            # Stub nginx binary so detect() succeeds.
+            printf '#!/bin/sh\n' > /usr/local/bin/nginx && chmod +x /usr/local/bin/nginx
+
+            # Reproduce the Alpine base-image layout: parent nginx:nginx 750,
+            # tmp already chown'd to dde by the v2.0.0 partial fix.
+            mkdir -p /var/lib/nginx/tmp/client_body
+            chown -R nginx:nginx /var/lib/nginx
+            chmod 750 /var/lib/nginx
+            chown dde:dialout /var/lib/nginx/tmp
+            chmod 700 /var/lib/nginx/tmp
+
+            # Minimal config dir so the sed pass in configure() has something to iterate.
+            mkdir -p /fix/etc/nginx/directive.d
+            printf 'user nginx nginx;\n' > /fix/etc/nginx/directive.d/05-user.conf
+
+            export DDE_NGINX_CONF_ROOT=/fix/etc/nginx
+            . /adapters/nginx.sh
+            if detect; then configure; fi
+
+            echo "===PERMS==="
+            stat -c "%a" /var/lib/nginx
+            SH;
+
+        $process = new Process([
+            'docker', 'run', '--rm',
+            '-v', $adaptersDir.':/adapters:ro',
+            'debian:stable-slim',
+            'sh', '-c', $script,
+        ]);
+        $process->setTimeout(120);
+        $process->run();
+
+        $this->assertTrue(
+            $process->isSuccessful(),
+            sprintf("adapter run failed:\nSTDOUT: %s\nSTDERR: %s", $process->getOutput(), $process->getErrorOutput()),
+        );
+
+        $perms = trim(explode('===PERMS===', $process->getOutput(), 2)[1] ?? '');
+        // 751 = 750 | o+x — others now have the traverse bit
+        $this->assertSame('751', $perms, '/var/lib/nginx must have o+x so the dde worker can traverse into tmp/');
+    }
+
+    /**
      * Regression: the ca-trust adapter used to branch on trust-store directory
      * existence, in this order: /usr/local/share/ca-certificates first. That
      * directory exists on minimal Debian *without* the ca-certificates package
