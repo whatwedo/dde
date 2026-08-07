@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- nginx worker can now traverse `/var/lib/nginx/` in project containers — the parent directory lacked the execute bit for others, so (large) uploads still failed even after the v2.0.0 fix.
+
 ## [2.0.0] - 2026-07-30
 
 dde v2 is stable. It replaces the Bash-based v1 with a single static binary.
