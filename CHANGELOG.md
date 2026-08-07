@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - nginx worker can now traverse `/var/lib/nginx/` in project containers — the parent directory lacked the execute bit for others, so (large) uploads still failed even after the v2.0.0 fix.
+- `project:init` now lowercases the project name, so worktrees no longer break on a name containing uppercase letters. (#276)
 
 ## [2.0.0] - 2026-07-30
 
@@ -214,6 +215,7 @@ executable via static-php-cli, running on macOS and Linux.
 - nginx-proxy dependency
 - Custom OpenSSL CA
 
+[Unreleased]: https://github.com/whatwedo/dde/compare/v2.0.0...main
 [2.0.0]: https://github.com/whatwedo/dde/releases/tag/v2.0.0
 [2.0.0-rc.2]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-rc.2
 [2.0.0-rc.1]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-rc.1

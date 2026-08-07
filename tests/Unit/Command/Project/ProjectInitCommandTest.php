@@ -265,6 +265,56 @@ final class ProjectInitCommandTest extends TestCase
         $this->assertStringContainsString('containers', $content);
     }
 
+    public function testExecuteLowercasesProjectName(): void
+    {
+        $this->commandTester->execute([
+            '--name' => 'Test-Project',
+            '--no-docker' => true,
+        ], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $content = (string) file_get_contents($this->tempDir.'/.dde/config.yml');
+        $this->assertStringContainsString('name: test-project', $content);
+    }
+
+    public function testInteractiveFlowLowercasesProjectName(): void
+    {
+        $this->commandTester->setInputs([
+            'Test-Project',
+            '3',   // only mailpit
+            'web',
+        ]);
+
+        $this->commandTester->execute([
+            '--no-docker' => true,
+        ], [
+            'interactive' => true,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $content = (string) file_get_contents($this->tempDir.'/.dde/config.yml');
+        $this->assertStringContainsString('name: test-project', $content);
+    }
+
+    public function testExecuteLowercasesProjectNameFromDirectoryDefault(): void
+    {
+        $projectDir = $this->tempDir.'/Test-Project';
+        mkdir($projectDir, 0o755, true);
+        chdir($projectDir);
+
+        $this->commandTester->execute([
+            '--no-docker' => true,
+        ], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $content = (string) file_get_contents($projectDir.'/.dde/config.yml');
+        $this->assertStringContainsString('name: test-project', $content);
+    }
+
     public function testExecuteAdaptsDockerComposeFile(): void
     {
         $composeContent = <<<'YAML'
@@ -614,6 +664,9 @@ final class ProjectInitCommandTest extends TestCase
 
     protected function tearDown(): void
     {
+        // setUp() chdir'd into the temp dir — leave it before it is removed
+        chdir(sys_get_temp_dir());
+
         $filesystem = new Filesystem();
 
         if (is_dir($this->tempDir)) {

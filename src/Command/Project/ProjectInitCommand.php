@@ -172,10 +172,10 @@ final class ProjectInitCommand extends AbstractProjectCommand
         $name = $input->getOption('name');
 
         if (is_string($name) && $name !== '') {
-            return $name;
+            return $this->lowercaseProjectName($name);
         }
 
-        $default = basename($projectDir);
+        $default = $this->lowercaseProjectName(basename($projectDir));
 
         if ($useDefaults) {
             return $default;
@@ -183,7 +183,17 @@ final class ProjectInitCommand extends AbstractProjectCommand
 
         $result = $io->ask('Project name', $default);
 
-        return is_string($result) ? $result : $default;
+        return is_string($result) ? $this->lowercaseProjectName($result) : $default;
+    }
+
+    /**
+     * The project name feeds Docker network names, worktree hostnames and
+     * database identifiers, which are compared case-sensitively downstream —
+     * an uppercase letter makes a worktree miss its own resources.
+     */
+    private function lowercaseProjectName(string $name): string
+    {
+        return mb_strtolower($name);
     }
 
     /**
