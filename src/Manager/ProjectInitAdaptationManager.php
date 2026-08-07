@@ -7,6 +7,7 @@ namespace App\Manager;
 use App\Database\DatabaseAdapterRegistry;
 use App\Parser\DockerComposeParser;
 use App\Parser\DockerfileParser;
+use App\Service\MailpitService;
 use App\Service\ServiceRegistry;
 use App\Util\DiffUtil;
 use App\Util\DockerComposeModifier;
@@ -530,7 +531,7 @@ readonly class ProjectInitAdaptationManager
             return null;
         }
 
-        $mailerDsn = 'smtp://mailpit:1025';
+        $mailerDsn = MailpitService::MAILER_DSN;
         $envDsn = 'null://null';
         $changed = false;
 

@@ -31,9 +31,9 @@ smtp://mail:1025
 
 ### Automatic MAILER_DSN
 
-When a project's `docker-compose.yml` contains a `mailpit` service, dde automatically injects `MAILER_DSN=smtp://mailpit:1025` into the primary service. The variable is only added if it is not already defined in the service environment or in the project's `.env`/`.env.dev` files.
+When the project's `docker-compose.yml` contains a `mailpit` service, dde automatically injects `MAILER_DSN=smtp://mail:1025` into the primary service. The variable is only added if it is not already defined in the service environment or in the project's `.env`/`.env.dev` files.
 
-Note: The auto-injected DSN uses `mailpit` as the hostname (the compose service name), while the global Mailpit service uses the network alias `mail`. Both resolve to the same container — `project:up` attaches `dde-mailpit` to each project's per-project network with the `mail` alias, so existing configurations that use `smtp://mail:1025` keep working after the project containers were isolated from the shared `dde` network.
+The hostname is always `mail`: `project:up` attaches `dde-mailpit` to each project's per-project network under that alias, and it is the container whose web UI is served at `mail.test`.
 
 ## Global vs Project Mailpit
 

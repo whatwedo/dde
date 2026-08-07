@@ -53,7 +53,7 @@ final class EnvMigrationE2ETest extends TestCase
             $webEnv,
             'APP_ENV must not be migrated into compose — Symfony stops loading .env files when APP_ENV is in the environment',
         );
-        $this->assertSame('smtp://mailpit:1025', $webEnv['MAILER_DSN'] ?? null, 'MAILER_DSN must point to mailpit in compose');
+        $this->assertSame('smtp://mail:1025', $webEnv['MAILER_DSN'] ?? null, 'MAILER_DSN must point to the global Mailpit at smtp://mail:1025 in compose');
 
         // docker-compose.yml — DATABASE_URL from migration NOT present.
         // The existing addServiceEnvironment helper ALSO skips adding DATABASE_URL when
