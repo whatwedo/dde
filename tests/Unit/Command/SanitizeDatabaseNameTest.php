@@ -11,6 +11,7 @@ use App\Output\JsonFormatter;
 use App\Output\TextFormatter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -46,20 +47,15 @@ final class SanitizeDatabaseNameTest extends TestCase
         $configManager = $this->createStub(ProjectConfigManager::class);
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
-        return new class($configManager, $formatterResolver) extends AbstractDatabaseCommand {
+        return new #[AsCommand(name: 'test:command')] class($configManager, $formatterResolver) extends AbstractDatabaseCommand {
             public function exposeSanitizeDatabaseName(string $name): string
             {
                 return $this->sanitizeDatabaseName($name);
             }
 
-            protected function configure(): void
-            {
-                $this->setName('test:command');
-            }
-
             protected function execute(InputInterface $input, OutputInterface $output): int
             {
-                return 0;
+                return self::SUCCESS;
             }
         };
     }
