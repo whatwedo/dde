@@ -1073,7 +1073,7 @@ readonly class DockerComposeManager
         $trimmed = trim($replaced, '-');
 
         if (strlen($trimmed) > 63) {
-            $trimmed = trim(substr($trimmed, 0, 63), '-');
+            return trim(substr($trimmed, 0, 63), '-');
         }
 
         return $trimmed;

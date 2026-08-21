@@ -119,7 +119,7 @@ readonly class WorktreeManager
         $combined = $baseDatabaseName.'_'.$suffix;
 
         if (strlen($combined) > 63) {
-            $combined = rtrim(substr($combined, 0, 63), '_');
+            return rtrim(substr($combined, 0, 63), '_');
         }
 
         return $combined;
