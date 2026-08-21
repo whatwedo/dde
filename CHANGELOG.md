@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [2.0.1] - 2026-08-21
 
 ### Fixed
 
@@ -216,7 +216,7 @@ executable via static-php-cli, running on macOS and Linux.
 - nginx-proxy dependency
 - Custom OpenSSL CA
 
-[Unreleased]: https://github.com/whatwedo/dde/compare/v2.0.0...main
+[2.0.1]: https://github.com/whatwedo/dde/releases/tag/v2.0.1
 [2.0.0]: https://github.com/whatwedo/dde/releases/tag/v2.0.0
 [2.0.0-rc.2]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-rc.2
 [2.0.0-rc.1]: https://github.com/whatwedo/dde/releases/tag/v2.0.0-rc.1
