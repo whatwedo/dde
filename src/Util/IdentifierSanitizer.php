@@ -22,7 +22,7 @@ final class IdentifierSanitizer
         }
 
         if (strlen($suffix) > self::DNS_LABEL_MAX) {
-            $suffix = rtrim(substr($suffix, 0, self::DNS_LABEL_MAX), '-');
+            return rtrim(substr($suffix, 0, self::DNS_LABEL_MAX), '-');
         }
 
         return $suffix;
@@ -47,7 +47,7 @@ final class IdentifierSanitizer
         }
 
         if (strlen($result) > self::DB_IDENTIFIER_MAX) {
-            $result = rtrim(substr($result, 0, self::DB_IDENTIFIER_MAX), '_');
+            return rtrim(substr($result, 0, self::DB_IDENTIFIER_MAX), '_');
         }
 
         return $result;
@@ -63,7 +63,7 @@ final class IdentifierSanitizer
         }
 
         if (strlen($suffix) > self::DB_IDENTIFIER_MAX) {
-            $suffix = rtrim(substr($suffix, 0, self::DB_IDENTIFIER_MAX), '_');
+            return rtrim(substr($suffix, 0, self::DB_IDENTIFIER_MAX), '_');
         }
 
         return $suffix;
