@@ -58,7 +58,7 @@ done
 
 Each adapter script must define `detect()` and `configure()` functions. If `detect()` returns 0 (success), `configure()` is called. Functions are unset after each adapter to prevent conflicts.
 
-Built-in adapters: `nginx.sh`, `php-fpm.sh`, `apache.sh`.
+Built-in adapters: `nginx.sh`, `php-fpm.sh`, `apache.sh`, `frankenphp.sh`.
 
 ### 5. Run Project Adapters
 

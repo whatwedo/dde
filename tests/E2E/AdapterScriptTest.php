@@ -143,6 +143,79 @@ final class AdapterScriptTest extends TestCase
     }
 
     /**
+     * The whatwedo frankenphp base image starts runit as `USER app`, so its run
+     * script execs frankenphp directly. Under dde the container runs as root,
+     * which would put the web server (and every PHP process) on root as well.
+     * The adapter must drop the runit service to the dde user via chpst and hand
+     * Caddy's state directory to that user.
+     */
+    public function testFrankenphpAdapterDropsRunitServiceToDdeUser(): void
+    {
+        $adaptersDir = \dirname(__DIR__, 2).'/resources/adapters';
+
+        $script = <<<'SH'
+            set -e
+            echo "app:x:10000:20:app:/var/www:/bin/sh" >> /etc/passwd
+            echo "dde:x:501:20:dde:/home/dde:/bin/sh" >> /etc/passwd
+
+            for bin in frankenphp chpst; do
+                printf '#!/bin/sh\n' > "/usr/local/bin/$bin" && chmod +x "/usr/local/bin/$bin"
+            done
+
+            # Mirror the base image: state dir owned by app, run script without chpst,
+            # plus a project-provided service that already drops privileges itself.
+            mkdir -p /var/lib/frankenphp/config /var/lib/frankenphp/data
+            chown -R app:dialout /var/lib/frankenphp
+            mkdir -p /etc/runit/runsvdir/default/frankenphp /etc/runit/runsvdir/default/worker /etc/runit/runsvdir/default/cron
+            printf '#!/bin/sh\nexec 2>&1\nexec /usr/bin/frankenphp run --config /etc/frankenphp/Caddyfile --adapter caddyfile\n' > /etc/runit/runsvdir/default/frankenphp/run
+            printf '#!/bin/sh\nexec chpst -u dde env HOME=/home/dde frankenphp run --config /etc/frankenphp/worker.conf --adapter caddyfile\n' > /etc/runit/runsvdir/default/worker/run
+            printf '#!/bin/sh\nexec cron -f\n' > /etc/runit/runsvdir/default/cron/run
+
+            . /adapters/frankenphp.sh
+            if detect; then configure; fi
+
+            echo "===OWNER==="
+            stat -c "%U:%G" /var/lib/frankenphp /var/lib/frankenphp/data
+            echo "===RUN==="
+            cat /etc/runit/runsvdir/default/frankenphp/run
+            echo "===WORKER==="
+            cat /etc/runit/runsvdir/default/worker/run
+            echo "===CRON==="
+            cat /etc/runit/runsvdir/default/cron/run
+            SH;
+
+        $process = new Process([
+            'docker', 'run', '--rm',
+            '-v', $adaptersDir.':/adapters:ro',
+            'debian:stable-slim',
+            'sh', '-c', $script,
+        ]);
+        $process->setTimeout(120);
+        $process->run();
+
+        $this->assertTrue(
+            $process->isSuccessful(),
+            sprintf("adapter run failed:\nSTDOUT: %s\nSTDERR: %s", $process->getOutput(), $process->getErrorOutput()),
+        );
+
+        $output = $process->getOutput();
+        [$owner, $rest] = explode('===RUN===', explode('===OWNER===', $output, 2)[1], 2);
+        [$run, $rest] = explode('===WORKER===', $rest, 2);
+        [$worker, $cron] = explode('===CRON===', $rest, 2);
+
+        $this->assertSame(['dde:dialout', 'dde:dialout'], preg_split('/\s+/', trim($owner)));
+
+        $this->assertStringContainsString('exec 2>&1', $run, 'unrelated exec lines stay untouched');
+        $this->assertStringContainsString('exec chpst -u dde env HOME=/home/dde /usr/bin/frankenphp run --config /etc/frankenphp/Caddyfile --adapter caddyfile', $run);
+
+        $this->assertStringContainsString('exec chpst -u dde env HOME=/home/dde frankenphp run', $worker, 'a run script that already drops privileges stays untouched');
+        $this->assertSame(1, substr_count($worker, 'chpst'));
+
+        $this->assertStringContainsString("exec cron -f\n", $cron, 'services that do not run frankenphp stay untouched');
+        $this->assertStringNotContainsString('chpst', $cron);
+    }
+
+    /**
      * Regression: the official wordpress image (Debian) ships GNU shadow's
      * useradd/groupadd AND Debian's Perl adduser/addgroup side by side. The
      * entrypoint used to gate user creation on `command -v adduser` and then

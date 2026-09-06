@@ -25,7 +25,7 @@ services:
 
 The dde layer detects Alpine and installs `su-exec` + `shadow`. The entrypoint creates the `dde` user and execs `npm run dev` as the original command.
 
-No built-in adapter applies (nginx/php-fpm/apache are not present), so the adapters step is a no-op.
+No built-in adapter applies (nginx/php-fpm/apache/frankenphp are not present), so the adapters step is a no-op.
 
 ### Custom Adapter for Node.js
 
