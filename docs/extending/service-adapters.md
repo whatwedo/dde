@@ -49,13 +49,14 @@ configure() {
 
 ## Built-in Adapters
 
-dde ships with three built-in adapters in `resources/adapters/`:
+dde ships with four built-in adapters in `resources/adapters/`:
 
-| Adapter    | Detects                  | Configures                                                    |
-| ---------- | ------------------------ | ------------------------------------------------------------- |
-| apache.sh  | `apache2` or `httpd`     | Updates run user/group to `dde`                               |
-| nginx.sh   | `nginx`                  | Updates the `user` directive and directory ownership to `dde` |
-| php-fpm.sh | a `www.conf` pool config | Updates pool user/group and listen owner/group to `dde`       |
+| Adapter       | Detects                  | Configures                                                         |
+| ------------- | ------------------------ | ------------------------------------------------------------------ |
+| apache.sh     | `apache2` or `httpd`     | Updates run user/group to `dde`                                    |
+| frankenphp.sh | `frankenphp` and `chpst` | Drops the runit service to `dde`, hands Caddy's state dir to `dde` |
+| nginx.sh      | `nginx`                  | Updates the `user` directive and directory ownership to `dde`      |
+| php-fpm.sh    | a `www.conf` pool config | Updates pool user/group and listen owner/group to `dde`            |
 
 > **Resolved group, not literal `dde`.** When `DDE_GID` maps onto a group that already exists in the image (e.g. gid 20 → `dialout` on Debian, which is `staff` on the macOS host), the entrypoint reuses that group rather than creating one named `dde`. The adapters therefore resolve the dde user's real primary group via `id -gn dde` and write *that* name — hardcoding `dde` would point nginx/php-fpm at a non-existent group and break startup.
 
@@ -64,6 +65,12 @@ dde ships with three built-in adapters in `resources/adapters/`:
 Detects `apache2` or `httpd` and updates the run user/group to `dde` in:
 - `/etc/apache2/envvars` (Debian/Ubuntu)
 - `/etc/httpd/conf/httpd.conf` (Alpine/CentOS)
+
+### `frankenphp.sh`
+
+Detects `frankenphp` together with runit's `chpst` and:
+- Changes ownership of `/var/lib/frankenphp` (Caddy's state, `XDG_CONFIG_HOME`/`XDG_DATA_HOME` in the whatwedo base image) to `dde`
+- Rewrites every runit run script in `/etc/runit/runsvdir/default/*/run` that starts `frankenphp run` so it execs through `chpst -u dde env HOME=/home/dde`. The production image runs runit as its unprivileged user, whereas dde starts the container as root — without this rewrite the web server and every PHP process would run as root. Run scripts that already use `chpst` are left alone.
 
 ### `nginx.sh`
 

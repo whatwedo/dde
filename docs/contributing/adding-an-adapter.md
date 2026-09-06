@@ -16,13 +16,14 @@ After each adapter runs, the functions are unset to avoid conflicts.
 
 ## Built-in Adapters
 
-dde ships three built-in adapters in `resources/adapters/`:
+dde ships four built-in adapters in `resources/adapters/`:
 
-| Adapter      | Detects                             | Configures                                                                        |
-| ------------ | ----------------------------------- | --------------------------------------------------------------------------------- |
-| `nginx.sh`   | `nginx` binary present              | Updates `nginx.conf` user directive to `dde`, fixes cache/log directory ownership |
-| `php-fpm.sh` | `php-fpm` binary present            | Updates PHP-FPM pool user/group to `dde`                                          |
-| `apache.sh`  | `apache2` or `httpd` binary present | Updates Apache user/group directives                                              |
+| Adapter         | Detects                             | Configures                                                                        |
+| --------------- | ----------------------------------- | --------------------------------------------------------------------------------- |
+| `nginx.sh`      | `nginx` binary present              | Updates `nginx.conf` user directive to `dde`, fixes cache/log directory ownership |
+| `php-fpm.sh`    | `php-fpm` binary present            | Updates PHP-FPM pool user/group to `dde`                                          |
+| `apache.sh`     | `apache2` or `httpd` binary present | Updates Apache user/group directives                                              |
+| `frankenphp.sh` | `frankenphp` and `chpst` present    | Drops the runit service to `dde` via `chpst`, fixes Caddy state dir ownership     |
 
 ### Example: nginx.sh
 
