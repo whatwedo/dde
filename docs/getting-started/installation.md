@@ -6,6 +6,7 @@ title: "Installation"
 ## Prerequisites
 
 - **Docker Desktop** (macOS) or **Docker Engine** (Linux) -- must be installed and running
+- **Docker Buildx Plugin** (Linux) - bundled with Docker Desktop on Windows and macOS
 - **mkcert** -- for generating locally-trusted TLS certificates
   - macOS: `brew install mkcert`
   - debian based linux: `apt install mkcert`
