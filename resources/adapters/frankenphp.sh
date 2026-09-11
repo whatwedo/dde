@@ -1,7 +1,9 @@
 # FrankenPHP has no run-as-user directive like nginx or php-fpm. The image runs
 # runit as its unprivileged user, dde starts the container as root, so the runit
 # run script has to drop to the dde user itself via chpst. HOME is set explicitly
-# because chpst keeps root's environment.
+# because chpst keeps root's environment. Run scripts that already switch user
+# (chpst, doas, su-exec, gosu, setpriv, su) are left alone: prepending chpst
+# would run the switch as dde, which doas & co. refuse.
 detect() {
     command -v frankenphp >/dev/null 2>&1 && command -v chpst >/dev/null 2>&1
 }
@@ -16,7 +18,7 @@ configure() {
 
     for run in /etc/runit/runsvdir/default/*/run; do
         grep -q 'frankenphp run' "$run" 2>/dev/null || continue
-        grep -q 'chpst' "$run" && continue
+        grep -Eq '(^|[[:space:]])(chpst|doas|su-exec|gosu|setpriv|su)([[:space:]]|$)' "$run" && continue
         sed -i "s|^\([[:space:]]*exec[[:space:]][[:space:]]*\)\(.*frankenphp run\)|\1chpst -u ${dde_user} env HOME=/home/${dde_user} \2|" "$run"
     done
 }

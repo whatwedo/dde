@@ -163,12 +163,14 @@ final class AdapterScriptTest extends TestCase
             done
 
             # Mirror the base image: state dir owned by app, run script without chpst,
-            # plus a project-provided service that already drops privileges itself.
+            # plus project-provided services that already drop privileges themselves
+            # (chpst, or doas as older dev images did before the adapter existed).
             mkdir -p /var/lib/frankenphp/config /var/lib/frankenphp/data
             chown -R app:dialout /var/lib/frankenphp
-            mkdir -p /etc/runit/runsvdir/default/frankenphp /etc/runit/runsvdir/default/worker /etc/runit/runsvdir/default/cron
+            mkdir -p /etc/runit/runsvdir/default/frankenphp /etc/runit/runsvdir/default/worker /etc/runit/runsvdir/default/legacy /etc/runit/runsvdir/default/cron
             printf '#!/bin/sh\nexec 2>&1\nexec /usr/bin/frankenphp run --config /etc/frankenphp/Caddyfile --adapter caddyfile\n' > /etc/runit/runsvdir/default/frankenphp/run
             printf '#!/bin/sh\nexec chpst -u dde env HOME=/home/dde frankenphp run --config /etc/frankenphp/worker.conf --adapter caddyfile\n' > /etc/runit/runsvdir/default/worker/run
+            printf '#!/bin/sh\nexec doas -u dde frankenphp run --config /etc/caddy/Caddyfile --adapter caddyfile\n' > /etc/runit/runsvdir/default/legacy/run
             printf '#!/bin/sh\nexec cron -f\n' > /etc/runit/runsvdir/default/cron/run
 
             . /adapters/frankenphp.sh
@@ -180,6 +182,8 @@ final class AdapterScriptTest extends TestCase
             cat /etc/runit/runsvdir/default/frankenphp/run
             echo "===WORKER==="
             cat /etc/runit/runsvdir/default/worker/run
+            echo "===LEGACY==="
+            cat /etc/runit/runsvdir/default/legacy/run
             echo "===CRON==="
             cat /etc/runit/runsvdir/default/cron/run
             SH;
@@ -201,7 +205,8 @@ final class AdapterScriptTest extends TestCase
         $output = $process->getOutput();
         [$owner, $rest] = explode('===RUN===', explode('===OWNER===', $output, 2)[1], 2);
         [$run, $rest] = explode('===WORKER===', $rest, 2);
-        [$worker, $cron] = explode('===CRON===', $rest, 2);
+        [$worker, $rest] = explode('===LEGACY===', $rest, 2);
+        [$legacy, $cron] = explode('===CRON===', $rest, 2);
 
         $this->assertSame(['dde:dialout', 'dde:dialout'], preg_split('/\s+/', trim($owner)));
 
@@ -210,6 +215,9 @@ final class AdapterScriptTest extends TestCase
 
         $this->assertStringContainsString('exec chpst -u dde env HOME=/home/dde frankenphp run', $worker, 'a run script that already drops privileges stays untouched');
         $this->assertSame(1, substr_count($worker, 'chpst'));
+
+        $this->assertStringContainsString("exec doas -u dde frankenphp run --config /etc/caddy/Caddyfile --adapter caddyfile\n", $legacy, 'a run script that drops privileges via doas stays untouched');
+        $this->assertStringNotContainsString('chpst', $legacy);
 
         $this->assertStringContainsString("exec cron -f\n", $cron, 'services that do not run frankenphp stay untouched');
         $this->assertStringNotContainsString('chpst', $cron);

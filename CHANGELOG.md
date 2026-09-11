@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- FrankenPHP containers now run the web server as the `dde` user out of the box, without a project adapter or a development run-script override. See [Service Adapters](docs/extending/service-adapters.md).
+- FrankenPHP containers now run the web server as the `dde` user out of the box, without a project adapter or a development run-script override. Run scripts that already drop privileges themselves (`doas`, `su-exec`, …) keep working unchanged. See [Service Adapters](docs/extending/service-adapters.md).
 
 ## [2.0.1] - 2026-08-21
 

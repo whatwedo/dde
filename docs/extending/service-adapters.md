@@ -70,7 +70,7 @@ Detects `apache2` or `httpd` and updates the run user/group to `dde` in:
 
 Detects `frankenphp` together with runit's `chpst` and:
 - Changes ownership of `/var/lib/frankenphp` (Caddy's state, `XDG_CONFIG_HOME`/`XDG_DATA_HOME` in the whatwedo base image) to `dde`
-- Rewrites every runit run script in `/etc/runit/runsvdir/default/*/run` that starts `frankenphp run` so it execs through `chpst -u dde env HOME=/home/dde`. The production image runs runit as its unprivileged user, whereas dde starts the container as root — without this rewrite the web server and every PHP process would run as root. Run scripts that already use `chpst` are left alone.
+- Rewrites every runit run script in `/etc/runit/runsvdir/default/*/run` that starts `frankenphp run` so it execs through `chpst -u dde env HOME=/home/dde`. The production image runs runit as its unprivileged user, whereas dde starts the container as root — without this rewrite the web server and every PHP process would run as root. Run scripts that already switch user themselves (`chpst`, `doas`, `su-exec`, `gosu`, `setpriv`, `su`) are left alone — prepending `chpst` there would run the user switch as `dde`, which `doas` and friends refuse.
 
 ### `nginx.sh`
 
