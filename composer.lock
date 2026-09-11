@@ -6461,16 +6461,16 @@
         },
         {
             "name": "squizlabs/php_codesniffer",
-            "version": "3.13.5",
+            "version": "3.13.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPCSStandards/PHP_CodeSniffer.git",
-                "reference": "0ca86845ce43291e8f5692c7356fccf3bcf02bf4"
+                "reference": "4c378e1a528ea066890fc2397cbdd2f94eb2fc91"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPCSStandards/PHP_CodeSniffer/zipball/0ca86845ce43291e8f5692c7356fccf3bcf02bf4",
-                "reference": "0ca86845ce43291e8f5692c7356fccf3bcf02bf4",
+                "url": "https://api.github.com/repos/PHPCSStandards/PHP_CodeSniffer/zipball/4c378e1a528ea066890fc2397cbdd2f94eb2fc91",
+                "reference": "4c378e1a528ea066890fc2397cbdd2f94eb2fc91",
                 "shasum": ""
             },
             "require": {
@@ -6536,7 +6536,7 @@
                     "type": "thanks_dev"
                 }
             ],
-            "time": "2025-11-04T16:30:35+00:00"
+            "time": "2026-08-06T00:17:32+00:00"
         },
         {
             "name": "staabm/side-effects-detector",
@@ -7377,12 +7377,12 @@
             "version": "12.6.2",
             "source": {
                 "type": "git",
-                "url": "https://github.com/easy-coding-standard/easy-coding-standard.git",
+                "url": "https://github.com/ecsphp/ecs.git",
                 "reference": "7a6798aa424f0ecafb1542b6f5207c5a99704d3d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/easy-coding-standard/easy-coding-standard/zipball/7a6798aa424f0ecafb1542b6f5207c5a99704d3d",
+                "url": "https://api.github.com/repos/ecsphp/ecs/zipball/7a6798aa424f0ecafb1542b6f5207c5a99704d3d",
                 "reference": "7a6798aa424f0ecafb1542b6f5207c5a99704d3d",
                 "shasum": ""
             },
@@ -7418,8 +7418,8 @@
                 "static analysis"
             ],
             "support": {
-                "issues": "https://github.com/easy-coding-standard/easy-coding-standard/issues",
-                "source": "https://github.com/easy-coding-standard/easy-coding-standard/tree/12.6.2"
+                "issues": "https://github.com/easy-coding-standard/ecs/issues",
+                "source": "https://github.com/easy-coding-standard/ecs/tree/12.6.2"
             },
             "funding": [
                 {
@@ -7547,20 +7547,20 @@
         },
         {
             "name": "whatwedo/php-coding-standard",
-            "version": "v1.3.1",
+            "version": "v1.3.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/whatwedo/PhpCodingStandard.git",
-                "reference": "6df9da745591d9770c72da91539140861fa8ce80"
+                "reference": "681fe9abd365c5e153235a0e85558bf3b845e3ad"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/whatwedo/PhpCodingStandard/zipball/6df9da745591d9770c72da91539140861fa8ce80",
-                "reference": "6df9da745591d9770c72da91539140861fa8ce80",
+                "url": "https://api.github.com/repos/whatwedo/PhpCodingStandard/zipball/681fe9abd365c5e153235a0e85558bf3b845e3ad",
+                "reference": "681fe9abd365c5e153235a0e85558bf3b845e3ad",
                 "shasum": ""
             },
             "require": {
-                "kubawerlos/php-cs-fixer-custom-fixers": "^v3.32.0",
+                "kubawerlos/php-cs-fixer-custom-fixers": ">=3.32,<3.37.3",
                 "php": ">=7.4",
                 "slevomat/coding-standard": "~8.22.1",
                 "symplify/easy-coding-standard": "^12.5.23"
@@ -7593,9 +7593,9 @@
             "homepage": "https://github.com/whatwedo/PhpCodingStandard",
             "support": {
                 "issues": "https://github.com/whatwedo/PhpCodingStandard/issues",
-                "source": "https://github.com/whatwedo/PhpCodingStandard/tree/v1.3.1"
+                "source": "https://github.com/whatwedo/PhpCodingStandard/tree/v1.3.2"
             },
-            "time": "2025-11-03T15:20:44+00:00"
+            "time": "2026-09-07T12:12:05+00:00"
         }
     ],
     "aliases": [],
