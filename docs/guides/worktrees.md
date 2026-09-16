@@ -132,6 +132,12 @@ Project containers join **only** their per-project network — never the shared 
 
 **Why:** this lets a worktree run a different version of a system service (e.g. upgrading from Postgres 16 on main to Postgres 18 on a branch) without the canonical alias colliding. Service containers themselves remain shared: one container per `(service, version)` pair, reused across every network that needs it.
 
+## Compose Project Identity
+
+dde passes an explicit `--project-name` for every Compose operation in a worktree, including `up`, `down`, `stop`, `exec`, `logs`, image builds, and configuration resolution. Its value is `dde-wt-<suffix>-<id>`, where `<id>` is a stable 12-character hash of the absolute checkout path. It takes precedence over the Compose file’s `name:` and `COMPOSE_PROJECT_NAME`, so copied configuration cannot target the main checkout or another equally named worktree. Branch switches inside the same directory keep the identity. Main checkouts use Compose’s normal project-name resolution.
+
+Before updating a running worktree to a different Compose identity, stop it with `dde project:down` using the binary that started it, then start it with the updated binary. Compose-managed named volumes follow the project name; export data first if a project stores data in those volumes. dde-managed database containers and their data directories are separate from Compose project names.
+
 ## Setup
 
 ### 1. Create worktrees
