@@ -1123,6 +1123,47 @@ final class DockerComposeManagerTest extends TestCase
         );
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('worktreeServiceReferences')]
+    public function testWorktreeRewritesExplicitServiceReferences(string $reference, string $expected): void
+    {
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $worktree = new WorktreeInfo('/projects/beispiel', '/projects/beispiel-feature', 'feature', 'beispiel-feature');
+        $path = $manager->generateOverride($config, $this->tempDir, $worktree, mergedServices: [
+            'web' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.http.routers.beispiel-test-web.rule=Host(`beispiel.test`)',
+                    'traefik.http.routers.beispiel-test-web.service='.$reference,
+                    'traefik.http.services.beispiel-test-web.loadbalancer.server.port=80',
+                    'traefik.http.middlewares.headers.headers.customrequestheaders.X-Backend=beispiel-test-web',
+                ],
+            ],
+        ]);
+
+        try {
+            $data = Yaml::parseFile($path, Yaml::PARSE_CUSTOM_TAGS);
+            $labels = $data['services']['web']['labels']->getValue();
+            self::assertContains('traefik.http.routers.feature-beispiel-test-web.service='.$expected, $labels);
+            self::assertContains('traefik.http.services.feature-beispiel-test-web.loadbalancer.server.port=80', $labels);
+            self::assertContains('traefik.http.middlewares.headers.headers.customrequestheaders.X-Backend=beispiel-test-web', $labels);
+        } finally {
+            unlink($path);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function worktreeServiceReferences(): iterable
+    {
+        yield 'implicit Docker provider' => ['beispiel-test-web', 'feature-beispiel-test-web'];
+        yield 'explicit Docker provider' => ['beispiel-test-web@docker', 'feature-beispiel-test-web@docker'];
+        yield 'file provider' => ['beispiel-test-web@file', 'beispiel-test-web@file'];
+        yield 'internal provider' => ['api@internal', 'api@internal'];
+        yield 'unrelated service' => ['other-beispiel-test-web', 'other-beispiel-test-web'];
+    }
+
     public function testGenerateOverrideWorktreeOverridesTraefikLabels(): void
     {
         $this->createComposeFile([
