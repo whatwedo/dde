@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Worktrees with overlapping project or directory names now use separate Docker networks. ([#303](https://github.com/whatwedo/dde/pull/303)) See [Worktrees](docs/guides/worktrees.md).
+
 ### Added
 
 - FrankenPHP containers now run the web server as the `dde` user out of the box, without a project adapter or a development run-script override. Run scripts that already drop privileges themselves (`doas`, `su-exec`, …) keep working unchanged. See [Service Adapters](docs/extending/service-adapters.md).
