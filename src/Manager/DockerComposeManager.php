@@ -1199,6 +1199,23 @@ readonly class DockerComposeManager
                 );
             }
 
+            // Explicit router references are values, not dotted label keys.
+            // Keep them aligned with renamed Docker services, while references
+            // into other providers (e.g. @file or @internal) stay unchanged.
+            $label = (string) preg_replace_callback(
+                '/^(traefik\.http\.routers\.[^.]+\.service=)([^@]+)(@docker)?$/',
+                static function (array $match) use ($dotFormMap): string {
+                    $service = $match[2];
+
+                    foreach ($dotFormMap as $oldDotForm => $newDotForm) {
+                        $service = (string) preg_replace('/^'.preg_quote($oldDotForm, '/').'(?=-)/', $newDotForm, $service);
+                    }
+
+                    return $match[1].$service.($match[3] ?? '');
+                },
+                $label,
+            );
+
             $overrideLabels[] = $label;
         }
 
