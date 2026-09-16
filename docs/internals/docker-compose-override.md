@@ -209,6 +209,8 @@ services:
 
 When running in a git worktree, additional Traefik router labels are generated for the worktree hostname (e.g. `feature.myproject.test`).
 
+For containers routing project hostnames, custom HTTP router and service names (such as `web` and `backend`) receive a `dde-<worktree-hostname-with-dashes>-` prefix. Explicit references to those local services follow the renamed definitions, including `@docker` references; references to other providers remain unchanged. Host-derived names keep their hostname substitution. Containers that route only unrelated domains keep their labels unchanged.
+
 ### 8. Worktree `extra_hosts` Rewrite
 
 In a worktree, `extra_hosts` entries whose hostname is `<project>.test` or a subdomain thereof are re-emitted with the worktree-hostname variant, tagged `!override` so Compose replaces (not merges) the base list on the worktree container. Inside containers, dde's host-side dnsmasq is unreachable — `/etc/hosts` (populated from `extra_hosts`) is the only resolver for `<project>.test`, so without the rewrite a worktree's container would hold the main checkout's hostnames and could not reach its own worktree URLs.
