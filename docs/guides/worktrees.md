@@ -126,11 +126,15 @@ The override uses YAML's `!override` tag, so the worktree's `extra_hosts` list *
 
 Main and worktree can run side-by-side. The Traefik routers emitted by dde are **unique per hostname**, so there is no router-name collision between the two containers. The override file is written with YAML's `!override` tag, so the labels from the base `docker-compose.yml` are **replaced** (not merged) on the worktree container.
 
-Each worktree gets its own per-project Docker network, named `dde-services-<project>-<suffix>`. The main checkout uses `dde-services-<project>`. Both networks are created unconditionally on `project:up`, even for projects that declare no `services:` in `.dde/config.yml`. A service container (e.g. `dde-postgres-18`) can attach to every network whose project declares that version, each time under the canonical alias (`postgres`). `project:down` removes only the calling project's network — main and sibling worktrees are unaffected.
+Each worktree gets its own per-project Docker network, named `dde-services-<project>-<suffix>-<id>`. The main checkout uses `dde-services-<project>`. Both networks are created unconditionally on `project:up`, even for projects that declare no `services:` in `.dde/config.yml`. A service container (e.g. `dde-postgres-18`) can attach to every network whose project declares that version, each time under the canonical alias (`postgres`). `project:down` removes only the calling project's network — main and sibling worktrees are unaffected.
 
 Project containers join **only** their per-project network — never the shared `dde` network. If they did, both checkouts would register the same service-name alias (e.g. `web`) on `dde` and Docker DNS would round-robin between them, breaking cross-container calls inside the project. Traefik is attached to each per-project network on `project:up` (and detached on `project:down`) so inbound HTTP routing still reaches the right checkout.
 
 **Why:** this lets a worktree run a different version of a system service (e.g. upgrading from Postgres 16 on main to Postgres 18 on a branch) without the canonical alias colliding. Service containers themselves remain shared: one container per `(service, version)` pair, reused across every network that needs it.
+
+The `<id>` is a stable 12-character hash of the project name and absolute checkout path. It distinguishes matching or sanitized directory names and prevents a worktree such as `shop-feature` from sharing the ordinary `shop-feature` project network. Switching Git branches within the same directory keeps the network identity.
+
+Run `dde project:up` to reconcile running containers with the network name computed for their checkout. dde does not automatically remove a differently named network: it may belong to another project.
 
 ## Setup
 

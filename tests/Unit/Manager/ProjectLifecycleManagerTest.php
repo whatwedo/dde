@@ -885,7 +885,7 @@ final class ProjectLifecycleManagerTest extends TestCase
 
         $this->dockerManager->expects($this->once())
             ->method('networkExists')
-            ->with('dde-services-test-project-wt')
+            ->with('dde-services-test-project-wt-6f56db6aba0f')
             ->willReturn(true);
 
         $calls = [];
@@ -893,14 +893,14 @@ final class ProjectLifecycleManagerTest extends TestCase
 
         $this->dockerManager->expects($this->once())
             ->method('removeNetwork')
-            ->with('dde-services-test-project-wt');
+            ->with('dde-services-test-project-wt-6f56db6aba0f');
 
         $this->dockerComposeManager->expects($this->once())->method('down');
 
         $manager->down($config, $projectDir);
 
-        self::assertContains(['dde-postgres-18', 'dde-services-test-project-wt'], $calls);
-        self::assertContains(['dde-traefik', 'dde-services-test-project-wt'], $calls);
+        self::assertContains(['dde-postgres-18', 'dde-services-test-project-wt-6f56db6aba0f'], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project-wt-6f56db6aba0f'], $calls);
     }
 
     /**
@@ -1228,12 +1228,12 @@ final class ProjectLifecycleManagerTest extends TestCase
 
         $this->dockerManager->expects($this->once())
             ->method('networkExists')
-            ->with('dde-services-test-project-wt')
+            ->with('dde-services-test-project-wt-6f56db6aba0f')
             ->willReturn(false);
 
         $this->dockerManager->expects($this->once())
             ->method('createNetwork')
-            ->with('dde-services-test-project-wt');
+            ->with('dde-services-test-project-wt-6f56db6aba0f');
 
         $calls = [];
         $this->captureConnectContainerToNetworkCalls(2, $calls);
@@ -1243,13 +1243,13 @@ final class ProjectLifecycleManagerTest extends TestCase
         $this->imageManager->method('ensureDevLayers')->willReturn(null);
         $this->dockerComposeManager->expects($this->once())
             ->method('generateOverride')
-            ->with($config, $projectDir, $worktreeInfo, 'dde-services-test-project-wt')
+            ->with($config, $projectDir, $worktreeInfo, 'dde-services-test-project-wt-6f56db6aba0f')
             ->willReturn('/tmp/override.yml');
 
         $manager->up($config, $projectDir, false);
 
-        self::assertContains(['dde-postgres-18', 'dde-services-test-project-wt', ['postgres']], $calls);
-        self::assertContains(['dde-traefik', 'dde-services-test-project-wt', []], $calls);
+        self::assertContains(['dde-postgres-18', 'dde-services-test-project-wt-6f56db6aba0f', ['postgres']], $calls);
+        self::assertContains(['dde-traefik', 'dde-services-test-project-wt-6f56db6aba0f', []], $calls);
     }
 
     public function testBuildProjectNetworkNameAppendsSanitisedWorktreeSuffix(): void
@@ -1262,7 +1262,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         );
 
         $this->assertSame(
-            'dde-services-test-project-wt-feature',
+            'dde-services-test-project-wt-feature-0ebfa9f2b1f8',
             ProjectLifecycleManager::buildProjectNetworkName('test-project', $worktreeInfo),
         );
     }

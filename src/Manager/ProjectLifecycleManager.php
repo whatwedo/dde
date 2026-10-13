@@ -44,7 +44,7 @@ readonly class ProjectLifecycleManager
         $serviceResults = $this->ensureServices($config);
 
         // 3. Ensure per-project network exists and connect services to it.
-        //    Worktrees get their own network (`dde-services-<project>-<suffix>`) so
+        //    Worktrees get their own network (`dde-services-<project>-<suffix>-<id>`) so
         //    they can bind the canonical service alias (e.g. `postgres`) to a
         //    different version than the main checkout without DNS collisions.
         //    Always created, even for service-less projects, so the network
@@ -174,7 +174,7 @@ readonly class ProjectLifecycleManager
      * from the per-project network before we attempt to remove it.
      *
      * In a worktree, the per-project network is worktree-scoped
-     * (`dde-services-<project>-<suffix>`), so teardown does not affect the main
+     * (`dde-services-<project>-<suffix>-<id>`), so teardown does not affect the main
      * checkout or any sibling worktree.
      */
     public function down(ResolvedConfig $config, string $projectDir, bool $removeOrphans = false): void
@@ -248,8 +248,12 @@ readonly class ProjectLifecycleManager
         }
 
         $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, $projectName);
+        $directory = realpath($worktreeInfo->worktreeDirectory);
+        $identity = $projectName."\0".($directory !== false ? $directory : rtrim($worktreeInfo->worktreeDirectory, '/'));
 
-        return $base.'-'.$suffix;
+        // A readable suffix alone can also name another project or worktree.
+        // Include the checkout identity so aliases remain local to one checkout.
+        return $base.'-'.$suffix.'-'.substr(hash('sha256', $identity), 0, 12);
     }
 
     /**

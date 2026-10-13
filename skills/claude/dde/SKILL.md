@@ -183,7 +183,7 @@ dde -C ~/projects/my-app/.claude/worktrees/feature-x project:db:import /tmp/seed
 
 ### Running main and worktree in parallel
 
-Both can be `project:up` at the same time: each worktree owns its own per-project Docker network (`dde-services-<project>-<suffix>`; main keeps `dde-services-<project>`), and the shared `mariadb`/`postgres` service container is attached to every network that needs it under the canonical alias. `project:down` in one worktree removes only that worktree's network — main and sibling worktrees are unaffected.
+Both can be `project:up` at the same time: each worktree owns its own per-project Docker network (`dde-services-<project>-<suffix>-<id>`; main keeps `dde-services-<project>`), and the shared `mariadb`/`postgres` service container is attached to every network that needs it under the canonical alias. `project:down` in one worktree removes only that worktree's network — main and sibling worktrees are unaffected.
 
 ## Debugging
 

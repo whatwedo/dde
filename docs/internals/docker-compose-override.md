@@ -26,7 +26,7 @@ networks:
     external: true
 ```
 
-In v2, the per-project `dde-services-<project>` (main) or `dde-services-<project>-<suffix>` (worktree) network is injected by the runtime overlay, not declared in the committed file — and it is created unconditionally, even for projects that declare no `services:` in `.dde/config.yml`. The shared `dde` network is never used for project containers. `DockerComposeModifier::removeDdeNetworkBoilerplate()` handles the cleanup of v1-era network declarations.
+In v2, the per-project `dde-services-<project>` (main) or `dde-services-<project>-<suffix>-<id>` (worktree) network is injected by the runtime overlay, not declared in the committed file — and it is created unconditionally, even for projects that declare no `services:` in `.dde/config.yml`. The shared `dde` network is never used for project containers. `DockerComposeModifier::removeDdeNetworkBoilerplate()` handles the cleanup of v1-era network declarations.
 
 ### 2. Traefik Labels
 
@@ -146,13 +146,15 @@ Implementation rule: whenever generated YAML must *replace* a key whose list-for
 
 Project containers join exactly one network: the per-project one. Extra networks (an integration with an external Docker network outside the dde stack) are not supported on the base compose path — wire them up post-`up` via a hook or `docker network connect` if needed.
 
-`dde-services-<project>` (main checkout) or `dde-services-<project>-<suffix>` (worktree) is the per-project network where the versioned service containers (`mariadb`, `postgres`, …) are reachable under their canonical names. The worktree variant lets a branch run a different service version than main without alias collisions.
+`dde-services-<project>` (main checkout) or `dde-services-<project>-<suffix>-<id>` (worktree) is the per-project network where the versioned service containers (`mariadb`, `postgres`, …) are reachable under their canonical names. The worktree variant lets a branch run a different service version than main without alias collisions.
 
 Project containers never join the shared `dde` network — they only join their per-project network. Two checkouts of the same project (main + worktree) would otherwise both register identical service aliases on `dde`, and Docker DNS would round-robin between them — randomly routing cross-container calls to the wrong checkout. To keep inbound HTTP routing working, `ProjectLifecycleManager::ensureProjectNetwork()` attaches Traefik to the per-project network on `project:up` and `project:down` detaches it again.
 
 The per-project network is created on every `project:up`, regardless of whether `.dde/config.yml` declares any `services:`. That keeps the network rule one-line — "one per-project network, period" — and removes a special-case fallback in both code and docs.
 
 When a project switches a service version (e.g. `mariadb 11.8` → `10.11`), `project:up` detaches the previously attached `dde-<service>-*` container of the same service type before connecting the new one. Without this cleanup the canonical alias (`mariadb`) would resolve to two containers and Docker DNS would round-robin between them, randomly routing application traffic to the wrong database. Containers of unrelated service types and project app containers are left untouched.
+
+The worktree `<id>` is the first 12 hexadecimal characters of SHA-256 over the project name, a NUL separator, and the canonical absolute checkout path (the supplied path when it does not exist). The path disambiguates equal basenames and suffixes that sanitize to the same string; the project name separates project identities. Main-checkout network names remain `dde-services-<project>`. Lifecycle creation, overlay generation, and teardown use `buildProjectNetworkName()` as their single source of truth.
 
 ### 4. SSH-Agent Socket
 
