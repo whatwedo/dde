@@ -1123,6 +1123,23 @@ final class DockerComposeManagerTest extends TestCase
         );
     }
 
+    public function testWorktreeInspectsBuildImageInItsComposeProject(): void
+    {
+        $docker = $this->createMock(DockerManager::class);
+        $docker->expects($this->once())->method('imageHasShell')
+            ->with($this->matchesRegularExpression('/^dde-wt-feature-[a-f0-9]{12}-web$/'))
+            ->willReturn(false);
+        $manager = $this->createManagerWithDockerManager($docker);
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $worktree = new WorktreeInfo('/projects/beispiel', '/projects/beispiel-feature', 'feature', 'beispiel-feature');
+        $path = $manager->generateOverride($config, $this->tempDir, $worktree, mergedServices: [
+            'web' => [
+                'build' => '.',
+            ],
+        ]);
+        unlink($path);
+    }
+
     public function testGenerateOverrideWorktreeOverridesTraefikLabels(): void
     {
         $this->createComposeFile([

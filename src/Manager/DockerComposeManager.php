@@ -12,6 +12,7 @@ use App\Model\ServiceDefinition;
 use App\Model\UserContext;
 use App\Service\HostSshAgentResolver;
 use App\Util\ComposeEnvEntryParser;
+use App\Util\IdentifierSanitizer;
 use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
 use App\Util\TempFileUtil;
@@ -46,7 +47,7 @@ readonly class DockerComposeManager
      */
     public function up(string $projectDir, array $options = [], ?OutputInterface $output = null): void
     {
-        $cmd = $this->buildComposeCommand($options['composeFiles'] ?? []);
+        $cmd = $this->buildComposeCommand($projectDir, $options['composeFiles'] ?? []);
         $cmd[] = 'up';
         $cmd[] = '-d';
 
@@ -72,7 +73,7 @@ readonly class DockerComposeManager
      */
     public function down(string $projectDir, array $options = [], ?OutputInterface $output = null): void
     {
-        $cmd = $this->buildComposeCommand($options['composeFiles'] ?? []);
+        $cmd = $this->buildComposeCommand($projectDir, $options['composeFiles'] ?? []);
         $cmd[] = 'down';
 
         if ($options['removeOrphans'] ?? false) {
@@ -92,7 +93,7 @@ readonly class DockerComposeManager
 
     public function stop(string $projectDir, ?OutputInterface $output = null): void
     {
-        $cmd = $this->buildComposeCommand([]);
+        $cmd = $this->buildComposeCommand($projectDir);
         $cmd[] = 'stop';
 
         $process = $this->runProcess($cmd, $projectDir, $output);
@@ -112,7 +113,7 @@ readonly class DockerComposeManager
      */
     public function exec(string $projectDir, string $service, array $command, array $options = []): Process
     {
-        $cmd = $this->buildComposeCommand($options['composeFiles'] ?? []);
+        $cmd = $this->buildComposeCommand($projectDir, $options['composeFiles'] ?? []);
         $cmd[] = 'exec';
 
         if (isset($options['user']) && $options['user'] !== '') {
@@ -153,7 +154,7 @@ readonly class DockerComposeManager
      */
     public function logs(string $projectDir, string $service, array $options = []): Process
     {
-        $cmd = $this->buildComposeCommand($options['composeFiles'] ?? []);
+        $cmd = $this->buildComposeCommand($projectDir, $options['composeFiles'] ?? []);
         $cmd[] = 'logs';
 
         if ($options['follow'] ?? false) {
@@ -181,7 +182,7 @@ readonly class DockerComposeManager
      */
     public function ps(string $projectDir, array $options = []): array
     {
-        $cmd = $this->buildComposeCommand($options['composeFiles'] ?? []);
+        $cmd = $this->buildComposeCommand($projectDir, $options['composeFiles'] ?? []);
         $cmd[] = 'ps';
         $cmd[] = '--format';
         $cmd[] = 'json';
@@ -228,7 +229,7 @@ readonly class DockerComposeManager
 
         $composeFile = $this->findComposeFile($projectDir);
 
-        $cmd = ['docker', 'compose', '-f', $composeFile, '-f', $userOverrideFile, 'config', '--format', 'json'];
+        $cmd = [...$this->buildComposeCommand($projectDir, [$composeFile, $userOverrideFile]), 'config', '--format', 'json'];
 
         $process = $this->processFactory->create($cmd, $projectDir, null);
         $process->run();
@@ -357,7 +358,7 @@ readonly class DockerComposeManager
      */
     public function pull(string $projectDir, array $options = [], ?OutputInterface $output = null): void
     {
-        $cmd = $this->buildComposeCommand($options['composeFiles'] ?? []);
+        $cmd = $this->buildComposeCommand($projectDir, $options['composeFiles'] ?? []);
 
         if ($output instanceof OutputInterface) {
             $cmd[] = '--progress';
@@ -384,7 +385,7 @@ readonly class DockerComposeManager
      */
     public function build(string $projectDir, array $options = [], ?OutputInterface $output = null): void
     {
-        $cmd = $this->buildComposeCommand($options['composeFiles'] ?? []);
+        $cmd = $this->buildComposeCommand($projectDir, $options['composeFiles'] ?? []);
 
         if ($output instanceof OutputInterface) {
             $cmd[] = '--progress';
@@ -491,7 +492,7 @@ readonly class DockerComposeManager
         $caRootCertPath = $this->mkcertManager->getCaRootCertPath();
 
         foreach ($composeServices as $serviceName => $serviceConfig) {
-            $imageName = $this->resolveServiceImage($serviceName, $serviceConfig, $projectDir);
+            $imageName = $this->resolveServiceImage($serviceName, $serviceConfig, $projectDir, $worktreeInfo);
 
             $labels = [
                 'dde.managed=true',
@@ -795,9 +796,15 @@ readonly class DockerComposeManager
      *
      * @return list<string>
      */
-    private function buildComposeCommand(array $composeFiles = []): array
+    private function buildComposeCommand(string $projectDir, array $composeFiles = []): array
     {
         $cmd = ['docker', 'compose'];
+        $projectName = $this->resolveWorktreeComposeProjectName($projectDir);
+
+        if ($projectName !== null) {
+            $cmd[] = '--project-name';
+            $cmd[] = $projectName;
+        }
 
         foreach ($composeFiles as $file) {
             $cmd[] = '-f';
@@ -805,6 +812,23 @@ readonly class DockerComposeManager
         }
 
         return $cmd;
+    }
+
+    private function resolveWorktreeComposeProjectName(string $projectDir, ?WorktreeInfo $worktreeInfo = null): ?string
+    {
+        $worktreeInfo ??= $this->worktreeManager->detect($projectDir);
+
+        if (!$worktreeInfo instanceof WorktreeInfo) {
+            return null;
+        }
+
+        $directory = realpath($worktreeInfo->worktreeDirectory);
+        $identity = $directory !== false ? $directory : rtrim($worktreeInfo->worktreeDirectory, '/');
+        $suffix = IdentifierSanitizer::forHostname($worktreeInfo->suffix, basename($worktreeInfo->mainDirectory));
+
+        // -p takes precedence over both Compose name: and COMPOSE_PROJECT_NAME.
+        // The path keeps equally named worktrees in different repositories apart.
+        return 'dde-wt-'.$suffix.'-'.substr(hash('sha256', $identity), 0, 12);
     }
 
     /**
@@ -928,7 +952,7 @@ readonly class DockerComposeManager
      *
      * @param array<string, mixed> $serviceConfig
      */
-    private function resolveServiceImage(string $serviceName, array $serviceConfig, string $projectDir): string
+    private function resolveServiceImage(string $serviceName, array $serviceConfig, string $projectDir, ?WorktreeInfo $worktreeInfo = null): string
     {
         if (is_string($serviceConfig['image'] ?? null)) {
             return $serviceConfig['image'];
@@ -939,6 +963,8 @@ readonly class DockerComposeManager
         $projectDirName = strtolower(basename($projectDir));
         // Docker compose keeps hyphens but removes other special chars
         $projectDirName = (string) preg_replace('/[^a-z0-9-]/', '', $projectDirName);
+
+        $projectDirName = $this->resolveWorktreeComposeProjectName($projectDir, $worktreeInfo) ?? $projectDirName;
 
         return $projectDirName.'-'.$serviceName;
     }
