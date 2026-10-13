@@ -1164,6 +1164,8 @@ readonly class DockerComposeManager
             }
         }
 
+        $existingLabels = $this->namespaceCustomTraefikLabels($existingLabels, $dotFormMap, $projectName, $worktreeInfo);
+
         // Second pass: emit the actual override labels. Non-Traefik labels
         // (e.g. monitoring/logging metadata defined on the service) pass
         // through verbatim — otherwise the `!override` we emit at the call
@@ -1203,5 +1205,70 @@ readonly class DockerComposeManager
         }
 
         return $overrideLabels;
+    }
+
+    /**
+     * @param array<int|string, mixed> $labels
+     * @param array<string, string> $hostNames
+     *
+     * @return array<int|string, mixed>
+     */
+    private function namespaceCustomTraefikLabels(array $labels, array $hostNames, string $projectName, WorktreeInfo $worktreeInfo): array
+    {
+        if ($hostNames === []) {
+            return $labels;
+        }
+
+        $prefix = 'dde-'.str_replace('.', '-', $this->worktreeManager->resolveHostname($projectName, $worktreeInfo)).'-';
+        $names = [
+            'routers' => [],
+            'services' => [],
+        ];
+
+        foreach ($labels as $key => $value) {
+            $label = is_int($key) ? (string) $value : $key.'='.$value;
+
+            if (preg_match('/^traefik\.http\.(routers|services)\.([^.]+)\./', $label, $match) !== 1) {
+                continue;
+            }
+
+            // Host-derived names already get rewritten by the existing pass.
+            $hostDerived = false;
+            foreach ($hostNames as $original => $rewritten) {
+                if (str_starts_with($match[2], $original.'-')) {
+                    $hostDerived = true;
+                    break;
+                }
+            }
+
+            if (!$hostDerived) {
+                $names[$match[1]][$match[2]] = $prefix.$match[2];
+            }
+        }
+
+        $result = [];
+        foreach ($labels as $key => $value) {
+            $label = is_int($key) ? (string) $value : $key.'='.$value;
+            $result[] = (string) preg_replace_callback(
+                '/^(traefik\.http\.)(routers|services)\.([^.]+)(\.[^=]+)=(.*)$/s',
+                static function (array $match) use ($names): string {
+                    $name = $names[$match[2]][$match[3]] ?? $match[3];
+                    $value = $match[5];
+
+                    if ($match[2] === 'routers' && $match[4] === '.service') {
+                        $reference = explode('@', $value, 2);
+                        if (!isset($reference[1]) || $reference[1] === 'docker') {
+                            $value = ($names['services'][$reference[0]] ?? $reference[0])
+                                .(isset($reference[1]) ? '@'.$reference[1] : '');
+                        }
+                    }
+
+                    return $match[1].$match[2].'.'.$name.$match[4].'='.$value;
+                },
+                $label,
+            );
+        }
+
+        return $result;
     }
 }

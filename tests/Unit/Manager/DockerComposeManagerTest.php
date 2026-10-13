@@ -1123,6 +1123,52 @@ final class DockerComposeManagerTest extends TestCase
         );
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('customWorktreeTraefikReferences')]
+    public function testWorktreeIsolatesCustomTraefikNames(string $reference, string $expected): void
+    {
+        $manager = $this->createManagerWithRealWorktreeManager();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $worktree = new WorktreeInfo('/projects/beispiel', '/projects/beispiel-feature', 'feature', 'beispiel-feature');
+        $path = $manager->generateOverride($config, $this->tempDir, $worktree, mergedServices: [
+            'web' => [
+                'image' => 'nginx:latest',
+                'labels' => [
+                    'traefik.http.routers.web.rule' => 'Host(`beispiel.test`)',
+                    'traefik.http.routers.web.service' => $reference,
+                    'traefik.http.routers.web.tls' => 'true',
+                    'traefik.http.services.backend.loadbalancer.server.port' => '80',
+                    'traefik.http.routers.beispiel-test-web.rule' => 'Host(`beispiel.test`) && PathPrefix(`/api`)',
+                    'team' => 'platform',
+                ],
+            ],
+        ]);
+
+        try {
+            $data = Yaml::parseFile($path, Yaml::PARSE_CUSTOM_TAGS);
+            $labels = $data['services']['web']['labels']->getValue();
+            self::assertContains('traefik.http.routers.dde-feature-beispiel-test-web.rule=Host(`feature.beispiel.test`)', $labels);
+            self::assertContains('traefik.http.routers.dde-feature-beispiel-test-web.service='.$expected, $labels);
+            self::assertContains('traefik.http.routers.dde-feature-beispiel-test-web.tls=true', $labels);
+            self::assertContains('traefik.http.services.dde-feature-beispiel-test-backend.loadbalancer.server.port=80', $labels);
+            self::assertContains('traefik.http.routers.feature-beispiel-test-web.rule=Host(`feature.beispiel.test`) && PathPrefix(`/api`)', $labels);
+            self::assertContains('team=platform', $labels);
+            self::assertNotContains('traefik.http.services.backend.loadbalancer.server.port=80', $labels);
+        } finally {
+            unlink($path);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function customWorktreeTraefikReferences(): iterable
+    {
+        yield 'local service' => ['backend', 'dde-feature-beispiel-test-backend'];
+        yield 'Docker service' => ['backend@docker', 'dde-feature-beispiel-test-backend@docker'];
+        yield 'file service' => ['backend@file', 'backend@file'];
+        yield 'internal service' => ['api@internal', 'api@internal'];
+    }
+
     public function testGenerateOverrideWorktreeOverridesTraefikLabels(): void
     {
         $this->createComposeFile([
