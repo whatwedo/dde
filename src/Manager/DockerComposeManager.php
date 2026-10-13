@@ -1174,6 +1174,12 @@ readonly class DockerComposeManager
         foreach ($existingLabels as $key => $value) {
             $label = is_int($key) ? (string) $value : $key.'='.$value;
 
+            // The runtime overlay owns the network selection, including when
+            // a base or user override still pins Traefik to another checkout.
+            if (str_starts_with(strtolower($label), 'traefik.docker.network=')) {
+                continue;
+            }
+
             if (! str_contains($label, 'traefik.')) {
                 $overrideLabels[] = $label;
                 continue;

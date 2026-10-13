@@ -209,6 +209,8 @@ services:
 
 When running in a git worktree, additional Traefik router labels are generated for the worktree hostname (e.g. `feature.myproject.test`).
 
+The runtime overlay owns `traefik.docker.network`: labels from the base file or user override cannot change it, including differently capitalized spellings. This keeps Traefik on the same network as the worktree container.
+
 ### 8. Worktree `extra_hosts` Rewrite
 
 In a worktree, `extra_hosts` entries whose hostname is `<project>.test` or a subdomain thereof are re-emitted with the worktree-hostname variant, tagged `!override` so Compose replaces (not merges) the base list on the worktree container. Inside containers, dde's host-side dnsmasq is unreachable — `/etc/hosts` (populated from `extra_hosts`) is the only resolver for `<project>.test`, so without the rewrite a worktree's container would hold the main checkout's hostnames and could not reach its own worktree URLs.

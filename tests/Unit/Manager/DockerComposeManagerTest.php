@@ -1123,6 +1123,48 @@ final class DockerComposeManagerTest extends TestCase
         );
     }
 
+    /**
+     * @param array<int|string, string> $labels
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('worktreeNetworkLabels')]
+    public function testWorktreeKeepsItsNetworkLabel(array $labels, bool $hasShell): void
+    {
+        $manager = $hasShell
+            ? $this->createManagerWithRealWorktreeManager()
+            : $this->createManagerWithRealWorktreeManagerForShellLess();
+        $config = ResolvedConfig::merge(new GlobalConfig(), new ProjectConfig(name: 'beispiel'));
+        $worktree = new WorktreeInfo('/projects/beispiel', '/projects/beispiel-feature', 'feature', 'beispiel-feature');
+        $path = $manager->generateOverride($config, $this->tempDir, $worktree, mergedServices: [
+            'web' => [
+                'image' => 'nginx:latest',
+                'labels' => $labels,
+            ],
+        ]);
+
+        try {
+            $data = Yaml::parseFile($path, Yaml::PARSE_CUSTOM_TAGS);
+            $actual = $data['services']['web']['labels']->getValue();
+            $networkLabels = array_values(array_filter($actual, static fn (string $label): bool => str_starts_with(strtolower($label), 'traefik.docker.network=')));
+            self::assertSame(['traefik.docker.network='.\App\Manager\ProjectLifecycleManager::buildProjectNetworkName('beispiel', $worktree)], $networkLabels);
+            self::assertContains('team=platform', $actual);
+        } finally {
+            unlink($path);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{array<int|string, string>, bool}>
+     */
+    public static function worktreeNetworkLabels(): iterable
+    {
+        yield 'list, shell' => [['traefik.docker.network=dde', 'team=platform'], true];
+        yield 'map, shell' => [[
+            'traefik.docker.network' => 'dde-services-beispiel',
+            'team' => 'platform',
+        ], true];
+        yield 'case insensitive, shell-less' => [['TRAEFIK.DOCKER.NETWORK=dde', 'team=platform'], false];
+    }
+
     public function testGenerateOverrideWorktreeOverridesTraefikLabels(): void
     {
         $this->createComposeFile([
