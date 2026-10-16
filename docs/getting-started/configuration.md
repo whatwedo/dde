@@ -91,7 +91,9 @@ dde assigns a meaningful hostname to every project container so the shell
 prompt inside the container shows `<project>-<service>` (e.g. `beispiel-web`)
 instead of the random Docker container ID. The hostname is derived from the
 project name and the compose service name and sanitized to a valid RFC 1123
-label (lowercase, `a-z0-9-`, max 63 chars).
+label (lowercase, `a-z0-9-`, max 63 chars). Inside a worktree the worktree
+suffix is added (`<project>-<suffix>-<service>`), see
+[Container Hostnames](../guides/worktrees.md#container-hostnames).
 
 To opt out, set an explicit `hostname:` on the service in your
 `docker-compose.yml` — dde leaves it untouched.

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Container hostnames in a worktree now include the worktree name (e.g. `my-app-feature-x-web`), so the shell prompt shows which checkout you are in. See [Git Worktrees](docs/guides/worktrees.md#container-hostnames). (#121)
+
 ## [2.1.0] - 2026-10-12
 
 ### Added

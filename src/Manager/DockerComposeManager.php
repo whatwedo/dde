@@ -12,6 +12,7 @@ use App\Model\ServiceDefinition;
 use App\Model\UserContext;
 use App\Service\HostSshAgentResolver;
 use App\Util\ComposeEnvEntryParser;
+use App\Util\IdentifierSanitizer;
 use App\Util\NdJsonParser;
 use App\Util\ProcessFactory;
 use App\Util\TempFileUtil;
@@ -27,6 +28,8 @@ use Symfony\Component\Yaml\Yaml;
 
 readonly class DockerComposeManager
 {
+    private const int HOSTNAME_MAX_LENGTH = 63;
+
     public function __construct(
         private AdapterRegistry $adapterRegistry,
         private DockerManager $dockerManager,
@@ -505,7 +508,7 @@ readonly class DockerComposeManager
                 $labels = array_merge($labels, $this->overrideTraefikLabels($this->unwrapTaggedLabels($serviceConfig['labels'] ?? []), $config->projectName, $worktreeInfo));
             }
 
-            $containerHostname = $this->resolveContainerHostname($serviceName, $serviceConfig, $config);
+            $containerHostname = $this->resolveContainerHostname($serviceName, $serviceConfig, $config, $worktreeInfo);
 
             // For worktrees, emit labels with !override so Docker Compose replaces
             // (not merges) the base compose labels. Otherwise the Traefik router
@@ -1039,11 +1042,13 @@ readonly class DockerComposeManager
      * Resolves the container hostname for a service.
      *
      * Returns null when the compose file already declares a hostname, so the override leaves it
-     * untouched. Otherwise returns a sanitized "<projectName>-<serviceName>" hostname.
+     * untouched. Otherwise returns a sanitized "<projectName>-<serviceName>" hostname, or
+     * "<projectName>-<worktree>-<serviceName>" inside a worktree. The worktree segment is the
+     * same one used in the worktree URL.
      *
      * @param array<string, mixed> $serviceConfig
      */
-    private function resolveContainerHostname(string $serviceName, array $serviceConfig, ResolvedConfig $config): ?string
+    private function resolveContainerHostname(string $serviceName, array $serviceConfig, ResolvedConfig $config, ?WorktreeInfo $worktreeInfo): ?string
     {
         if (is_string($serviceConfig['hostname'] ?? null) && $serviceConfig['hostname'] !== '') {
             return null;
@@ -1052,15 +1057,36 @@ readonly class DockerComposeManager
         $projectSegment = $this->sanitizeHostname($config->projectName);
         $serviceSegment = $this->sanitizeHostname($serviceName);
 
-        if ($projectSegment === '') {
-            return $serviceSegment !== '' ? $serviceSegment : null;
+        if ($serviceSegment === $projectSegment) {
+            $serviceSegment = '';
         }
 
-        if ($serviceSegment === '' || $projectSegment === $serviceSegment) {
-            return $projectSegment;
+        $hostname = $this->joinHostnameSegments([$projectSegment, $serviceSegment]);
+
+        if ($hostname === '') {
+            return null;
         }
 
-        return $projectSegment.'-'.$serviceSegment;
+        if ($worktreeInfo instanceof WorktreeInfo) {
+            // Only the worktree segment is shortened to fit the label length: the project and
+            // service segments are what identifies the container in the shell prompt.
+            $remainingLength = max(0, self::HOSTNAME_MAX_LENGTH - strlen($hostname) - 1);
+            $worktreeSegment = rtrim(substr(IdentifierSanitizer::forHostname($worktreeInfo->suffix, $config->projectName), 0, $remainingLength), '-');
+
+            if ($worktreeSegment !== '') {
+                return $this->joinHostnameSegments([$projectSegment, $worktreeSegment, $serviceSegment]);
+            }
+        }
+
+        return rtrim(substr($hostname, 0, self::HOSTNAME_MAX_LENGTH), '-');
+    }
+
+    /**
+     * @param list<string> $segments
+     */
+    private function joinHostnameSegments(array $segments): string
+    {
+        return implode('-', array_filter($segments, static fn (string $segment): bool => $segment !== ''));
     }
 
     /**
@@ -1072,8 +1098,8 @@ readonly class DockerComposeManager
         $replaced = (string) preg_replace('/[^a-z0-9-]+/', '-', $lower);
         $trimmed = trim($replaced, '-');
 
-        if (strlen($trimmed) > 63) {
-            return trim(substr($trimmed, 0, 63), '-');
+        if (strlen($trimmed) > self::HOSTNAME_MAX_LENGTH) {
+            return trim(substr($trimmed, 0, self::HOSTNAME_MAX_LENGTH), '-');
         }
 
         return $trimmed;

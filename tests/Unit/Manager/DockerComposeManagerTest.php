@@ -1765,6 +1765,131 @@ ENV);
         unlink($overridePath);
     }
 
+    public function testGenerateOverrideTruncatesHostnameToDnsLabelLength(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: str_repeat('a', 62)));
+
+        $overridePath = $this->manager->generateOverride($config, $this->tempDir);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $this->assertSame(str_repeat('a', 62), $data['services']['web']['hostname']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeAddsWorktreeSegmentToHostname(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-feature',
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $this->assertSame('beispiel-feature-web', $data['services']['web']['hostname']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeShortensOnlyWorktreeSegmentOfHostname(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-'.str_repeat('x', 80),
+            branch: 'feature/test',
+            suffix: 'beispiel-'.str_repeat('x', 80),
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        // 63 = "beispiel-" (9) + worktree segment (50) + "-web" (4)
+        $this->assertSame('beispiel-'.str_repeat('x', 50).'-web', $data['services']['web']['hostname']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeDropsWorktreeSegmentWhenHostnameHasNoRoomLeft(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+            ],
+        ]);
+
+        $projectName = str_repeat('a', 58);
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/'.$projectName,
+            worktreeDirectory: '/projects/feature',
+            branch: 'feature/test',
+            suffix: 'feature',
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('feature.'.$projectName.'.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: $projectName));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $this->assertSame($projectName.'-web', $data['services']['web']['hostname']);
+
+        unlink($overridePath);
+    }
+
+    public function testGenerateOverrideWorktreeRespectsHostnameFromComposeFile(): void
+    {
+        $this->createComposeFile([
+            'web' => [
+                'image' => 'nginx:latest',
+                'hostname' => 'custom-host',
+            ],
+        ]);
+
+        $worktreeInfo = new WorktreeInfo(
+            mainDirectory: '/projects/beispiel',
+            worktreeDirectory: '/projects/beispiel-feature',
+            branch: 'feature/test',
+            suffix: 'beispiel-feature',
+        );
+
+        $manager = $this->createManagerWithWorktreeSupport('feature.beispiel.test');
+        $config = ResolvedConfig::merge(new GlobalConfig(sshAgentMode: SshAgentMode::Managed), new ProjectConfig(name: 'beispiel'));
+
+        $overridePath = $manager->generateOverride($config, $this->tempDir, $worktreeInfo);
+        $data = Yaml::parseFile($overridePath, Yaml::PARSE_CUSTOM_TAGS);
+
+        $this->assertArrayNotHasKey('hostname', $data['services']['web']);
+
+        unlink($overridePath);
+    }
+
     public function testGenerateOverrideSetsHostnameForShellLessServices(): void
     {
         $this->createComposeFile([

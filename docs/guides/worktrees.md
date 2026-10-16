@@ -71,6 +71,19 @@ If the directory name does not start with the project name:
 
 > **Note:** a worktree whose suffix equals an existing project subdomain (e.g. worktree `feature-x` while the project already routes `feature-x.my-app.test`) collides with it — rename the worktree directory to avoid the clash.
 
+## Container Hostnames
+
+Inside a worktree, the container hostname shown in the shell prompt carries the same suffix as the worktree URL, so terminals for different checkouts are easy to tell apart:
+
+| Checkout                      | Container hostname of `web` |
+| ----------------------------- | --------------------------- |
+| `~/projects/my-app` (main)    | `my-app-web`                |
+| `~/projects/my-app-feature-x` | `my-app-feature-x-web`      |
+
+A hostname is limited to 63 characters. If `<project>-<suffix>-<service>` is longer, only the suffix is shortened, because the project and service names are what identifies the container. If even `<project>-<service>` leaves no room, the suffix is dropped.
+
+An explicit `hostname:` on a service in `docker-compose.yml` is used unchanged in every worktree. See [Hostnames](../getting-started/configuration.md#hostnames).
+
 ## Environment Overrides
 
 When running in a worktree, dde rewrites every environment value the base `docker-compose.yml` declares for the primary container so each worktree gets an isolated runtime.
