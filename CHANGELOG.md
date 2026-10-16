@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- The custom version prompt in `project:init` now separates the typed version from the prompt text. (#126)
+
 ## [2.1.0] - 2026-10-12
 
 ### Added

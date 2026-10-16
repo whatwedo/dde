@@ -295,7 +295,7 @@ final class ProjectInitCommand extends AbstractProjectCommand
             return $picked;
         }
 
-        $customQuestion = new Question(sprintf('[%s] Version', $service));
+        $customQuestion = new Question(sprintf('[%s] Version: ', $service));
         $customQuestion->setValidator(static function (mixed $value): string {
             if (! is_string($value) || trim($value) === '') {
                 throw new \InvalidArgumentException('Version must not be empty.');
