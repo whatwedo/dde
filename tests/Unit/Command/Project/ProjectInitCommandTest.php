@@ -469,6 +469,30 @@ final class ProjectInitCommandTest extends TestCase
         $this->assertStringContainsString("version: '10.11'", $content);
     }
 
+    public function testInteractiveFlowSeparatesCustomVersionPromptFromInput(): void
+    {
+        $this->commandTester->setInputs([
+            'test-project',
+            '0',           // only mariadb
+            'no',          // reject default
+            'custom…',     // enter a custom version
+            '11.4-noble',
+            'web',
+        ]);
+
+        $this->commandTester->execute([
+            '--no-docker' => true,
+        ], [
+            'interactive' => true,
+        ]);
+
+        $this->assertSame(0, $this->commandTester->getStatusCode());
+        $this->assertStringContainsString('[mariadb] Version: ', $this->commandTester->getDisplay());
+        $content = file_get_contents($this->tempDir.'/.dde/config.yml');
+        $this->assertIsString($content);
+        $this->assertStringContainsString('version: 11.4-noble', $content);
+    }
+
     public function testInteractiveFlowSkipsVersionPromptForServicesWithoutChoice(): void
     {
         // mailpit has knownVersions = [] → no version prompt
