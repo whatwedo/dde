@@ -97,6 +97,28 @@ final class HookRunnerTest extends TestCase
         $this->assertSame([], $warnings);
     }
 
+    public function testRunReturnsStderrOfSuccessfulScriptAsWarning(): void
+    {
+        mkdir($this->hookDir, 0o755, true);
+
+        $this->createScript($this->hookDir.'/01-warn.sh', '#!/bin/bash'."\n".'echo "warn: check this" >&2'."\n".'exit 0');
+
+        $warnings = $this->hookRunner->run($this->hookDir, $this->tempDir);
+
+        $this->assertSame(['Hook "01-warn.sh": warn: check this'], $warnings);
+    }
+
+    public function testRunKeepsStdoutOfSuccessfulScriptQuiet(): void
+    {
+        mkdir($this->hookDir, 0o755, true);
+
+        $this->createScript($this->hookDir.'/01-chatty.sh', '#!/bin/bash'."\n".'echo "progress"'."\n".'exit 0');
+
+        $warnings = $this->hookRunner->run($this->hookDir, $this->tempDir);
+
+        $this->assertSame([], $warnings);
+    }
+
     public function testRunThrowsHookFailedExceptionOnNonZeroExit(): void
     {
         mkdir($this->hookDir, 0o755, true);
