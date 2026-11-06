@@ -49,6 +49,6 @@ final readonly class HookSubscriber
         }
 
         $hookDir = $event->projectDir.'/.dde/hooks/'.$hookName;
-        $this->hookRunner->run($hookDir, $event->projectDir);
+        array_push($event->warnings, ...$this->hookRunner->run($hookDir, $event->projectDir));
     }
 }
