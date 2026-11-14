@@ -63,11 +63,14 @@ final class ProjectUpdateCommand extends AbstractProjectCommand
         }
 
         // 1. Pre-down hooks
+        $downPreEvent = new ProjectDownPreEvent($config, $projectDir, $skipHooks);
         try {
-            $this->eventDispatcher->dispatch(new ProjectDownPreEvent($config, $projectDir, $skipHooks));
+            $this->eventDispatcher->dispatch($downPreEvent);
         } catch (HookFailedException $hookFailedException) {
             return $formatter->error($hookFailedException->getMessage());
         }
+
+        $this->renderHookWarnings($io, $formatter, $downPreEvent);
 
         // 2. Stop and remove containers + volumes
         if ($formatter->isInteractive()) {
@@ -81,13 +84,16 @@ final class ProjectUpdateCommand extends AbstractProjectCommand
         }
 
         // 3. Post-down hooks
+        $downPostEvent = new ProjectDownPostEvent($config, $projectDir, $skipHooks);
         try {
-            $this->eventDispatcher->dispatch(new ProjectDownPostEvent($config, $projectDir, $skipHooks));
+            $this->eventDispatcher->dispatch($downPostEvent);
         } catch (HookFailedException $hookFailedException) {
             if ($formatter->isInteractive()) {
                 $io->warning($hookFailedException->getMessage());
             }
         }
+
+        $this->renderHookWarnings($io, $formatter, $downPostEvent);
 
         // 4. Pull latest images
         if ($formatter->isInteractive()) {
@@ -101,11 +107,14 @@ final class ProjectUpdateCommand extends AbstractProjectCommand
         $pullSection?->clear();
 
         // 5. Pre-up hooks
+        $upPreEvent = new ProjectUpPreEvent($config, $projectDir, $skipHooks);
         try {
-            $this->eventDispatcher->dispatch(new ProjectUpPreEvent($config, $projectDir, $skipHooks));
+            $this->eventDispatcher->dispatch($upPreEvent);
         } catch (HookFailedException $hookFailedException) {
             return $formatter->error($hookFailedException->getMessage());
         }
+
+        $this->renderHookWarnings($io, $formatter, $upPreEvent);
 
         // 6. Start everything (services, certs, build, up)
         if ($formatter->isInteractive()) {
@@ -124,13 +133,16 @@ final class ProjectUpdateCommand extends AbstractProjectCommand
         $upSection?->clear();
 
         // 7. Post-up hooks
+        $upPostEvent = new ProjectUpPostEvent($config, $projectDir, $skipHooks);
         try {
-            $this->eventDispatcher->dispatch(new ProjectUpPostEvent($config, $projectDir, $skipHooks));
+            $this->eventDispatcher->dispatch($upPostEvent);
         } catch (HookFailedException $hookFailedException) {
             if ($formatter->isInteractive()) {
                 $io->warning($hookFailedException->getMessage());
             }
         }
+
+        $this->renderHookWarnings($io, $formatter, $upPostEvent);
 
         if (!$formatter->isInteractive()) {
             return $formatter->success([

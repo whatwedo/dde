@@ -9,6 +9,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 abstract class AbstractProjectEvent extends Event
 {
+    /**
+     * Warnings collected by listeners (e.g. hook stderr), rendered by the dispatching command.
+     *
+     * @var list<string>
+     */
+    public array $warnings = [];
+
     public function __construct(
         public readonly ResolvedConfig $config,
         public readonly string $projectDir,
