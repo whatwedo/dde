@@ -72,6 +72,20 @@ final class HookSubscriberTest extends TestCase
         $this->subscriber->onProjectDownPost($event);
     }
 
+    public function testRunnerWarningsAreAddedToEvent(): void
+    {
+        $event = new ProjectUpPostEvent($this->config, '/tmp/project');
+
+        $this->hookRunner
+            ->expects($this->once())
+            ->method('run')
+            ->willReturn(['Hook "01-warn.sh": warn: check this']);
+
+        $this->subscriber->onProjectUpPost($event);
+
+        $this->assertSame(['Hook "01-warn.sh": warn: check this'], $event->warnings);
+    }
+
     public function testSkipHooksPreventsExecution(): void
     {
         $event = new ProjectUpPreEvent($this->config, '/tmp/project', true);

@@ -21,9 +21,11 @@ readonly class HookRunner
      * Execute all scripts in the given hook directory.
      * Scripts are executed alphabetically.
      * Non-executable scripts are skipped and a warning is returned.
+     * Stderr of a successful script is returned as a warning, so hooks can
+     * surface hints without failing; stdout stays quiet.
      * Exit code != 0 throws HookFailedException.
      *
-     * @return string[] list of warning messages
+     * @return list<string> list of warning messages
      *
      * @throws HookFailedException
      */
@@ -69,6 +71,11 @@ readonly class HookRunner
 
             if (!$process->isSuccessful()) {
                 throw new HookFailedException($script, $process->getExitCode() ?? 1, $process->getErrorOutput());
+            }
+
+            $errorOutput = trim($process->getErrorOutput());
+            if ($errorOutput !== '') {
+                $warnings[] = sprintf('Hook "%s": %s', basename($script), $errorOutput);
             }
         }
 

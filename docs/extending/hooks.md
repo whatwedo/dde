@@ -23,9 +23,19 @@ These directories are created automatically by `dde project:init`.
 - Only `*.sh` files are picked up.
 - Scripts run in **alphabetical order** by filename. Use numeric prefixes (e.g. `01-`, `02-`) to control order.
 - Each script has a **300-second timeout**. If a script exceeds this, it is killed.
-- Scripts that are **not executable** are skipped with a warning. Fix with `chmod +x <script>`.
+- Scripts that are **not executable** are skipped with a warning (see [Output](#output)). Fix with `chmod +x <script>`.
 - If a script exits with a **non-zero exit code**, a `HookFailedException` is thrown and the lifecycle operation is aborted (for pre-hooks) or a warning is displayed (for post-hooks on `project:up`).
 - Scripts receive **no arguments**. Use `dde` commands inside scripts to interact with containers.
+
+## Output
+
+A successful hook stays quiet: its stdout is discarded, so routine progress messages don't clutter `dde project:up`. Anything a successful hook writes to **stderr** is shown as a warning once the hook phase finishes, prefixed with the script name:
+
+```
+[WARNING] Hook "01-check-env.sh": .env.local is missing, using defaults
+```
+
+Use stderr for hints the user should act on without aborting the lifecycle operation (`echo "..." >&2; exit 0`). Exit non-zero only when the operation must not continue. Skipped scripts (not executable, or resolving outside the hook directory) are reported the same way. With `--output json`, these warnings are not printed, so stdout stays valid JSON.
 
 ## Skipping Hooks
 
@@ -66,7 +76,7 @@ dde project:exec -s web php bin/console doctrine:migrations:migrate --no-interac
 set -euo pipefail
 if [ ! -f .env.local ]; then
     cp .env .env.local
-    echo "Created .env.local from .env"
+    echo "Created .env.local from .env" >&2
 fi
 ```
 
