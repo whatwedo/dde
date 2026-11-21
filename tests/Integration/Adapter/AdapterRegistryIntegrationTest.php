@@ -103,7 +103,7 @@ final class AdapterRegistryIntegrationTest extends TestCase
 
         $paths = $registry->getAdapterPaths($projectDir);
 
-        $projectPaths = array_filter($paths, static fn (string $p): bool => str_contains($p, '/.dde/adapters/'));
+        $projectPaths = array_filter($paths, static fn(string $p): bool => str_contains($p, '/.dde/adapters/'));
         $projectFilenames = array_values(array_map('basename', $projectPaths));
 
         self::assertSame('01-first.sh', $projectFilenames[0]);

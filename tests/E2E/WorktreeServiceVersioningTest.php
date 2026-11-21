@@ -116,12 +116,12 @@ final class WorktreeServiceVersioningTest extends TestCase
         //       - capture the actual worktree network name for the "gone after down" assertion
         $networks = array_values(array_filter(
             array_map('trim', explode("\n", (new Process(['docker', 'network', 'ls', '--format', '{{.Name}}']))->mustRun()->getOutput())),
-            static fn (string $n): bool => $n !== '',
+            static fn(string $n): bool => $n !== '',
         ));
         $this->assertContains('dde-services-e2e-pgver', $networks, 'main network must exist');
         $worktreeNetworkCandidates = array_values(array_filter(
             $networks,
-            static fn (string $n): bool => str_starts_with($n, 'dde-services-e2e-pgver-'),
+            static fn(string $n): bool => str_starts_with($n, 'dde-services-e2e-pgver-'),
         ));
         $this->assertCount(1, $worktreeNetworkCandidates, 'worktree network must exist exactly once');
         $worktreeNetworkName = $worktreeNetworkCandidates[0];
@@ -154,7 +154,7 @@ final class WorktreeServiceVersioningTest extends TestCase
 
         $networksAfterWorktreeDown = array_values(array_filter(
             array_map('trim', explode("\n", (new Process(['docker', 'network', 'ls', '--format', '{{.Name}}']))->mustRun()->getOutput())),
-            static fn (string $n): bool => $n !== '',
+            static fn(string $n): bool => $n !== '',
         ));
         $this->assertContains('dde-services-e2e-pgver', $networksAfterWorktreeDown, 'main network must still exist after worktree down');
         $this->assertNotContains($worktreeNetworkName, $networksAfterWorktreeDown, 'worktree network must be gone after worktree down');

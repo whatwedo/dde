@@ -13,8 +13,7 @@ abstract class AbstractSystemService implements ServiceInterface
 {
     public function __construct(
         protected readonly DockerManager $dockerManager,
-    ) {
-    }
+    ) {}
 
     abstract public function getName(): string;
 
@@ -133,7 +132,7 @@ abstract class AbstractSystemService implements ServiceInterface
         }
 
         $ddeManagedNames = array_flip(array_map(
-            static fn (ContainerInfo $info): string => $info->name,
+            static fn(ContainerInfo $info): string => $info->name,
             $ddeManagedContainers,
         ));
         $attached = false;

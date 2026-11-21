@@ -11,6 +11,5 @@ final readonly class PluginDefinition
         public string $description,
         public string $scriptPath,
         public ?string $pluginDir = null,
-    ) {
-    }
+    ) {}
 }

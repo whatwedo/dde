@@ -19,8 +19,7 @@ final class AbstractProjectCommandTest extends TestCase
         $configManager = $this->createStub(ProjectConfigManager::class);
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
-        $command = new class($configManager, $formatterResolver) extends AbstractProjectCommand {
-        };
+        $command = new class ($configManager, $formatterResolver) extends AbstractProjectCommand {};
 
         $this->assertInstanceOf(Command::class, $command);
     }
@@ -31,7 +30,7 @@ final class AbstractProjectCommandTest extends TestCase
         $configManager->method('findProjectDirectory')->willReturn(null);
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
-        $command = new class($configManager, $formatterResolver) extends AbstractProjectCommand {
+        $command = new class ($configManager, $formatterResolver) extends AbstractProjectCommand {
             public function callGetProjectDirectory(): string
             {
                 return $this->getProjectDirectory();

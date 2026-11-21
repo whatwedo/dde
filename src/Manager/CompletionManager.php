@@ -13,8 +13,7 @@ readonly class CompletionManager
 {
     public function __construct(
         private Filesystem $filesystem,
-    ) {
-    }
+    ) {}
 
     public function generateBashCompletion(Application $application): string
     {

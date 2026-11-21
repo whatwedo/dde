@@ -13,8 +13,7 @@ readonly class DockerComposeParser
 {
     public function __construct(
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>

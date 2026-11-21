@@ -33,8 +33,7 @@ class PrivilegeEscalator
         private readonly ProcessFactory $processFactory = new ProcessFactory(),
         private readonly ?\Closure $announcer = null,
         private readonly ?int $effectiveUserId = null,
-    ) {
-    }
+    ) {}
 
     /**
      * @throws \RuntimeException if the mkdir fails both directly and via sudo

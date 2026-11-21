@@ -35,7 +35,7 @@ final class CleanupManagerTest extends TestCase
 
         $items = $this->manager->collectCleanupItems();
 
-        $containerItems = array_filter($items, static fn (array $i): bool => $i['type'] === 'container');
+        $containerItems = array_filter($items, static fn(array $i): bool => $i['type'] === 'container');
         $this->assertCount(2, $containerItems);
     }
 

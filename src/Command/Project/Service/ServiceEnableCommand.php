@@ -41,7 +41,7 @@ final class ServiceEnableCommand extends AbstractProjectCommand
                 $projectDir = $this->getProjectDirectory();
                 $projectConfig = $this->configManager->loadProjectConfig($projectDir);
                 $activeNames = array_map(
-                    static fn (ServiceDefinition $svc): string => $svc->name,
+                    static fn(ServiceDefinition $svc): string => $svc->name,
                     $projectConfig->services,
                 );
                 $available = array_diff($allServices, $activeNames);

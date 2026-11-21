@@ -11,8 +11,7 @@ final readonly class ServiceConfigManager
 {
     public function __construct(
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     public function enableService(string $serviceName, string $configPath, ?string $version = null): void
     {

@@ -11,8 +11,7 @@ final class FormatterResolver
     public function __construct(
         private readonly TextFormatter $textFormatter,
         private readonly JsonFormatter $jsonFormatter,
-    ) {
-    }
+    ) {}
 
     public function resolve(OutputFormat $format): OutputFormatterInterface
     {

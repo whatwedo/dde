@@ -141,7 +141,7 @@ final class SystemUpCommandTest extends TestCase
         $addKeyExecCalls = 0;
         $dockerManager = $this->createStub(DockerManager::class);
         $dockerManager->method('isContainerRunning')->willReturnCallback(
-            static fn (string $name): bool => $name === 'dde-ssh-agent',
+            static fn(string $name): bool => $name === 'dde-ssh-agent',
         );
         $dockerManager->method('execCapture')->willReturn('The agent has no identities.');
         $dockerManager->method('execInteractive')->willReturnCallback(
@@ -171,7 +171,7 @@ final class SystemUpCommandTest extends TestCase
             // Force the TTY operand true: without this seam CI's missing TTY
             // short-circuits the gate before the mode is decisive, masking the
             // operand-flip regression this test guards against.
-            static fn (): bool => true,
+            static fn(): bool => true,
         );
 
         $commandTester = $this->wrapInTester($command);

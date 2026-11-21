@@ -20,8 +20,7 @@ readonly class GlobalConfigManager
         private string $configDir,
         private Filesystem $filesystem = new Filesystem(),
         private Processor $processor = new Processor(),
-    ) {
-    }
+    ) {}
 
     public function load(): GlobalConfig
     {

@@ -19,8 +19,7 @@ readonly class SystemLifecycleManager
         private ClaudeCodeManager $claudeCodeManager,
         private MkcertManager $mkcertManager,
         private string $configDir,
-    ) {
-    }
+    ) {}
 
     /**
      * @param (\Closure(SystemLifecycleProgress, string, ?string, ?string): void)|null $onProgress
@@ -216,14 +215,14 @@ readonly class SystemLifecycleManager
 
         $warnings = $this->runPostInstallStep(
             'traefik-network',
-            fn () => $this->ensureDdeNetwork(),
+            fn() => $this->ensureDdeNetwork(),
             $warnings,
             $onProgress,
         );
 
         $warnings = $this->runPostInstallStep(
             'shell-completion',
-            fn () => $this->completionManager->installCompletion($this->configDir, $application),
+            fn() => $this->completionManager->installCompletion($this->configDir, $application),
             $warnings,
             $onProgress,
         );
@@ -231,7 +230,7 @@ readonly class SystemLifecycleManager
         if ($this->claudeCodeManager->isClaudeCodeInstalled()) {
             $warnings = $this->runPostInstallStep(
                 'claude-skill',
-                fn () => $this->claudeCodeManager->installSkill(),
+                fn() => $this->claudeCodeManager->installSkill(),
                 $warnings,
                 $onProgress,
             );

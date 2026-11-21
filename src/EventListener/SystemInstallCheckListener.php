@@ -17,8 +17,7 @@ final readonly class SystemInstallCheckListener
 {
     public function __construct(
         private DockerManager $dockerManager,
-    ) {
-    }
+    ) {}
 
     public function __invoke(ConsoleCommandEvent $event): void
     {

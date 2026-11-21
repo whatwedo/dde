@@ -13,8 +13,7 @@ final class NetworkCheck implements CheckInterface
 {
     public function __construct(
         private readonly DockerManager $dockerManager,
-    ) {
-    }
+    ) {}
 
     public function getName(): string
     {

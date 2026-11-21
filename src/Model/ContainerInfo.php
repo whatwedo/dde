@@ -14,6 +14,5 @@ final readonly class ContainerInfo
         public ContainerStatus $status,
         public string $image,
         public array $labels = [],
-    ) {
-    }
+    ) {}
 }

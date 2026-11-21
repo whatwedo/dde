@@ -202,7 +202,7 @@ final class DatabaseManagerTest extends TestCase
         $adapter = $this->createStub(DatabaseAdapterInterface::class);
         $adapter->method('getServiceName')->willReturn('mariadb');
         $adapter->method('supports')->willReturnCallback(
-            static fn (string $name): bool => $name === 'mariadb',
+            static fn(string $name): bool => $name === 'mariadb',
         );
         $adapter->method('getUsername')->willReturn('root');
         $adapter->method('getPassword')->willReturn('root');

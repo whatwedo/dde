@@ -14,6 +14,5 @@ final readonly class ServiceDefinition
         public string $version = 'latest',
         public string $containerName = '',
         public array $ports = [],
-    ) {
-    }
+    ) {}
 }

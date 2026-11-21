@@ -15,8 +15,7 @@ readonly class ClaudeCodeManager
     public function __construct(
         private string $projectDir,
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     public function isClaudeCodeInstalled(): bool
     {

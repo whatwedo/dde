@@ -22,7 +22,7 @@ final class ServiceCommandsTest extends TestCase
         // mariadb should be active
         $activeServices = array_filter(
             $result['data']['services'],
-            static fn (array $s): bool => $s['status'] === 'active',
+            static fn(array $s): bool => $s['status'] === 'active',
         );
         $activeNames = array_column(array_values($activeServices), 'name');
         $this->assertContains('mariadb', $activeNames);
@@ -47,7 +47,7 @@ final class ServiceCommandsTest extends TestCase
         $result = $this->runConsoleJson('project:service:list');
         $activeServices = array_filter(
             $result['data']['services'],
-            static fn (array $s): bool => $s['status'] === 'active',
+            static fn(array $s): bool => $s['status'] === 'active',
         );
         $activeNames = array_column(array_values($activeServices), 'name');
         $this->assertContains('valkey', $activeNames);
@@ -61,7 +61,7 @@ final class ServiceCommandsTest extends TestCase
         $result = $this->runConsoleJson('project:service:list');
         $activeServices = array_filter(
             $result['data']['services'],
-            static fn (array $s): bool => $s['status'] === 'active',
+            static fn(array $s): bool => $s['status'] === 'active',
         );
         $activeNames = array_column(array_values($activeServices), 'name');
         $this->assertNotContains('valkey', $activeNames);

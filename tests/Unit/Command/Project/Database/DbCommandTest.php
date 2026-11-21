@@ -135,7 +135,7 @@ final class DbCommandTest extends TestCase
             ->expects($this->once())
             ->method('execInteractiveShell')
             ->with(
-                $this->callback(static fn (ServiceDefinition $svc): bool => $svc->name === 'postgres'),
+                $this->callback(static fn(ServiceDefinition $svc): bool => $svc->name === 'postgres'),
                 $this->anything(),
             );
 
@@ -219,7 +219,7 @@ final class DbCommandTest extends TestCase
         $this->configManager->method('resolveConfig')->willReturn($resolvedConfig);
         $this->configManager->method('resolveDatabaseName')
             ->willReturnCallback(
-                static fn (string $base, ?WorktreeInfo $info, string $projectName): string => $base,
+                static fn(string $base, ?WorktreeInfo $info, string $projectName): string => $base,
             );
     }
 

@@ -1094,7 +1094,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         $worktreeManager->method('detect')->willReturn($worktreeInfo);
         $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
         $worktreeManager->method('rewriteHostname')->willReturnCallback(
-            static fn (string $hostname): string => match ($hostname) {
+            static fn(string $hostname): string => match ($hostname) {
                 'test-project.test' => 'test-project-wt.test',
                 default => $hostname,
             },
@@ -1135,7 +1135,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         $worktreeManager->method('detect')->willReturn($worktreeInfo);
         $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
         $worktreeManager->method('rewriteHostname')->willReturnCallback(
-            static fn (string $hostname): string => match ($hostname) {
+            static fn(string $hostname): string => match ($hostname) {
                 'test-project.test' => 'test-project-wt.test',
                 default => $hostname,
             },
@@ -1175,7 +1175,7 @@ final class ProjectLifecycleManagerTest extends TestCase
         $worktreeManager->method('detect')->willReturn($worktreeInfo);
         $worktreeManager->method('resolveHostname')->willReturn('test-project-wt.test');
         $worktreeManager->method('rewriteHostname')->willReturnCallback(
-            static fn (string $hostname): string => match ($hostname) {
+            static fn(string $hostname): string => match ($hostname) {
                 'test-project.test' => 'test-project-wt.test',
                 'preview.test-project.test' => 'preview.test-project-wt.test',
                 'playwright.test-project.test' => 'playwright.test-project-wt.test',
@@ -1577,6 +1577,4 @@ final class ProjectLifecycleManagerTest extends TestCase
  * passing both the abstract-base contract used internally and the
  * `instanceof` filter applied by `ProjectLifecycleManager`.
  */
-abstract class ProjectNetworkAwareSystemServiceTestDouble extends AbstractSystemService implements ProjectNetworkAwareInterface
-{
-}
+abstract class ProjectNetworkAwareSystemServiceTestDouble extends AbstractSystemService implements ProjectNetworkAwareInterface {}

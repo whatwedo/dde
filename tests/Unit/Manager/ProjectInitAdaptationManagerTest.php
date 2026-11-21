@@ -134,7 +134,7 @@ final class ProjectInitAdaptationManagerTest extends TestCase
 
         $containerNameChanges = array_filter(
             $result['changes'],
-            static fn (string $c): bool => str_contains($c, 'container_name'),
+            static fn(string $c): bool => str_contains($c, 'container_name'),
         );
         $this->assertCount(2, $containerNameChanges);
     }
