@@ -383,7 +383,8 @@ final class AdapterScriptTest extends TestCase
             fi
             echo "===BUNDLE==="
             cat "%s" 2>/dev/null || true
-            SH, $caPem, $consumedBundle);
+            SH
+            , $caPem, $consumedBundle);
 
         $process = new Process([
             'docker', 'run', '--rm',

@@ -45,7 +45,7 @@ final class JsonFormatter implements OutputFormatterInterface
             'status' => 'ok',
             'message' => '',
             'data' => array_map(
-                fn (array $row): array => array_combine($headers, $row),
+                fn(array $row): array => array_combine($headers, $row),
                 $rows,
             ),
             'errors' => [],

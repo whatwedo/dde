@@ -16,8 +16,7 @@ final class RootCaTrustedCheck implements CheckInterface
     public function __construct(
         private readonly ProcessFactory $processFactory,
         private readonly Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     public function getName(): string
     {

@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace App\Util;
 
-
 final class TempFileUtil
 {
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
     public static function createTempFile(string $prefix): string
     {

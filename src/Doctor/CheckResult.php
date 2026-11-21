@@ -11,6 +11,5 @@ final readonly class CheckResult
         public CheckStatus $status,
         public string $message,
         public string $fixHint = '',
-    ) {
-    }
+    ) {}
 }

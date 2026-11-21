@@ -16,8 +16,7 @@ final readonly class SystemServiceManager
         private ServiceRegistry $serviceRegistry,
         private Filesystem $filesystem,
         private string $dataDir,
-    ) {
-    }
+    ) {}
 
     public function getContainerName(string $service, string $version): string
     {

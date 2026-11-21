@@ -14,8 +14,7 @@ readonly class DatabaseManager
         private DockerManager $dockerManager,
         private DatabaseAdapterRegistry $adapterRegistry,
         private ServiceRegistry $serviceRegistry,
-    ) {
-    }
+    ) {}
 
     public function resolveContainerName(ServiceDefinition $serviceDefinition): string
     {

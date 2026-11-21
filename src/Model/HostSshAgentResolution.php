@@ -16,6 +16,5 @@ final readonly class HostSshAgentResolution
         public bool $available,
         public ?string $mountSource,
         public ?string $reason,
-    ) {
-    }
+    ) {}
 }

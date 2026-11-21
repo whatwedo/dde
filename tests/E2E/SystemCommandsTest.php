@@ -34,7 +34,7 @@ final class SystemCommandsTest extends TestCase
 
         $traefikService = array_first(array_filter(
             $result['data']['services'],
-            static fn (array $s): bool => $s['name'] === 'traefik',
+            static fn(array $s): bool => $s['name'] === 'traefik',
         ));
         $this->assertSame('running', $traefikService['status']);
     }

@@ -44,7 +44,7 @@ final class SystemDoctorCommand extends AbstractSystemCommand
         $hasWarning = false;
 
         $checks = [...$this->checks];
-        usort($checks, static fn (CheckInterface $a, CheckInterface $b): int => $b->getPriority() <=> $a->getPriority());
+        usort($checks, static fn(CheckInterface $a, CheckInterface $b): int => $b->getPriority() <=> $a->getPriority());
 
         $dockerAvailable = true;
 
@@ -98,7 +98,7 @@ final class SystemDoctorCommand extends AbstractSystemCommand
 
         if (!$formatter->isInteractive()) {
             $data = array_map(
-                static fn (CheckResult $r): array => [
+                static fn(CheckResult $r): array => [
                     'name' => $r->name,
                     'status' => $r->status->value,
                     'message' => $r->message,
@@ -109,8 +109,8 @@ final class SystemDoctorCommand extends AbstractSystemCommand
 
             if ($hasError) {
                 $errors = array_map(
-                    static fn (array $check): string => sprintf('%s: %s', $check['name'], $check['message']),
-                    array_filter($data, static fn (array $check): bool => $check['status'] === CheckStatus::ERROR->value),
+                    static fn(array $check): string => sprintf('%s: %s', $check['name'], $check['message']),
+                    array_filter($data, static fn(array $check): bool => $check['status'] === CheckStatus::ERROR->value),
                 );
 
                 return $formatter->error('Some checks failed.', array_values($errors));

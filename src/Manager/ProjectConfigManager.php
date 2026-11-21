@@ -42,8 +42,7 @@ readonly class ProjectConfigManager
         private string $userHomeDir = '',
         private Filesystem $filesystem = new Filesystem(),
         private Processor $processor = new Processor(),
-    ) {
-    }
+    ) {}
 
     public function loadProjectConfig(string $projectDir): ProjectConfig
     {

@@ -61,7 +61,7 @@ final class SystemLifecycleManagerTest extends TestCase
                 'name' => 'dnsmasq',
                 'status' => 'started',
             ]],
-            $result['globalServices']
+            $result['globalServices'],
         );
     }
 
@@ -160,12 +160,12 @@ final class SystemLifecycleManagerTest extends TestCase
         $serviceA->method('stop')->willReturnCallback(
             static function () use (&$callOrder): void {
                 $callOrder[] = 'traefik';
-            }
+            },
         );
         $serviceB->method('stop')->willReturnCallback(
             static function () use (&$callOrder): void {
                 $callOrder[] = 'dnsmasq';
-            }
+            },
         );
 
         $versionedContainer = new ContainerInfo(
@@ -380,17 +380,17 @@ final class SystemLifecycleManagerTest extends TestCase
         $service->method('remove')->willReturnCallback(
             static function () use (&$callOrder): void {
                 $callOrder[] = 'remove';
-            }
+            },
         );
         $service->method('build')->willReturnCallback(
             static function (bool $pull) use (&$callOrder): void {
                 $callOrder[] = $pull ? 'build-pull' : 'build';
-            }
+            },
         );
         $service->method('start')->willReturnCallback(
             static function () use (&$callOrder): void {
                 $callOrder[] = 'start';
-            }
+            },
         );
 
         $this->completionManager

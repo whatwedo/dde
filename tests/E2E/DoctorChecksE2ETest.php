@@ -56,7 +56,7 @@ final class DoctorChecksE2ETest extends TestCase
         $checks = $json['data']['checks'];
         $dockerCheck = array_values(array_filter(
             $checks,
-            static fn (array $c): bool => $c['name'] === 'Docker Available',
+            static fn(array $c): bool => $c['name'] === 'Docker Available',
         ));
 
         $this->assertNotEmpty($dockerCheck, 'Docker check should be present');
@@ -75,7 +75,7 @@ final class DoctorChecksE2ETest extends TestCase
         $checks = $json['data']['checks'];
         $networkCheck = array_values(array_filter(
             $checks,
-            static fn (array $c): bool => $c['name'] === 'Docker Network',
+            static fn(array $c): bool => $c['name'] === 'Docker Network',
         ));
 
         $this->assertNotEmpty($networkCheck, 'Network check should be present');
@@ -94,7 +94,7 @@ final class DoctorChecksE2ETest extends TestCase
         $checks = $json['data']['checks'];
         $traefikCheck = array_values(array_filter(
             $checks,
-            static fn (array $c): bool => $c['name'] === 'Traefik',
+            static fn(array $c): bool => $c['name'] === 'Traefik',
         ));
 
         $this->assertNotEmpty($traefikCheck, 'Traefik check should be present');

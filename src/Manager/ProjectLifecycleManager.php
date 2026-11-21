@@ -26,8 +26,7 @@ readonly class ProjectLifecycleManager
         private WorktreeManager $worktreeManager,
         private HostSshAgentResolver $hostSshAgentResolver,
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{serviceResults: list<array{name: string, version: string, status: string}>, devLayerResult: array{serviceName: string, imageTag: string}|null, domains: list<string>, sshForwardingWarning: string|null}

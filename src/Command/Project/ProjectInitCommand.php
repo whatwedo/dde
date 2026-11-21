@@ -234,7 +234,7 @@ final class ProjectInitCommand extends AbstractProjectCommand
         $selected = $this->questionHelper()->ask($input, $output, $question);
 
         /** @var list<string> $selected */
-        $selected = is_array($selected) ? array_values(array_filter($selected, static fn (mixed $v): bool => is_string($v) && $v !== '')) : [];
+        $selected = is_array($selected) ? array_values(array_filter($selected, static fn(mixed $v): bool => is_string($v) && $v !== '')) : [];
 
         if ($selected === []) {
             return [];
@@ -365,7 +365,7 @@ final class ProjectInitCommand extends AbstractProjectCommand
     private function serviceNames(array $services): array
     {
         return array_map(
-            static fn (string|array $s): string => is_string($s) ? $s : $s['name'],
+            static fn(string|array $s): string => is_string($s) ? $s : $s['name'],
             $services,
         );
     }

@@ -13,6 +13,5 @@ final readonly class EnvMigrationProposal
         public string $envTargetValue,
         public string $composeValue,
         public string $description,
-    ) {
-    }
+    ) {}
 }

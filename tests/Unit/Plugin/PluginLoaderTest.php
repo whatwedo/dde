@@ -95,7 +95,7 @@ final class PluginLoaderTest extends TestCase
 
         $this->assertCount(2, $plugins);
 
-        $commands = array_map(static fn (PluginDefinition $p): string => $p->command, $plugins);
+        $commands = array_map(static fn(PluginDefinition $p): string => $p->command, $plugins);
         $this->assertContains('alpha:cmd', $commands);
         $this->assertContains('beta:cmd', $commands);
     }

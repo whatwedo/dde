@@ -12,8 +12,7 @@ readonly class PluginLoader
     public function __construct(
         private string $configDir = '',
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     /**
      * Scan plugin directories and return parsed plugin definitions.

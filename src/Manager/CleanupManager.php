@@ -13,8 +13,7 @@ readonly class CleanupManager
         private DockerManager $dockerManager,
         private Filesystem $filesystem,
         private string $dataDir,
-    ) {
-    }
+    ) {}
 
     /**
      * Collects items in deletion order: containers first, network last.

@@ -245,8 +245,7 @@ final class DbOpenCommandTest extends TestCase
         $this->configManager->method('resolveConfig')->willReturn($resolvedConfig);
         $this->configManager->method('resolveDatabaseName')
             ->willReturnCallback(
-                static fn (string $base, ?WorktreeInfo $info, string $projectName): string
-                    => $info instanceof WorktreeInfo ? $base.'_feature_x' : $base,
+                static fn(string $base, ?WorktreeInfo $info, string $projectName): string => $info instanceof WorktreeInfo ? $base.'_feature_x' : $base,
             );
     }
 
@@ -274,7 +273,7 @@ final class DbOpenCommandTest extends TestCase
         $this->adapter = $this->createStub(DatabaseAdapterInterface::class);
         $this->adapter->method('getServiceName')->willReturn('mariadb');
         $this->adapter->method('supports')->willReturnCallback(
-            static fn (string $name): bool => $name === 'mariadb',
+            static fn(string $name): bool => $name === 'mariadb',
         );
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());

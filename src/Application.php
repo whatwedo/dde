@@ -150,7 +150,7 @@ final class Application extends BaseApplication
         try {
             /** @var PluginCommandLoader $pluginCommandLoader */
             $pluginCommandLoader = $this->getKernel()->getContainer()->get(PluginCommandLoader::class);
-        } catch (ServiceNotFoundException | \LogicException | \InvalidArgumentException) {
+        } catch (ServiceNotFoundException|\LogicException|\InvalidArgumentException) {
             // Gracefully degrade when container is not available (e.g. outside of a project directory)
             return;
         }

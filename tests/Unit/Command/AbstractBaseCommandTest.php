@@ -91,7 +91,7 @@ final class AbstractBaseCommandTest extends TestCase
 
     private function createTestCommand(): AbstractBaseCommand
     {
-        return new class($this->formatterResolver) extends AbstractBaseCommand {
+        return new class ($this->formatterResolver) extends AbstractBaseCommand {
             public function callResolveFormatter(OutputInterface $output, InputInterface $input): OutputFormatterInterface
             {
                 return $this->resolveFormatter($output, $input);

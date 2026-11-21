@@ -6,9 +6,7 @@ namespace App\Util;
 
 final class DiffUtil
 {
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
     /**
      * @param list<string> $originalLines
@@ -21,11 +19,11 @@ final class DiffUtil
 
         foreach ($opcodes as [$tag, $oldLines, $newLines]) {
             match ($tag) {
-                'equal' => $diff .= implode('', array_map(static fn (string $l): string => sprintf('  %s%s', $l, PHP_EOL), $oldLines)),
-                'delete' => $diff .= implode('', array_map(static fn (string $l): string => sprintf('- %s%s', $l, PHP_EOL), $oldLines)),
-                'insert' => $diff .= implode('', array_map(static fn (string $l): string => sprintf('+ %s%s', $l, PHP_EOL), $newLines)),
-                'replace' => $diff .= implode('', array_map(static fn (string $l): string => sprintf('- %s%s', $l, PHP_EOL), $oldLines))
-                    .implode('', array_map(static fn (string $l): string => sprintf('+ %s%s', $l, PHP_EOL), $newLines)),
+                'equal' => $diff .= implode('', array_map(static fn(string $l): string => sprintf('  %s%s', $l, PHP_EOL), $oldLines)),
+                'delete' => $diff .= implode('', array_map(static fn(string $l): string => sprintf('- %s%s', $l, PHP_EOL), $oldLines)),
+                'insert' => $diff .= implode('', array_map(static fn(string $l): string => sprintf('+ %s%s', $l, PHP_EOL), $newLines)),
+                'replace' => $diff .= implode('', array_map(static fn(string $l): string => sprintf('- %s%s', $l, PHP_EOL), $oldLines))
+                    .implode('', array_map(static fn(string $l): string => sprintf('+ %s%s', $l, PHP_EOL), $newLines)),
                 default => null,
             };
         }

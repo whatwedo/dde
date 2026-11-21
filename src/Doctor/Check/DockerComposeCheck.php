@@ -14,8 +14,7 @@ final class DockerComposeCheck implements CheckInterface
 {
     public function __construct(
         private readonly ProcessFactory $processFactory,
-    ) {
-    }
+    ) {}
 
     public function getName(): string
     {

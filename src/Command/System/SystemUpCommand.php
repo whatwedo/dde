@@ -43,7 +43,7 @@ final class SystemUpCommand extends AbstractSystemCommand
     ) {
         parent::__construct($formatterResolver);
 
-        $this->ttySupportProbe = $ttySupportProbe ?? static fn (): bool => Process::isTtySupported();
+        $this->ttySupportProbe = $ttySupportProbe ?? static fn(): bool => Process::isTtySupported();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

@@ -79,7 +79,7 @@ final class TraefikLabelGenerator
     private static function generateHostRule(array $hostnames): string
     {
         $parts = array_map(
-            static fn (string $h): string => sprintf('Host(`%s`)', $h),
+            static fn(string $h): string => sprintf('Host(`%s`)', $h),
             $hostnames,
         );
 

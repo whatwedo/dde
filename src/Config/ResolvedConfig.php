@@ -50,8 +50,7 @@ final class ResolvedConfig
         public readonly GlobalConfig $globalConfig,
         public readonly ProjectConfig $projectConfig,
         public readonly array $serviceVersions = [],
-    ) {
-    }
+    ) {}
 
     /**
      * Returns the resolved version for a given service name.

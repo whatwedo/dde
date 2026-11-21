@@ -183,7 +183,7 @@ final class CompletionManagerTest extends TestCase
         $application = new Application('dde', 'test');
         $application->setAutoExit(false);
 
-        $failingCommand = new class('completion') extends Command {
+        $failingCommand = new class ('completion') extends Command {
             protected function execute(InputInterface $input, OutputInterface $output): int
             {
                 return Command::FAILURE;

@@ -20,8 +20,7 @@ readonly class MkcertManager
         private string $dataDir,
         private ClockInterface $clock,
         private ProcessFactory $processFactory = new ProcessFactory(),
-    ) {
-    }
+    ) {}
 
     /**
      * Ensures TLS certificates exist for the given domains.

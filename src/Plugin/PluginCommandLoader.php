@@ -20,8 +20,7 @@ final class PluginCommandLoader implements CommandLoaderInterface
         private readonly PluginLoader $pluginLoader,
         private readonly ProjectConfigManager $configManager,
         private readonly ProcessFactory $processFactory = new ProcessFactory(),
-    ) {
-    }
+    ) {}
 
     public function get(string $name): PluginProxyCommand
     {

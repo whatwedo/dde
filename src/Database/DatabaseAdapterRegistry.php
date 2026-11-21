@@ -14,8 +14,7 @@ final class DatabaseAdapterRegistry
     public function __construct(
         #[AutowireIterator('dde.database_adapter')]
         private readonly iterable $adapters = [],
-    ) {
-    }
+    ) {}
 
     public function getAdapter(string $serviceName): DatabaseAdapterInterface
     {

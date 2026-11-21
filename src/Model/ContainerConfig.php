@@ -22,6 +22,5 @@ final readonly class ContainerConfig
         public array $labels = [],
         public array $networkAliases = [],
         public string $restartPolicy = 'unless-stopped',
-    ) {
-    }
+    ) {}
 }

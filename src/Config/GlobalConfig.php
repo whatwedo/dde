@@ -23,8 +23,7 @@ final readonly class GlobalConfig
         public ?string $defaultBrowser = null,
         public SshAgentMode $sshAgentMode = SshAgentMode::Host,
         public ?string $sshAgentSource = GlobalConfigDefinition::SSH_AGENT_SOURCE,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $processed Output from Processor::processConfiguration()
