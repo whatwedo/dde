@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.ref }}
@@ -15,6 +16,8 @@ permissions:
 jobs:
   ci:
     name: CI
+    # A manual dispatch from a branch must not publish a release.
+    if: startsWith(github.ref, 'refs/tags/v')
     uses: ./.github/workflows/ci.yml
 
   meta:
