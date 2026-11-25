@@ -41,6 +41,7 @@ Use conventional-commit prefixes to decide changelog sections. Match the strict 
 | `fix(...)` user-visible                           | **Fixed**                 | yes                         |
 | user-visible behaviour change (e.g. removed flag) | **Changed** / **Removed** | yes                         |
 | `refactor`, `chore`, `test`, `docs`, `style`      | —                         | no, unless end-users notice |
+| `chore(deps)` / `fix(deps)` changing what ships   | **Changed**               | yes, generated (Step 3)     |
 | `fix(release): ...` touching build infra          | **Fixed**                 | yes, terse                  |
 
 Rule of thumb from AGENTS.md: if a user would not notice it, it does not belong in the changelog.
@@ -65,6 +66,14 @@ CHANGELOG.md — insert a new section directly after the intro paragraph:
 ```
 
 Use today's date in ISO format. Omit empty subsections.
+
+Dependency updates are generated, never hand-written. Append the output to `### Changed`, below the hand-written entries:
+
+```bash
+scripts/changelog-dependencies.sh "$(git describe --tags --abbrev=0)"
+```
+
+It prints one entry for every dependency shipped in the binary — the PHP runtime and the non-dev Composer packages, including the ones pulled in by others — whose version changed since that tag. Dev and npm dependencies never appear. No output means no dependency entries.
 
 Do **not** touch `src/Application.php`. The `APP_VERSION` constant is the placeholder `@APP_VERSION@`; CI substitutes it with `${GITHUB_REF_NAME}` when building from the tag. Editing it by hand bypasses the build pipeline and ships the wrong version string.
 
@@ -131,6 +140,7 @@ Verify in the browser at `https://github.com/whatwedo/dde/releases/tag/v<version
 
 - [ ] User confirmed target version
 - [ ] CHANGELOG entry lists only user-visible changes
+- [ ] Output of `scripts/changelog-dependencies.sh` appended to `### Changed`
 - [ ] Today's date, ISO format
 - [ ] `src/Application.php` NOT modified (placeholder is injected by CI)
 - [ ] Commit signed + signed-off, subject `docs(changelog): document the v<version> release`

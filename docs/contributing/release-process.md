@@ -27,14 +27,15 @@ If you prefer to drive the release by hand:
 
 1. Ensure all changes are merged to the release branch and the QA pipeline passes
 2. Add a `## [<version>] - YYYY-MM-DD` section at the top of `CHANGELOG.md` with the user-visible Added/Changed/Fixed bullets
-3. Commit signed + signed-off (do **not** touch `src/Application.php` — CI injects the version):
+3. Append the output of `scripts/changelog-dependencies.sh <previous-tag>` to `### Changed` — one entry for every dependency shipped in the binary whose version changed
+4. Commit signed + signed-off (do **not** touch `src/Application.php` — CI injects the version):
 
 ```bash
 git add CHANGELOG.md
 git commit -S --signoff -m "chore(release): prepare v2.1.0"
 ```
 
-4. Create the annotated, signed tag and push:
+5. Create the annotated, signed tag and push:
 
 ```bash
 git tag -s v2.1.0 -m "v2.1.0"
@@ -54,7 +55,7 @@ It also skips the release when the latest tag is a pre-release.
 
 It fails instead of releasing when the nightly workflow for the `main` head is not green.
 
-The workflow adds a `### Changed` section and the release link to `CHANGELOG.md` — one entry per updated shipped dependency with its old and new version — commits and tags it with the release bot's GPG key, pushes both to `main`, and dispatches the release workflow on the new tag. The dispatch is explicit because a tag pushed with the workflow's `GITHUB_TOKEN` triggers no other workflow.
+The workflow adds a `### Changed` section and the release link to `CHANGELOG.md` — the entries `scripts/changelog-dependencies.sh` prints, one per updated shipped dependency with its old and new version — commits and tags it with the release bot's GPG key, pushes both to `main`, and dispatches the release workflow on the new tag. The dispatch is explicit because a tag pushed with the workflow's `GITHUB_TOKEN` triggers no other workflow.
 
 Run it by hand from the Actions tab to release ahead of schedule. If the tag was pushed but the release did not start or failed, run the `Release` workflow on that tag from the Actions tab.
 
