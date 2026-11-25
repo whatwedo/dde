@@ -65,10 +65,23 @@ jobs:
           sha256sum * > checksums.txt
           cat checksums.txt
 
+      - name: Extract release notes from the changelog
+        run: |
+          awk -v heading="## [${GITHUB_REF_NAME#v}]" '
+            /^## \[/ { found = index($0, heading) == 1; next }
+            /^\[[^]]+\]: / { found = 0 }
+            found
+          ' CHANGELOG.md > release-notes.md
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "::error::CHANGELOG.md has no section for ${GITHUB_REF_NAME}."
+            exit 1
+          fi
+
       - name: Create release
         uses: softprops/action-gh-release@v3
         with:
-          generate_release_notes: true
+          body_path: release-notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
