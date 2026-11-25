@@ -75,6 +75,12 @@ scripts/changelog-dependencies.sh "$(git describe --tags --abbrev=0)"
 
 It prints one entry for every dependency shipped in the binary — the PHP runtime and the non-dev Composer packages, including the ones pulled in by others — whose version changed since that tag. Dev and npm dependencies never appear. No output means no dependency entries.
 
+The version heading is a reference link, so add its target at the top of the link list at the end of `CHANGELOG.md`:
+
+```markdown
+[<version>]: https://github.com/whatwedo/dde/releases/tag/v<version>
+```
+
 Do **not** touch `src/Application.php`. The `APP_VERSION` constant is the placeholder `@APP_VERSION@`; CI substitutes it with `${GITHUB_REF_NAME}` when building from the tag. Editing it by hand bypasses the build pipeline and ships the wrong version string.
 
 ## Step 4: Commit and tag
@@ -142,6 +148,7 @@ Verify in the browser at `https://github.com/whatwedo/dde/releases/tag/v<version
 - [ ] CHANGELOG entry lists only user-visible changes
 - [ ] Output of `scripts/changelog-dependencies.sh` appended to `### Changed`
 - [ ] Today's date, ISO format
+- [ ] Link for the new version added to the list at the end of `CHANGELOG.md`
 - [ ] `src/Application.php` NOT modified (placeholder is injected by CI)
 - [ ] Commit signed + signed-off, subject `docs(changelog): document the v<version> release`
 - [ ] Annotated tag signed, subject exactly `v<version>`

@@ -28,14 +28,15 @@ If you prefer to drive the release by hand:
 1. Ensure all changes are merged to the release branch and the QA pipeline passes
 2. Add a `## [<version>] - YYYY-MM-DD` section at the top of `CHANGELOG.md` with the user-visible Added/Changed/Fixed bullets
 3. Append the output of `scripts/changelog-dependencies.sh <previous-tag>` to `### Changed` — one entry for every dependency shipped in the binary whose version changed
-4. Commit signed + signed-off (do **not** touch `src/Application.php` — CI injects the version):
+4. Add `[<version>]: https://github.com/whatwedo/dde/releases/tag/v<version>` at the top of the link list at the end of `CHANGELOG.md`
+5. Commit signed + signed-off (do **not** touch `src/Application.php` — CI injects the version):
 
 ```bash
 git add CHANGELOG.md
-git commit -S --signoff -m "chore(release): prepare v2.1.0"
+git commit -S --signoff -m "docs(changelog): document the v2.1.0 release"
 ```
 
-5. Create the annotated, signed tag and push:
+6. Create the annotated, signed tag and push:
 
 ```bash
 git tag -s v2.1.0 -m "v2.1.0"
