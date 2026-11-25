@@ -15,8 +15,7 @@ final readonly class HookSubscriber
 {
     public function __construct(
         private HookRunner $hookRunner,
-    ) {
-    }
+    ) {}
 
     #[AsEventListener(event: ProjectUpPreEvent::class)]
     public function onProjectUpPre(ProjectUpPreEvent $event): void

@@ -18,8 +18,7 @@ class ShellDetectorUtil
 
     public function __construct(
         private readonly DockerComposeManager $dockerComposeManager,
-    ) {
-    }
+    ) {}
 
     /**
      * Detect the best available shell for a service.

@@ -157,7 +157,7 @@ final class ServiceDisableCommandTest extends TestCase
         $this->assertIsArray($data);
         // Only one mariadb remains after removing the first occurrence
         $this->assertContains('valkey', $data['services']);
-        $mariadbCount = count(array_filter($data['services'], static fn (mixed $s): bool => $s === 'mariadb'));
+        $mariadbCount = count(array_filter($data['services'], static fn(mixed $s): bool => $s === 'mariadb'));
         $this->assertSame(1, $mariadbCount);
     }
 

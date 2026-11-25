@@ -18,8 +18,7 @@ readonly class ProjectInfoManager
     public function __construct(
         private ServiceRegistry $serviceRegistry,
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     /**
      * @return list<array{name: string, version: string, host: string, port: int, type: string}>

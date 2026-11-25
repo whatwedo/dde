@@ -18,8 +18,7 @@ readonly class DockerManager
 {
     public function __construct(
         private ProcessFactory $processFactory,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -181,7 +180,7 @@ readonly class DockerManager
 
         return array_values(array_filter(
             explode("\n", trim($process->getOutput())),
-            static fn (string $name): bool => $name !== '',
+            static fn(string $name): bool => $name !== '',
         ));
     }
 
@@ -209,7 +208,7 @@ readonly class DockerManager
 
         return array_values(array_filter(
             explode("\n", trim($process->getOutput())),
-            static fn (string $name): bool => $name !== '' && str_starts_with($name, $prefix),
+            static fn(string $name): bool => $name !== '' && str_starts_with($name, $prefix),
         ));
     }
 

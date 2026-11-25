@@ -24,8 +24,7 @@ final readonly class AdapterRegistry
         private string $resourcesDir,
         private string $dataDir,
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     /**
      * Returns paths to all adapter scripts (built-in + project-specific).

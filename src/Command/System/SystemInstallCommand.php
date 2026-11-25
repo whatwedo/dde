@@ -115,8 +115,8 @@ final class SystemInstallCommand extends AbstractSystemCommand
         if (!$formatter->isInteractive()) {
             if ($hasErrors) {
                 $errorMessages = array_map(
-                    static fn (array $r): string => sprintf('%s: %s', $r['step'], $r['message'] ?? 'unknown error'),
-                    array_filter($results, static fn (array $r): bool => $r['status'] === 'error'),
+                    static fn(array $r): string => sprintf('%s: %s', $r['step'], $r['message'] ?? 'unknown error'),
+                    array_filter($results, static fn(array $r): bool => $r['status'] === 'error'),
                 );
 
                 return $formatter->error('Installation completed with errors', array_values($errorMessages));

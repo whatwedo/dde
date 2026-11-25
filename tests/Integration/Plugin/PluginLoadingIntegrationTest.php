@@ -96,7 +96,7 @@ final class PluginLoadingIntegrationTest extends TestCase
 
         $this->assertCount(3, $plugins);
 
-        $commands = array_map(static fn (PluginDefinition $p): string => $p->command, $plugins);
+        $commands = array_map(static fn(PluginDefinition $p): string => $p->command, $plugins);
         sort($commands);
 
         $this->assertSame(['alpha:run', 'beta:run', 'gamma:run'], $commands);

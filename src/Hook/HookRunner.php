@@ -14,8 +14,7 @@ readonly class HookRunner
     public function __construct(
         private Filesystem $filesystem = new Filesystem(),
         private ProcessFactory $processFactory = new ProcessFactory(),
-    ) {
-    }
+    ) {}
 
     /**
      * Execute all scripts in the given hook directory.

@@ -16,8 +16,7 @@ final readonly class ProjectConfig
         public string $name = '',
         public array $services = [],
         public array $containers = [],
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $processed Output from Processor::processConfiguration()

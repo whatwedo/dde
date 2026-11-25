@@ -13,8 +13,7 @@ readonly class ImageBuilder
     public function __construct(
         private DockerManager $dockerManager,
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     /**
      * Build a Docker image if the source files have changed since last build.

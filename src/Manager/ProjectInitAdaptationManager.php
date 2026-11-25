@@ -24,8 +24,7 @@ readonly class ProjectInitAdaptationManager
         private ServiceRegistry $serviceRegistry,
         private DatabaseAdapterRegistry $databaseAdapterRegistry,
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     public function detectFirstService(?string $composePath): ?string
     {

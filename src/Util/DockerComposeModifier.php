@@ -14,8 +14,7 @@ readonly class DockerComposeModifier
     public function __construct(
         private DatabaseAdapterRegistry $databaseAdapterRegistry,
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $config
@@ -451,7 +450,7 @@ readonly class DockerComposeModifier
         if (isset($service['volumes']) && is_array($service['volumes'])) {
             $filtered = array_values(array_filter(
                 $service['volumes'],
-                static fn (mixed $v): bool => !is_string($v) || !str_contains($v, 'ssh-agent'),
+                static fn(mixed $v): bool => !is_string($v) || !str_contains($v, 'ssh-agent'),
             ));
 
             if (count($filtered) !== count($service['volumes'])) {

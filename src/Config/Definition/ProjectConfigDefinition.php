@@ -46,7 +46,7 @@ final class ProjectConfigDefinition implements ConfigurationInterface
                             ->scalarNode('name')
                                 ->isRequired()
                                 ->validate()
-                                    ->ifTrue(static fn (mixed $v): bool => ! in_array($v, self::SUPPORTED_SERVICES, true))
+                                    ->ifTrue(static fn(mixed $v): bool => ! in_array($v, self::SUPPORTED_SERVICES, true))
                                     ->thenInvalid(sprintf('Invalid service name "%%s". Supported services: %s', implode(', ', self::SUPPORTED_SERVICES)))
                                 ->end()
                             ->end()

@@ -20,8 +20,7 @@ readonly class ImageManager
         private DockerManager $dockerManager,
         private UserContext $userContext,
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     public function hasLabel(string $image, string $label): bool
     {

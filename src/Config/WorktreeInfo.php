@@ -11,6 +11,5 @@ final readonly class WorktreeInfo
         public string $worktreeDirectory,
         public string $branch,
         public string $suffix,
-    ) {
-    }
+    ) {}
 }

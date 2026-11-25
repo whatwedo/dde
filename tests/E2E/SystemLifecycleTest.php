@@ -34,7 +34,7 @@ final class SystemLifecycleTest extends TestCase
 
         $runningServices = array_filter(
             $status['data']['services'],
-            static fn (array $s): bool => $s['status'] === 'running',
+            static fn(array $s): bool => $s['status'] === 'running',
         );
         $this->assertEmpty($runningServices, 'No services should be running after system:down');
     }
@@ -63,7 +63,7 @@ final class SystemLifecycleTest extends TestCase
 
         $traefikService = array_first(array_filter(
             $status['data']['services'],
-            static fn (array $s): bool => $s['name'] === 'traefik',
+            static fn(array $s): bool => $s['name'] === 'traefik',
         ));
         $this->assertSame('running', $traefikService['status'], 'traefik should be in running state');
     }
@@ -89,7 +89,7 @@ final class SystemLifecycleTest extends TestCase
 
         $runningServices = array_filter(
             $status['data']['services'],
-            static fn (array $s): bool => $s['status'] === 'running',
+            static fn(array $s): bool => $s['status'] === 'running',
         );
         $this->assertNotEmpty($runningServices, 'At least one service should be running after clean up');
     }

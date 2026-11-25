@@ -140,7 +140,7 @@ final class ImageManagerTest extends TestCase
         $this->dockerManager->expects($this->once())
             ->method('buildImage')
             ->with(
-                $this->callback(fn (string $dir): bool => is_dir($dir) && file_exists($dir.'/Dockerfile')),
+                $this->callback(fn(string $dir): bool => is_dir($dir) && file_exists($dir.'/Dockerfile')),
                 'dde-test-project:dev',
                 null,
             );
@@ -375,7 +375,7 @@ final class ImageManagerTest extends TestCase
         $this->dockerManager->expects($this->once())
             ->method('buildImage')
             ->with(
-                $this->callback(fn (string $dir): bool => is_dir($dir) && file_exists($dir.'/Dockerfile')),
+                $this->callback(fn(string $dir): bool => is_dir($dir) && file_exists($dir.'/Dockerfile')),
                 'dde-shell-check:dev',
                 null,
             );
@@ -453,7 +453,7 @@ final class ImageManagerTest extends TestCase
         $this->dockerManager->expects($this->once())
             ->method('buildImage')
             ->with(
-                $this->callback(fn (string $dir): bool => is_dir($dir) && file_exists($dir.'/Dockerfile')),
+                $this->callback(fn(string $dir): bool => is_dir($dir) && file_exists($dir.'/Dockerfile')),
                 'dde-build-first:dev',
                 null,
             );

@@ -15,8 +15,7 @@ final readonly class OutputFormatListener
 {
     public function __construct(
         private FormatterResolver $formatterResolver,
-    ) {
-    }
+    ) {}
 
     public function __invoke(ConsoleCommandEvent $event): void
     {

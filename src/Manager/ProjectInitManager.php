@@ -38,8 +38,7 @@ final readonly class ProjectInitManager
 
     public function __construct(
         private Filesystem $filesystem,
-    ) {
-    }
+    ) {}
 
     /**
      * @param list<string|array{name: string, version: string}> $services Bare strings use the service's default version;
@@ -61,8 +60,8 @@ final readonly class ProjectInitManager
 
         $directories = array_merge(
             [self::DDE_DIR],
-            array_map(fn (string $dir): string => self::DDE_DIR.'/'.$dir, self::EXTRA_DIRS),
-            array_map(fn (string $dir): string => self::DDE_DIR.'/'.$dir, self::HOOK_DIRS),
+            array_map(fn(string $dir): string => self::DDE_DIR.'/'.$dir, self::EXTRA_DIRS),
+            array_map(fn(string $dir): string => self::DDE_DIR.'/'.$dir, self::HOOK_DIRS),
         );
 
         foreach ($directories as $dir) {
@@ -183,7 +182,7 @@ final readonly class ProjectInitManager
         }
 
         $lines = explode("\n", $content);
-        $filtered = array_filter($lines, fn (string $line): bool => ! in_array(trim($line), ['.dde', '.dde/', '/.dde', '/.dde/'], true));
+        $filtered = array_filter($lines, fn(string $line): bool => ! in_array(trim($line), ['.dde', '.dde/', '/.dde', '/.dde/'], true));
 
         $newContent = implode("\n", $filtered);
 

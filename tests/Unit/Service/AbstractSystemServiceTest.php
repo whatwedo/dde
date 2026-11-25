@@ -263,7 +263,7 @@ final class AbstractSystemServiceTest extends TestCase
     {
         $this->dockerManager = $this->createMock(DockerManager::class);
 
-        $this->service = new class($this->dockerManager) extends AbstractSystemService {
+        $this->service = new class ($this->dockerManager) extends AbstractSystemService {
             public function getName(): string
             {
                 return 'test';

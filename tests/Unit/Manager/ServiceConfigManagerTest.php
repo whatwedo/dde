@@ -108,7 +108,7 @@ final class ServiceConfigManagerTest extends TestCase
         $data = Yaml::parseFile($this->configPath());
         $this->assertIsArray($data);
         $this->assertContains('valkey', $data['services']);
-        $mariadbCount = count(array_filter($data['services'], static fn (mixed $s): bool => $s === 'mariadb'));
+        $mariadbCount = count(array_filter($data['services'], static fn(mixed $s): bool => $s === 'mariadb'));
         $this->assertSame(1, $mariadbCount);
     }
 

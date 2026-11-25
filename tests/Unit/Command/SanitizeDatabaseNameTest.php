@@ -47,7 +47,7 @@ final class SanitizeDatabaseNameTest extends TestCase
         $configManager = $this->createStub(ProjectConfigManager::class);
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
-        return new #[AsCommand(name: 'test:command')] class($configManager, $formatterResolver) extends AbstractDatabaseCommand {
+        return new #[AsCommand(name: 'test:command')] class ($configManager, $formatterResolver) extends AbstractDatabaseCommand {
             public function exposeSanitizeDatabaseName(string $name): string
             {
                 return $this->sanitizeDatabaseName($name);

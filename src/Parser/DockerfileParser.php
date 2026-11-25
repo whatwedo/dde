@@ -18,8 +18,7 @@ readonly class DockerfileParser
 
     public function __construct(
         private Filesystem $filesystem = new Filesystem(),
-    ) {
-    }
+    ) {}
 
     /**
      * @return list<string>
@@ -212,7 +211,7 @@ readonly class DockerfileParser
             $commands = preg_split('/\s*&&\s*/', $flat) ?: [];
             $commands = array_values(array_filter(
                 $commands,
-                static fn (string $cmd): bool => preg_match(self::CONFIGURE_IMAGE_PATTERN, $cmd) !== 1,
+                static fn(string $cmd): bool => preg_match(self::CONFIGURE_IMAGE_PATTERN, $cmd) !== 1,
             ));
 
             // Mark all lines in this range for removal

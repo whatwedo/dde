@@ -20,7 +20,7 @@ final class CheckStatusTest extends TestCase
     public function testAllCasesExist(): void
     {
         $cases = CheckStatus::cases();
-        $values = array_map(static fn (CheckStatus $c) => $c->value, $cases);
+        $values = array_map(static fn(CheckStatus $c) => $c->value, $cases);
 
         $this->assertContains('ok', $values);
         $this->assertContains('warning', $values);

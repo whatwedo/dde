@@ -15,8 +15,7 @@ readonly class WorktreeManager
     public function __construct(
         private ProcessFactory $processFactory,
         private DatabaseAdapterRegistry $databaseAdapterRegistry,
-    ) {
-    }
+    ) {}
 
     /**
      * Detects which git worktree the user is physically in.

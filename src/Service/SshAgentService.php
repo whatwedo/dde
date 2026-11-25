@@ -179,7 +179,7 @@ final class SshAgentService extends AbstractSystemService
         }
 
         return array_map(
-            fn (string $key): string => str_starts_with($key, '~/') ? $this->userHomeDir.substr($key, 1) : $key,
+            fn(string $key): string => str_starts_with($key, '~/') ? $this->userHomeDir.substr($key, 1) : $key,
             $sshKeys,
         );
     }

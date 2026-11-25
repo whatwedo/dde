@@ -36,8 +36,7 @@ readonly class DockerComposeManager
         private Filesystem $filesystem = new Filesystem(),
         private ProcessFactory $processFactory = new ProcessFactory(),
         private HostSshAgentResolver $hostSshAgentResolver = new HostSshAgentResolver(),
-    ) {
-    }
+    ) {}
 
     /**
      * @param array{composeFiles?: list<string>, build?: bool} $options
@@ -595,7 +594,7 @@ readonly class DockerComposeManager
                     $combinedEnv,
                     $config->projectName,
                     $worktreeInfo,
-                    array_values(array_map(static fn (ServiceDefinition $service): string => $service->name, $config->services)),
+                    array_values(array_map(static fn(ServiceDefinition $service): string => $service->name, $config->services)),
                 );
 
                 foreach ($envOverrides as $key => $value) {
@@ -823,7 +822,7 @@ readonly class DockerComposeManager
             $width = $terminal->getWidth();
             $stripped = preg_replace('/\x1b\[[0-9;]*[A-Za-z]/', '', $buffer) ?? $buffer;
             $lines = explode("\n", $stripped);
-            $truncated = array_map(static fn (string $l): string => mb_substr($l, 0, $width - 1), $lines);
+            $truncated = array_map(static fn(string $l): string => mb_substr($l, 0, $width - 1), $lines);
             $output->write(implode("\n", $truncated));
         });
 
@@ -1030,7 +1029,7 @@ readonly class DockerComposeManager
     private function escapeComposeVariables(array $values): array
     {
         return array_map(
-            static fn (string $v): string => str_replace('$', '$$', $v),
+            static fn(string $v): string => str_replace('$', '$$', $v),
             $values,
         );
     }
@@ -1181,7 +1180,7 @@ readonly class DockerComposeManager
 
             $label = (string) preg_replace_callback(
                 '/Host\(`([^`]+)`\)/',
-                fn (array $match): string => 'Host(`'.$this->worktreeManager->rewriteHostname($match[1], $projectName, $worktreeInfo).'`)',
+                fn(array $match): string => 'Host(`'.$this->worktreeManager->rewriteHostname($match[1], $projectName, $worktreeInfo).'`)',
                 $label,
             );
 

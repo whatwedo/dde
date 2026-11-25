@@ -15,8 +15,7 @@ final class BinaryPathCheck implements CheckInterface
     public function __construct(
         private readonly ProcessFactory $processFactory,
         private readonly ?string $homeDir = null,
-    ) {
-    }
+    ) {}
 
     public function getName(): string
     {

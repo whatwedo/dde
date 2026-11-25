@@ -532,7 +532,7 @@ final class DockerComposeManagerTest extends TestCase
         $dockerManager = $this->createStub(DockerManager::class);
         $dockerManager->method('imageHasShell')->willReturn(true);
         $dockerManager->method('inspectImage')->willReturnCallback(
-            static fn (string $image, string $format): string => match ($format) {
+            static fn(string $image, string $format): string => match ($format) {
                 '{{json .Config.Entrypoint}}' => '["minio"]',
                 '{{json .Config.Cmd}}' => 'null',
                 default => '',
@@ -602,7 +602,7 @@ final class DockerComposeManagerTest extends TestCase
         $dockerManager = $this->createStub(DockerManager::class);
         $dockerManager->method('imageHasShell')->willReturn(true);
         $dockerManager->method('inspectImage')->willReturnCallback(
-            static fn (string $image, string $format): string => match ($format) {
+            static fn(string $image, string $format): string => match ($format) {
                 '{{json .Config.Entrypoint}}' => 'null',
                 '{{json .Config.Cmd}}' => '["/bin/sh","-c","/opt/guacamole/sbin/guacd -b 0.0.0.0 -L $GUACD_LOG_LEVEL -f"]',
                 default => '',
@@ -666,7 +666,7 @@ final class DockerComposeManagerTest extends TestCase
 
         $dockerManager = $this->createStub(DockerManager::class);
         $dockerManager->method('imageHasShell')->willReturnCallback(
-            static fn (string $image): bool => $image !== 'dunglas/mercure',
+            static fn(string $image): bool => $image !== 'dunglas/mercure',
         );
         $dockerManager->method('inspectImage')->willReturn('null');
 

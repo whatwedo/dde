@@ -20,6 +20,5 @@ abstract class AbstractProjectEvent extends Event
         public readonly ResolvedConfig $config,
         public readonly string $projectDir,
         public readonly bool $skipHooks = false,
-    ) {
-    }
+    ) {}
 }

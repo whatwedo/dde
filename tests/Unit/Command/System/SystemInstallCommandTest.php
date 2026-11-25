@@ -189,7 +189,7 @@ final class SystemInstallCommandTest extends TestCase
 
         $decoded = json_decode($this->commandTester->getDisplay(), true);
         $steps = $decoded['data']['steps'];
-        $completionStep = array_filter($steps, static fn (array $s): bool => $s['step'] === 'shell-completion');
+        $completionStep = array_filter($steps, static fn(array $s): bool => $s['step'] === 'shell-completion');
         $this->assertNotEmpty($completionStep);
     }
 

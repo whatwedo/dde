@@ -8,8 +8,7 @@ final class UrlOpenerUtil
 {
     public function __construct(
         private readonly ProcessFactory $processFactory = new ProcessFactory(),
-    ) {
-    }
+    ) {}
 
     /**
      * Opens the given URL. When $browser is a non-empty executable (path or
