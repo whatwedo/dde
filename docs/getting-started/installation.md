@@ -18,9 +18,14 @@ title: "Installation"
 ### macOS (Homebrew)
 
 ```bash
-brew tap whatwedo/dde
-brew install dde
+brew install whatwedo/dde/dde
 dde system:install
+```
+
+Installing by the full name makes Homebrew trust the formula. Homebrew skips formulae from taps it does not trust, so if `brew upgrade` leaves dde behind, trust it once:
+
+```bash
+brew trust --formula whatwedo/dde/dde
 ```
 
 ### Debian / Ubuntu (APT)
@@ -86,8 +91,7 @@ nightly package and reinstall `dde` from the stable repo.
 ### macOS (Homebrew)
 
 ```bash
-brew tap whatwedo/dde
-brew install dde-nightly
+brew install whatwedo/dde/dde-nightly
 dde system:install
 ```
 

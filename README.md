@@ -21,7 +21,7 @@ A CLI tool that manages local Docker development environments with automatic HTT
 
 ```bash
 # macOS
-brew tap whatwedo/dde && brew install dde
+brew install whatwedo/dde/dde
 
 # Debian/Ubuntu
 curl -fsSL https://packages.dde.sh/apt/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/dde.gpg

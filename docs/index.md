@@ -33,7 +33,7 @@ hero:
 
 **macOS**
 ```bash
-brew tap whatwedo/dde && brew install dde
+brew install whatwedo/dde/dde
 ```
 
 **Debian/Ubuntu**
