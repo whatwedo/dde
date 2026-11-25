@@ -68,7 +68,7 @@ Pushing a `v*` tag triggers the release workflow (`.github/workflows/release.yml
 2. **Runs quality checks**: ECS, PHPStan, Rector, and tests
 3. **Builds the PHAR** using humbug/box
 4. **Combines PHAR with micro.sfx** from static-php-cli to produce standalone binaries
-5. **Uploads binaries** to a GitHub Release
+5. **Uploads binaries** to a GitHub Release whose description is the version's `CHANGELOG.md` section; a tag containing a hyphen is published as a pre-release, and a tag without a changelog section fails the release
 6. **Publishes the package repos** (APT, Alpine, Arch, RPM) and the Homebrew binaries to the `packages.dde.sh` S3 bucket
 7. **Invalidates the CloudFront cache** so the freshly published repo indexes are served immediately instead of stale cached copies
 

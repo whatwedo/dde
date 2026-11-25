@@ -112,9 +112,9 @@ Present:
 
 and wait for explicit confirmation.
 
-## Step 6: Update the GitHub release
+## Step 6: Verify the GitHub release
 
-The workflow creates the GitHub Release as the binaries upload. Its description is auto-generated from the merged PRs (`generate_release_notes: true` in `release.yml`) — replace it with this version's CHANGELOG section, and flag pre-releases so the GitHub UI hides them from the "Latest" link.
+The workflow creates the GitHub Release as the binaries upload, uses this version's CHANGELOG section as its description and flags a tag containing a hyphen (`-alpha.`, `-beta.`, `-rc.`) as a pre-release. It fails when `CHANGELOG.md` has no section for the tag.
 
 Wait for the workflow to finish:
 
@@ -122,23 +122,6 @@ Wait for the workflow to finish:
 gh run watch
 # or: gh release view v<version>
 ```
-
-Extract the CHANGELOG section for this version, derive the pre-release flag, and update the release in a single call:
-
-```bash
-version="<version-without-v-prefix>"   # e.g. 2.0.0-alpha.5
-
-notes=$(sed -n "/^## \[$version\]/,/^## \[/p" CHANGELOG.md | sed '1d;$d')
-
-prerelease_flag=""
-case "$version" in
-  *-alpha.*|*-beta.*|*-rc.*) prerelease_flag="--prerelease" ;;
-esac
-
-gh release edit "v$version" --notes "$notes" $prerelease_flag
-```
-
-Keep `$0`, `$1`, … out of the snippets on this page (that is why the extraction uses `sed`, not `awk`): when this skill is invoked as `/releasing <version>`, those tokens are replaced with the invocation arguments before the page reaches the agent, and the command silently stops matching.
 
 Verify in the browser at `https://github.com/whatwedo/dde/releases/tag/v<version>` — the description should match the CHANGELOG section and the "Pre-release" badge should be visible for alpha/beta/rc tags.
 
@@ -153,8 +136,7 @@ Verify in the browser at `https://github.com/whatwedo/dde/releases/tag/v<version
 - [ ] Commit signed + signed-off, subject `docs(changelog): document the v<version> release`
 - [ ] Annotated tag signed, subject exactly `v<version>`
 - [ ] No push without explicit user approval
-- [ ] GitHub release notes populated from CHANGELOG section
-- [ ] Pre-release flag set for `-alpha.`/`-beta.`/`-rc.` tags
+- [ ] GitHub release shows the CHANGELOG section, and the pre-release badge for `-alpha.`/`-beta.`/`-rc.` tags
 
 ## Common mistakes
 
@@ -166,5 +148,3 @@ Verify in the browser at `https://github.com/whatwedo/dde/releases/tag/v<version
 | Missing tag signature (`git tag v…` instead of `git tag -s v…`) | Re-create with `-s`.                                                                                             |
 | Hand-editing `Application::APP_VERSION`                         | Leave it as `@APP_VERSION@`; the build pipeline substitutes it.                                                  |
 | Pushing the tag without asking                                  | The release workflow is expensive and public; always confirm.                                                    |
-| Leaving the GitHub release description empty                    | Run Step 6 — users land on the release page from "Latest release" links and expect to see the changelog.         |
-| Tagging `-alpha.N` as a stable release                          | Always pass `--prerelease` when editing alpha/beta/rc tags, otherwise GitHub marks them as the "Latest" release. |
