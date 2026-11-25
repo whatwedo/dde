@@ -43,9 +43,24 @@ git push origin <branch> v2.1.0
 
 The tag name must start with `v` (e.g. `v2.0.0`, `v2.1.0`).
 
+### Scheduled dependency release
+
+Dependency updates merged by Renovate reach users without a manual release: the `Dependency Release` workflow (`.github/workflows/dependency-release.yml`) runs every Monday at 06:00 UTC and publishes a patch release when both hold:
+
+- **every** commit since the latest tag is a `chore(deps):` or `fix(deps):` commit — a `docs:` or `refactor:` commit already hands the next release back to a human,
+- a dependency that ships in the binary changed: the PHP runtime (`require.php` in `composer.json`) or a non-dev Composer package in `composer.lock`. Dev dependencies never reach the binary, and the website's npm dependencies deploy from `main` on their own.
+
+It also skips the release when the latest tag is a pre-release.
+
+It fails instead of releasing when the nightly workflow for the `main` head is not green.
+
+The workflow adds a `### Changed` section and the release link to `CHANGELOG.md` — one entry per updated shipped dependency with its old and new version — commits and tags it with the release bot's GPG key, pushes both to `main`, and dispatches the release workflow on the new tag. The dispatch is explicit because a tag pushed with the workflow's `GITHUB_TOKEN` triggers no other workflow.
+
+Run it by hand from the Actions tab to release ahead of schedule. If the tag was pushed but the release did not start or failed, run the `Release` workflow on that tag from the Actions tab.
+
 ## CI Pipeline
 
-Pushing a `v*` tag triggers the release workflow (`.github/workflows/release.yml`). The pipeline:
+Pushing a `v*` tag triggers the release workflow (`.github/workflows/release.yml`); a manual dispatch runs it only when started on a `v*` tag. The pipeline:
 
 1. **Reads the PHP version** from `composer.json` (single source of truth)
 2. **Runs quality checks**: ECS, PHPStan, Rector, and tests
@@ -74,8 +89,11 @@ The publishing jobs read these repository secrets:
 | `GPG_PRIVATE_KEY` / `GPG_PASSPHRASE`          | Sign the APT/Arch/RPM repo metadata                                                                       |
 | `ALPINE_RSA_PRIVATE_KEY`                      | Sign the Alpine repo index                                                                                |
 | `HOMEBREW_SSH_KEY`                            | Push the updated formula to the Homebrew tap repo                                                         |
+| `RELEASE_BOT_GPG_PRIVATE_KEY`                 | Sign the commit and tag of a [scheduled dependency release](#scheduled-dependency-release)                |
 
 The IAM principal behind `AWS_ACCESS_KEY_ID` needs `cloudfront:CreateInvalidation` (and `cloudfront:GetInvalidation`) on the distribution in addition to its existing `s3:*` access to the bucket. A whole-distribution `/*` invalidation counts as a single path for billing.
+
+`RELEASE_BOT_GPG_PRIVATE_KEY` is an ASCII-armored private key without a passphrase whose UID is `whatwedo Bot <github@whatwedo.ch>`, the identity the workflow commits with. Its public key is registered on the [whatwedo-bot](https://github.com/whatwedo-bot) account, so GitHub shows the release commit and tag as verified.
 
 ### Target Platforms
 

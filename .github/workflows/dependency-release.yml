@@ -1,0 +1,115 @@
+name: Dependency Release
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: dependency-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    name: Release dependency updates
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Decide whether to release
+        id: gate
+        run: |
+          LAST=$(git describe --tags --abbrev=0 --match 'v[0-9]*')
+          if ! [[ "$LAST" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Latest tag ${LAST} is not a stable release, skipping."
+            exit 0
+          fi
+          VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))"
+
+          SUBJECTS=$(git log --format=%s "${LAST}..HEAD")
+          if [ -z "$SUBJECTS" ]; then
+            echo "Nothing unreleased since ${LAST}, skipping."
+            exit 0
+          fi
+          if OTHER=$(grep -Ev '^(chore|fix)\(deps\): ' <<< "$SUBJECTS"); then
+            echo "Unreleased commits besides dependency updates, skipping:"
+            echo "$OTHER"
+            exit 0
+          fi
+
+          # Only what ends up in the binary: the PHP runtime and the non-dev packages.
+          shipped() {
+            git show "${1}:composer.json" | jq '.require.php'
+            git show "${1}:composer.lock" | jq -S '[.packages[] | {name, version}]'
+          }
+          RELEASED=$(shipped "$LAST")
+          CURRENT=$(shipped HEAD)
+          if [ "$RELEASED" = "$CURRENT" ]; then
+            echo "No shipped Composer dependency changed since ${LAST}, skipping."
+            exit 0
+          fi
+
+          CI=$(gh run list --workflow nightly.yml --commit "$(git rev-parse HEAD)" --limit 1 --json conclusion --jq '.[0].conclusion')
+          if [ "$CI" != "success" ]; then
+            echo "::error::Nightly workflow for main is '${CI}', not releasing v${VERSION}."
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "last=${LAST}" >> "$GITHUB_OUTPUT"
+
+      - name: Add changelog section
+        if: steps.gate.outputs.version
+        env:
+          VERSION: ${{ steps.gate.outputs.version }}
+          LAST: ${{ steps.gate.outputs.last }}
+        run: |
+          UPDATES=$(scripts/changelog-dependencies.sh "$LAST")
+          DATE=$(date -u +%F)
+          export ENTRY="## [${VERSION}] - ${DATE}
+
+          ### Changed
+
+          ${UPDATES:-- Updated dependencies.}
+          "
+          export LINK="[${VERSION}]: https://github.com/${GITHUB_REPOSITORY}/releases/tag/v${VERSION}"
+          awk '
+            !entered && /^## \[[0-9]/ { print ENVIRON["ENTRY"]; entered = 1 }
+            !linked && /^\[[^]]+\]: / { print ENVIRON["LINK"]; linked = 1 }
+            { print }
+          ' CHANGELOG.md > CHANGELOG.md.new
+          mv CHANGELOG.md.new CHANGELOG.md
+
+      - name: Commit and tag
+        if: steps.gate.outputs.version
+        env:
+          VERSION: ${{ steps.gate.outputs.version }}
+          RELEASE_BOT_GPG_PRIVATE_KEY: ${{ secrets.RELEASE_BOT_GPG_PRIVATE_KEY }}
+        run: |
+          gpg --batch --import <<< "$RELEASE_BOT_GPG_PRIVATE_KEY"
+          git config user.name "whatwedo Bot"
+          git config user.email "github@whatwedo.ch"
+          git config user.signingkey "$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/ { print $5; exit }')"
+
+          git commit -S --signoff -m "docs(changelog): document the v${VERSION} release" CHANGELOG.md
+          git tag -s "v${VERSION}" -m "v${VERSION}"
+          git show --stat --show-signature "v${VERSION}"
+
+      # A tag pushed with GITHUB_TOKEN triggers no workflow, so the release
+      # workflow is dispatched explicitly.
+      - name: Push and start the release
+        if: steps.gate.outputs.version
+        env:
+          VERSION: ${{ steps.gate.outputs.version }}
+        run: |
+          git push --atomic origin main "v${VERSION}"
+          gh workflow run release.yml --ref "v${VERSION}"
