@@ -7547,23 +7547,23 @@
         },
         {
             "name": "whatwedo/php-coding-standard",
-            "version": "v2.0.0",
+            "version": "v2.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/whatwedo/PhpCodingStandard.git",
-                "reference": "abe0c451fb31ff2682fe79a495bdd972479565e7"
+                "reference": "14a178f47ccf883000f1932995fd932ea5a1c247"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/whatwedo/PhpCodingStandard/zipball/abe0c451fb31ff2682fe79a495bdd972479565e7",
-                "reference": "abe0c451fb31ff2682fe79a495bdd972479565e7",
+                "url": "https://api.github.com/repos/whatwedo/PhpCodingStandard/zipball/14a178f47ccf883000f1932995fd932ea5a1c247",
+                "reference": "14a178f47ccf883000f1932995fd932ea5a1c247",
                 "shasum": ""
             },
             "require": {
                 "kubawerlos/php-cs-fixer-custom-fixers": "~3.37.5",
                 "php": ">=8.2",
-                "slevomat/coding-standard": "~8.31.1",
-                "symplify/easy-coding-standard": "~13.3.7"
+                "slevomat/coding-standard": "~8.31.3",
+                "symplify/easy-coding-standard": "~13.3.23"
             },
             "type": "library",
             "autoload": {
@@ -7585,10 +7585,10 @@
             "homepage": "https://github.com/whatwedo/PhpCodingStandard",
             "support": {
                 "issues": "https://github.com/whatwedo/PhpCodingStandard/issues",
-                "source": "https://github.com/whatwedo/PhpCodingStandard/tree/v2.0.0"
+                "source": "https://github.com/whatwedo/PhpCodingStandard/tree/v2.0.1"
             },
-            "time": "2026-11-16T09:44:10+00:00",
-            "published-time": "2026-11-16T09:44:19+00:00"
+            "time": "2026-11-23T15:20:35+00:00",
+            "published-time": "2026-11-23T15:20:43+00:00"
         }
     ],
     "aliases": [],
