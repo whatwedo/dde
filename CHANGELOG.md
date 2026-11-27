@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - The custom version prompt in `project:init` now separates the typed version from the prompt text. (#126)
+- Lifecycle hooks that succeed but write to stderr, or are skipped as non-executable, now show a warning instead of staying silent. See [Hooks](docs/extending/hooks.md#output). (#325)
 
 ## [2.1.0] - 2026-10-12
 

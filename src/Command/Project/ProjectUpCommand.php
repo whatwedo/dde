@@ -62,11 +62,14 @@ final class ProjectUpCommand extends AbstractProjectCommand
         }
 
         // Pre-hooks
+        $upPreEvent = new ProjectUpPreEvent($config, $projectDir, $skipHooks);
         try {
-            $this->eventDispatcher->dispatch(new ProjectUpPreEvent($config, $projectDir, $skipHooks));
+            $this->eventDispatcher->dispatch($upPreEvent);
         } catch (HookFailedException $hookFailedException) {
             return $formatter->error($hookFailedException->getMessage());
         }
+
+        $this->renderHookWarnings($io, $formatter, $upPreEvent);
 
         // Lifecycle: up
         $section = $formatter->isInteractive() && $output instanceof ConsoleOutputInterface && $output->isDecorated()
@@ -87,13 +90,16 @@ final class ProjectUpCommand extends AbstractProjectCommand
         $section?->clear();
 
         // Post-hooks
+        $upPostEvent = new ProjectUpPostEvent($config, $projectDir, $skipHooks);
         try {
-            $this->eventDispatcher->dispatch(new ProjectUpPostEvent($config, $projectDir, $skipHooks));
+            $this->eventDispatcher->dispatch($upPostEvent);
         } catch (HookFailedException $hookFailedException) {
             if ($formatter->isInteractive()) {
                 $io->warning($hookFailedException->getMessage());
             }
         }
+
+        $this->renderHookWarnings($io, $formatter, $upPostEvent);
 
         if (!$formatter->isInteractive()) {
             return $formatter->success([

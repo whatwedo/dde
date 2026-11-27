@@ -6,8 +6,11 @@ namespace App\Command;
 
 use App\Config\ProjectConfig;
 use App\Config\ResolvedConfig;
+use App\Event\AbstractProjectEvent;
 use App\Manager\ProjectConfigManager;
 use App\Output\FormatterResolver;
+use App\Output\OutputFormatterInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 abstract class AbstractProjectCommand extends AbstractBaseCommand
 {
@@ -76,5 +79,19 @@ abstract class AbstractProjectCommand extends AbstractBaseCommand
         }
 
         return 'web';
+    }
+
+    /**
+     * Shows warnings collected while dispatching a lifecycle event, e.g. the stderr of a successful hook.
+     */
+    protected function renderHookWarnings(SymfonyStyle $io, OutputFormatterInterface $formatter, AbstractProjectEvent $event): void
+    {
+        if (!$formatter->isInteractive()) {
+            return;
+        }
+
+        foreach ($event->warnings as $warning) {
+            $io->warning($warning);
+        }
     }
 }

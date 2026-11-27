@@ -317,6 +317,32 @@ final class ProjectUpCommandTest extends TestCase
         $this->assertStringContainsString('pre-up.sh', $commandTester->getDisplay());
     }
 
+    public function testHookWarningsAreShownInTextOutput(): void
+    {
+        $commandTester = $this->createCommandTesterWithHookWarning();
+
+        $commandTester->execute([], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $commandTester->getStatusCode());
+        $this->assertStringContainsString('warn: check this', $commandTester->getDisplay());
+    }
+
+    public function testHookWarningsAreNotMixedIntoJsonOutput(): void
+    {
+        $commandTester = $this->createCommandTesterWithHookWarning();
+
+        $commandTester->execute([
+            '--output' => 'json',
+        ], [
+            'interactive' => false,
+        ]);
+
+        $this->assertSame(0, $commandTester->getStatusCode());
+        $this->assertStringNotContainsString('warn: check this', $commandTester->getDisplay());
+    }
+
     public function testErrorWhenNoProjectDirectoryFound(): void
     {
         $this->configManager
@@ -328,6 +354,50 @@ final class ProjectUpCommandTest extends TestCase
         ]);
 
         $this->assertNotSame(0, $this->commandTester->getStatusCode());
+    }
+
+    private function createCommandTesterWithHookWarning(): CommandTester
+    {
+        $this->setupProjectFixture();
+
+        $this->lifecycleManager
+            ->method('up')
+            ->willReturn([
+                'serviceResults' => [],
+                'devLayerResult' => null,
+                'domains' => [],
+                'sshForwardingWarning' => null,
+            ]);
+
+        $eventDispatcher = $this->createStub(EventDispatcherInterface::class);
+        $eventDispatcher
+            ->method('dispatch')
+            ->willReturnCallback(function (object $event): object {
+                if ($event instanceof ProjectUpPreEvent) {
+                    $event->warnings[] = 'Hook "01-warn.sh": warn: check this';
+                }
+
+                return $event;
+            });
+
+        $command = new ProjectUpCommand(
+            $this->configManager,
+            $this->lifecycleManager,
+            new FormatterResolver(new TextFormatter(), new JsonFormatter()),
+            $eventDispatcher,
+        );
+
+        $application = new Application();
+        $application->getDefinition()->addOption(new InputOption(
+            'output',
+            'o',
+            InputOption::VALUE_REQUIRED,
+            'Output format',
+            'text',
+        ));
+        $application->addCommand($command);
+
+        return new CommandTester($command);
     }
 
     /**

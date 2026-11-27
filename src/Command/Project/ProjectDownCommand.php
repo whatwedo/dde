@@ -56,11 +56,14 @@ final class ProjectDownCommand extends AbstractProjectCommand
         $skipHooks = (bool) $input->getOption('skip-hooks');
 
         // Pre-hooks
+        $downPreEvent = new ProjectDownPreEvent($config, $projectDir, $skipHooks);
         try {
-            $this->eventDispatcher->dispatch(new ProjectDownPreEvent($config, $projectDir, $skipHooks));
+            $this->eventDispatcher->dispatch($downPreEvent);
         } catch (HookFailedException $hookFailedException) {
             return $formatter->error($hookFailedException->getMessage());
         }
+
+        $this->renderHookWarnings($io, $formatter, $downPreEvent);
 
         if ($formatter->isInteractive()) {
             $io->writeln(sprintf('Stopping project <info>%s</info>...', $config->projectName));
@@ -78,13 +81,16 @@ final class ProjectDownCommand extends AbstractProjectCommand
         }
 
         // Post-hooks
+        $downPostEvent = new ProjectDownPostEvent($config, $projectDir, $skipHooks);
         try {
-            $this->eventDispatcher->dispatch(new ProjectDownPostEvent($config, $projectDir, $skipHooks));
+            $this->eventDispatcher->dispatch($downPostEvent);
         } catch (HookFailedException $hookFailedException) {
             if ($formatter->isInteractive()) {
                 $io->warning($hookFailedException->getMessage());
             }
         }
+
+        $this->renderHookWarnings($io, $formatter, $downPostEvent);
 
         if (!$formatter->isInteractive()) {
             return $formatter->success([
