@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Manager;
 
-use App\Manager\ClaudeCodeManager;
+use App\Manager\AgentSkillManager;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
-final class ClaudeCodeManagerTest extends TestCase
+final class AgentSkillManagerTest extends TestCase
 {
     private string $tempDir;
 
@@ -24,7 +24,7 @@ final class ClaudeCodeManagerTest extends TestCase
     {
         $this->createSkillSource('# dde skill');
 
-        $manager = new ClaudeCodeManager($this->projectDir);
+        $manager = new AgentSkillManager($this->projectDir);
         $manager->installSkill();
 
         $target = $this->homeDir.'/.claude/skills/dde/SKILL.md';
@@ -40,7 +40,7 @@ final class ClaudeCodeManagerTest extends TestCase
         $this->filesystem->dumpFile($target, '# stale skill');
         $this->filesystem->chmod($target, 0o444);
 
-        $manager = new ClaudeCodeManager($this->projectDir);
+        $manager = new AgentSkillManager($this->projectDir);
         $manager->installSkill();
 
         self::assertSame('# updated skill', file_get_contents($target));
@@ -51,10 +51,43 @@ final class ClaudeCodeManagerTest extends TestCase
         $this->createSkillSource('# dde skill');
         $this->filesystem->chmod($this->projectDir.'/skills/claude/dde/SKILL.md', 0o444);
 
-        $manager = new ClaudeCodeManager($this->projectDir);
+        $manager = new AgentSkillManager($this->projectDir);
         $manager->installSkill();
 
         self::assertTrue(is_writable($this->homeDir.'/.claude/skills/dde/SKILL.md'));
+    }
+
+    public function testInstallSkillCopiesSkillIntoAgentsSkillsDirectoryWhenAgentsDirectoryExists(): void
+    {
+        $this->createSkillSource('# dde skill');
+        $this->filesystem->remove($this->homeDir.'/.claude');
+        $this->filesystem->mkdir($this->homeDir.'/.agents');
+
+        $manager = new AgentSkillManager($this->projectDir);
+        $manager->installSkill();
+
+        self::assertSame('# dde skill', file_get_contents($this->homeDir.'/.agents/skills/dde/SKILL.md'));
+        self::assertDirectoryDoesNotExist($this->homeDir.'/.claude');
+    }
+
+    public function testInstallSkillCopiesSkillIntoEveryDetectedAgent(): void
+    {
+        $this->createSkillSource('# dde skill');
+        $this->filesystem->mkdir($this->homeDir.'/.agents');
+
+        $manager = new AgentSkillManager($this->projectDir);
+        $manager->installSkill();
+
+        self::assertFileExists($this->homeDir.'/.claude/skills/dde/SKILL.md');
+        self::assertFileExists($this->homeDir.'/.agents/skills/dde/SKILL.md');
+        self::assertTrue($manager->isSkillInstalled());
+    }
+
+    public function testHasNoSkillTargetWithoutAnyAgent(): void
+    {
+        $this->filesystem->remove($this->homeDir.'/.claude');
+
+        self::assertFalse((new AgentSkillManager($this->projectDir))->hasSkillTarget());
     }
 
     private function createSkillSource(string $content): void

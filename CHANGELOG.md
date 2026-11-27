@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `system:install` and `system:update` also install the dde skill into `~/.agents/skills` when it exists, so Codex and other agents find it. See [System Lifecycle](docs/guides/system-lifecycle.md). (#340)
+
 ### Fixed
 
 - The custom version prompt in `project:init` now separates the typed version from the prompt text. (#126)

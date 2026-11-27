@@ -6,7 +6,7 @@ namespace App\Command\System;
 
 use App\Command\AbstractSystemCommand;
 use App\Config\SshAgentMode;
-use App\Manager\ClaudeCodeManager;
+use App\Manager\AgentSkillManager;
 use App\Manager\CompletionManager;
 use App\Manager\GlobalConfigManager;
 use App\Manager\MkcertManager;
@@ -34,7 +34,7 @@ final class SystemInstallCommand extends AbstractSystemCommand
         private readonly TraefikService $traefikService,
         private readonly SshAgentService $sshAgentService,
         private readonly CompletionManager $completionManager,
-        private readonly ClaudeCodeManager $claudeCodeManager,
+        private readonly AgentSkillManager $agentSkillManager,
         private readonly GlobalConfigManager $globalConfigManager,
         private readonly string $configDir,
         FormatterResolver $formatterResolver,
@@ -105,10 +105,10 @@ final class SystemInstallCommand extends AbstractSystemCommand
             $this->completionManager->installCompletion($this->configDir, $application);
         }, $hasErrors);
 
-        // Step 8: Claude Code skill (only if Claude Code is installed)
-        if ($this->claudeCodeManager->isClaudeCodeInstalled()) {
-            $results[] = $this->runStep($io, $formatter, 'claude-code', 'Installing Claude Code skill', function (): void {
-                $this->claudeCodeManager->installSkill();
+        // Step 8: agent skill (only if ~/.claude or ~/.agents exists)
+        if ($this->agentSkillManager->hasSkillTarget()) {
+            $results[] = $this->runStep($io, $formatter, 'claude-code', 'Installing the dde skill for AI agents', function (): void {
+                $this->agentSkillManager->installSkill();
             }, $hasErrors);
         }
 

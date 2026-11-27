@@ -54,7 +54,7 @@ Managers contain the core business logic and orchestrate complex operations.
 | `CompletionManager`            | Shell completion generation and installation                                                                                                                       |
 | `CleanupManager`               | Container and volume cleanup                                                                                                                                       |
 | `ProjectInfoManager`           | Project info display                                                                                                                                               |
-| `ClaudeCodeManager`            | Detects a Claude Code installation and installs/refreshes the bundled `skills/claude/dde` skill                                                                    |
+| `AgentSkillManager`            | Installs/refreshes the bundled `skills/claude/dde` skill into `~/.claude/skills` and `~/.agents/skills`, where present |
 
 ### Services (`App\Service\`)
 

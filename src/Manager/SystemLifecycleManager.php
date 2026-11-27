@@ -16,7 +16,7 @@ readonly class SystemLifecycleManager
         private ServiceRegistry $serviceRegistry,
         private DockerManager $dockerManager,
         private CompletionManager $completionManager,
-        private ClaudeCodeManager $claudeCodeManager,
+        private AgentSkillManager $agentSkillManager,
         private MkcertManager $mkcertManager,
         private string $configDir,
     ) {}
@@ -227,10 +227,10 @@ readonly class SystemLifecycleManager
             $onProgress,
         );
 
-        if ($this->claudeCodeManager->isClaudeCodeInstalled()) {
+        if ($this->agentSkillManager->hasSkillTarget()) {
             $warnings = $this->runPostInstallStep(
                 'claude-skill',
-                fn() => $this->claudeCodeManager->installSkill(),
+                fn() => $this->agentSkillManager->installSkill(),
                 $warnings,
                 $onProgress,
             );
