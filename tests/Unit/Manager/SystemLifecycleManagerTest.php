@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Manager;
 
-use App\Manager\ClaudeCodeManager;
+use App\Manager\AgentSkillManager;
 use App\Manager\CompletionManager;
 use App\Manager\DockerManager;
 use App\Manager\MkcertManager;
@@ -28,7 +28,7 @@ final class SystemLifecycleManagerTest extends TestCase
 
     private CompletionManager&MockObject $completionManager;
 
-    private ClaudeCodeManager&MockObject $claudeCodeManager;
+    private AgentSkillManager&MockObject $agentSkillManager;
 
     private MkcertManager&MockObject $mkcertManager;
 
@@ -397,11 +397,11 @@ final class SystemLifecycleManagerTest extends TestCase
             ->expects($this->once())
             ->method('installCompletion');
 
-        $this->claudeCodeManager
-            ->method('isClaudeCodeInstalled')
+        $this->agentSkillManager
+            ->method('hasSkillTarget')
             ->willReturn(true);
 
-        $this->claudeCodeManager
+        $this->agentSkillManager
             ->expects($this->once())
             ->method('installSkill');
 
@@ -417,11 +417,11 @@ final class SystemLifecycleManagerTest extends TestCase
         $this->dockerManager->method('getContainersByLabel')->willReturn([]);
         $this->dockerManager->method('networkExists')->willReturnMap([['dde', true]]);
 
-        $this->claudeCodeManager
-            ->method('isClaudeCodeInstalled')
+        $this->agentSkillManager
+            ->method('hasSkillTarget')
             ->willReturn(false);
 
-        $this->claudeCodeManager
+        $this->agentSkillManager
             ->expects($this->never())
             ->method('installSkill');
 
@@ -438,7 +438,7 @@ final class SystemLifecycleManagerTest extends TestCase
             ->method('installCompletion')
             ->willThrowException(new \RuntimeException('completion broken'));
 
-        $this->claudeCodeManager->method('isClaudeCodeInstalled')->willReturn(false);
+        $this->agentSkillManager->method('hasSkillTarget')->willReturn(false);
 
         $result = $this->manager->update(new Application());
 
@@ -458,7 +458,7 @@ final class SystemLifecycleManagerTest extends TestCase
         $this->dockerManager->method('getContainersByLabel')->willReturn([]);
         $this->dockerManager->method('networkExists')->willReturnMap([['dde', true]]);
 
-        $this->claudeCodeManager->method('isClaudeCodeInstalled')->willReturn(false);
+        $this->agentSkillManager->method('hasSkillTarget')->willReturn(false);
 
         /** @var list<SystemLifecycleProgress> $events */
         $events = [];
@@ -502,7 +502,7 @@ final class SystemLifecycleManagerTest extends TestCase
             ->method('installCompletion')
             ->willThrowException(new \RuntimeException('completion broken'));
 
-        $this->claudeCodeManager->method('isClaudeCodeInstalled')->willReturn(false);
+        $this->agentSkillManager->method('hasSkillTarget')->willReturn(false);
 
         /** @var list<array{event: SystemLifecycleProgress, name: string, detail: ?string}> $failures */
         $failures = [];
@@ -530,14 +530,14 @@ final class SystemLifecycleManagerTest extends TestCase
         $this->serviceRegistry = $this->createMock(ServiceRegistry::class);
         $this->dockerManager = $this->createMock(DockerManager::class);
         $this->completionManager = $this->createMock(CompletionManager::class);
-        $this->claudeCodeManager = $this->createMock(ClaudeCodeManager::class);
+        $this->agentSkillManager = $this->createMock(AgentSkillManager::class);
         $this->mkcertManager = $this->createMock(MkcertManager::class);
 
         $this->manager = new SystemLifecycleManager(
             $this->serviceRegistry,
             $this->dockerManager,
             $this->completionManager,
-            $this->claudeCodeManager,
+            $this->agentSkillManager,
             $this->mkcertManager,
             '/tmp/dde-config',
         );

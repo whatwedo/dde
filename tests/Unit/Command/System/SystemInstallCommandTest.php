@@ -231,7 +231,7 @@ final class SystemInstallCommandTest extends TestCase
 
         $formatterResolver = new FormatterResolver(new TextFormatter(), new JsonFormatter());
 
-        $claudeCodeManager = new \App\Manager\ClaudeCodeManager($this->tempDir);
+        $agentSkillManager = new \App\Manager\AgentSkillManager($this->tempDir);
 
         $this->command = new SystemInstallCommand(
             $this->mkcertManager,
@@ -239,7 +239,7 @@ final class SystemInstallCommandTest extends TestCase
             $this->traefikService,
             $sshAgentService,
             $this->completionManager,
-            $claudeCodeManager,
+            $agentSkillManager,
             $globalConfigManager,
             $this->tempDir.'/config',
             $formatterResolver,

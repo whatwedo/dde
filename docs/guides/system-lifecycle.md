@@ -31,7 +31,7 @@ use `system:down`.
 - Create the default wildcard certificate for `*.test`.
 - Build and start the global services.
 - Install shell completion.
-- Install the Claude skill (when Claude Code is detected).
+- Install the dde skill for AI agents: into `~/.claude/skills` when Claude Code is detected, into `~/.agents/skills` when `~/.agents` exists, the shared skills folder that Codex and other agents read.
 
 You call `system:install` **once**, the first time you use dde. For package
 manager installations (APT / Arch / Alpine / RPM) it runs automatically via
@@ -44,7 +44,7 @@ the post-install hook. On Homebrew it shows up as a caveats message.
   latest upstream base image).
 - Start the global services again.
 - Refresh everything that is bound to the dde binary version
-  (shell completion, Claude skill).
+  (shell completion, agent skill).
 
 `system:update` does **not** touch the root CA, DNS configuration, or the
 default certificate — those are one-off setup steps, not per-version

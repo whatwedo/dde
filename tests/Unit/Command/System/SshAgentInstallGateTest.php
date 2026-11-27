@@ -7,7 +7,7 @@ namespace Tests\Unit\Command\System;
 use App\Command\System\SystemInstallCommand;
 use App\Config\GlobalConfig;
 use App\Config\SshAgentMode;
-use App\Manager\ClaudeCodeManager;
+use App\Manager\AgentSkillManager;
 use App\Manager\CompletionManager;
 use App\Manager\DockerManager;
 use App\Manager\GlobalConfigManager;
@@ -174,7 +174,7 @@ final class SshAgentInstallGateTest extends TestCase
             $traefikService,
             $sshAgentService,
             new CompletionManager(filesystem: $filesystem),
-            new ClaudeCodeManager($this->tempDir),
+            new AgentSkillManager($this->tempDir),
             $globalConfigManager,
             $this->tempDir.'/config',
             new FormatterResolver(new TextFormatter(), new JsonFormatter()),
